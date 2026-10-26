@@ -51,7 +51,7 @@ env -u PYTHONPATH /tmp/friend-base-env/bin/python -c 'import dqs; print(dqs.__fi
 env -u PYTHONPATH /tmp/friend-base-env/bin/dqs algorithms
 ```
 
-检查导入路径位于新 venv 的 `site-packages`；依赖中没有 Torch、模型权重或私有 wheel。基础包可列出算法，但 HDF5／视频等执行需要额外依赖；缺依赖应明确报出，不能要求基础包执行所有方法。优先补验 Python 3.10、3.12：已有本地结果来自 3.13，CI 配置不等于这些版本已实测。
+检查导入路径位于新 venv 的 `site-packages`；依赖中没有 Torch、模型权重或私有 wheel。基础包可列出算法，但 HDF5／视频等执行需要额外依赖；缺依赖应明确报出，不能要求基础包执行所有方法。重点复核 Python 3.10、3.12：各轮本地结果和远端执行范围见 STATUS，CI 配置不等于已通过该版本实测。
 
 ### B：用户能否正确注册数据
 

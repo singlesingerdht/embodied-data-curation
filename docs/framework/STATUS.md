@@ -21,6 +21,14 @@ CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根�
 
 21 项跳过包括：14 项需要本环境未安装的官方 LeRobot，3 项未迁研究价值桥，3 项 GPU 扩展，1 项未分发的真实注册证据。官方专项环境单独验证读取与转换；本轮没有把跳过算作通过。
 
+## GitHub CI 兼容修复
+
+首次远端矩阵在 Python 3.10／PyArrow 25.0.1 下有 23 项失败：Parquet 数值 dtype 转换隐式调用了未安装的 pandas。Python 3.12 的单测通过，但后续步骤被矩阵的联动取消机制停止。原失败日志见 [Actions 40278894553](https://github.com/singlesingerdht/embodied-data-curation/actions/runs/40278894553)。
+
+读取层现直接按 Arrow 数值类型和位宽恢复 NumPy dtype，避免 pandas 依赖；保留大整数、浮点精度、NaN／Inf、布尔值、列表形状以及原 null／不齐整列表行为。新增在隔离进程中禁用 pandas 的回归用例。基础依赖仍只有 NumPy／PyYAML，算法方法、评分公式和阈值不变。矩阵改为 `fail-fast: false`，不同 Python 任务各自完成。
+
+本地 Python 3.12＋PyArrow 25.0.1 的源码及源码外 wheel 全量检查均为 **466 passed / 21 skipped**；干净基础 wheel 安装、完整合成工作流和恢复执行也通过。该组结果与上方迁移基线分别记录，见 [ci-compatibility.json](../validation/ci-compatibility.json)。远端修复复验状态见 [Actions](https://github.com/singlesingerdht/embodied-data-curation/actions)。
+
 ## 已实现的边界
 
 - 公共薄入口、Dataset→Episode→Channel、逻辑通道目录、配置与 SI 执行视图。
@@ -37,7 +45,7 @@ CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根�
 
 - 真实价值／编辑／增强方法未通过本公共流程逐项验收；盘点及亮度变换只是合成接口示例。
 - 通用非 identity 变换、segment 调度、分布式执行、平台账号／权限／前端和真实 VR 加速未实现。
-- 本地校验使用 Python 3.13；3.10／3.12 矩阵已写 CI，本轮未在远端实际执行。
+- 初次迁移基线使用 Python 3.13；CI 兼容修复另有本地 Python 3.12 验证。Python 3.10／3.12 远端矩阵的实测状态以 Actions 为准，不能把首次失败或取消算作通过。
 - 仓库级许可、算法／第三方／模型与真实数据分发范围仍待核查；不宣称已公开发布。
 
 ## 复现

@@ -18,8 +18,15 @@ def arrow_source_values(column):
         def contains_null(value):
             return value is None or isinstance(value, list) and any(contains_null(v) for v in value)
         if not contains_null(rows):
+            # Older Arrow versions require pandas even for to_pandas_dtype().
+            # Primitive Arrow widths map directly to NumPy without that dependency.
+            if pa.types.is_boolean(leaf):
+                dtype = np.dtype(np.bool_)
+            else:
+                kind = 'f' if pa.types.is_floating(leaf) else 'u' if pa.types.is_unsigned_integer(leaf) else 'i'
+                dtype = np.dtype(f'{kind}{leaf.bit_width // 8}')
             try:
-                return np.asarray(rows, dtype=leaf.to_pandas_dtype())
+                return np.asarray(rows, dtype=dtype)
             except ValueError:
                 pass  # Ragged shapes remain literal rows; the selected field fails explicitly.
     return rows

@@ -2,6 +2,9 @@
 import copy
 import hashlib
 import json
+from pathlib import Path
+import subprocess
+import sys
 from types import SimpleNamespace
 
 import numpy as np
@@ -221,3 +224,50 @@ def test_parquet_primitive_and_list_source_dtypes_are_preserved(tmp_path, dtype,
         result = ep.read_signal('joint_pos', 'position')
         assert result.dtype == dtype
         np.testing.assert_array_equal(result, values)
+
+
+def test_arrow_numeric_reading_without_pandas(tmp_path):
+    pytest.importorskip('pyarrow')
+    import framework
+    script = r'''
+import importlib.abc
+import sys
+class NoPandas(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'pandas' or fullname.startswith('pandas.'):
+            raise ModuleNotFoundError('pandas intentionally unavailable', name=fullname)
+sys.meta_path.insert(0, NoPandas())
+sys.path.insert(0, sys.argv[1])
+import numpy as np
+import pyarrow as pa
+from framework.readers.structured import arrow_source_values
+
+for dtype, values in [
+    (np.float16, [.1, np.nan, np.inf, -np.inf]),
+    (np.float32, [.1, np.nan, np.inf, -np.inf]),
+    (np.float64, [.1, np.nan, np.inf, -np.inf]),
+    (np.int64, [2**60 + 1, 2**60 + 2]),
+    (np.uint64, [2**64 - 2, 2**64 - 1]),
+    (np.bool_, [True, False]),
+]:
+    expected = np.asarray(values, dtype=dtype)
+    leaf = pa.from_numpy_dtype(dtype)
+    for kind in ('scalar', 'list', 'large_list', 'fixed_size_list'):
+        shape = expected if kind == 'scalar' else expected.reshape(-1, 1)
+        arrow_type = {'scalar': leaf, 'list': pa.list_(leaf),
+                      'large_list': pa.large_list(leaf),
+                      'fixed_size_list': pa.list_(leaf, 1)}[kind]
+        column = pa.chunked_array([pa.array(shape.tolist(), type=arrow_type)])
+        result = arrow_source_values(column)
+        assert result.dtype == expected.dtype, (dtype, kind, result.dtype)
+        np.testing.assert_array_equal(result, shape)
+
+assert arrow_source_values(pa.array([[1], None], type=pa.list_(pa.int64()))) == [[1], None]
+assert arrow_source_values(pa.array([[1], [2, 3]], type=pa.list_(pa.int64()))) == [[1], [2, 3]]
+assert 'pandas' not in sys.modules
+'''
+    result = subprocess.run(
+        [sys.executable, '-I', '-c', script, str(Path(framework.__file__).resolve().parents[1])],
+        cwd=tmp_path, capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
