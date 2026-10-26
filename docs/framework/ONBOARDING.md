@@ -3,12 +3,12 @@
 ## 使用者：已有格式更换机器人
 
 ```bash
-dqs robot init --input /data/robot/session.mcap --id my_robot --output /tmp/my_robot.yaml
+edc robot init --input /data/robot/session.mcap --id my_robot --output /tmp/my_robot.yaml
 # 对照设备与采集程序确认；不能把 unknown 批量改为猜测值。
-dqs robot check --input /data/robot/session.mcap --profile /tmp/my_robot.yaml
-dqs inspect /data/robot/session.mcap --profile /tmp/my_robot.yaml
-dqs recommend /data/robot/session.mcap --profile /tmp/my_robot.yaml
-dqs run /data/robot/session.mcap --profile /tmp/my_robot.yaml \
+edc robot check --input /data/robot/session.mcap --profile /tmp/my_robot.yaml
+edc inspect /data/robot/session.mcap --profile /tmp/my_robot.yaml
+edc recommend /data/robot/session.mcap --profile /tmp/my_robot.yaml
+edc run /data/robot/session.mcap --profile /tmp/my_robot.yaml \
   --algorithm Numeric_Check --output /tmp/my_result
 ```
 
@@ -16,14 +16,14 @@ dqs run /data/robot/session.mcap --profile /tmp/my_robot.yaml \
 
 已支持格式主要调整 profile；读取、执行、报告流程继续复用。例：机器人 A 的 `/right_arm/end_pose` 与机器人 B 的 `/robot_b/tool_feedback` 均可声明 `pose/arm/right/feedback`，同一份算法配置可复用；两者仍需各自确认 position 是 m、反馈、坐标系与时间。单一数据集中不同信号不能占用同一逻辑名。
 
-存储原值不变；`dqs run` 默认将明确且已确认的物理输入转换为 SI。`--unit-policy manual` 禁止自动换算并要求调用者准备 SI 数据；未知单位可保留原值有限性检查，物理算法不执行。
+存储原值不变；`edc run` 默认将明确且已确认的物理输入转换为 SI。`--unit-policy manual` 禁止自动换算并要求调用者准备 SI 数据；未知单位可保留原值有限性检查，物理算法不执行。
 
 时间轴保留原始来源和频率。不同 clock 需要显式映射；选择头部相机为 primary 只指定参考数据，`target_clock` 则调用已有映射，两者不同。详见 [WORKFLOWS](WORKFLOWS.md)、[TRANSFORMS](TRANSFORMS.md)。
 
 ## 开发者：算法插件
 
 ```python
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 
 class MyPositionCheck:
     spec = AlgorithmSpec(
@@ -47,7 +47,7 @@ plugin = MyPositionCheck()
 独立包登记：
 
 ```toml
-[project.entry-points."dqs.algorithms"]
+[project.entry-points."edc.algorithms"]
 myteam__position_check = "my_check:plugin"
 [tool.setuptools]
 py-modules = ["my_check"]
@@ -62,15 +62,15 @@ py-modules = ["my_check"]
 ```bash
 pip install -e '.[formats,test]'
 pip install -e examples/plugins/algorithm
-dqs algorithms
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/dqs/test_workflows.py tests/dqs/test_workflow_inputs.py -q
+edc algorithms
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc/test_workflows.py tests/edc/test_workflow_inputs.py -q
 # 卸载发行包后算法从池中消失；历史结果仍可读。
-pip uninstall dqs-example-algorithm
+pip uninstall edc-example-algorithm
 ```
 
 ## 新格式插件与验收边界
 
-新格式使用 `dqs.readers`，实现 `can_open(path)` 和 `open_dataset(path, profile)`，返回可实际取数的 Dataset，不只返回 topic 清单。[读取器模板](../../examples/plugins/reader) 复用既有载荷读取能力。
+新格式使用 `edc.readers`，实现 `can_open(path)` 和 `open_dataset(path, profile)`，返回可实际取数的 Dataset，不只返回 topic 清单。[读取器模板](../../examples/plugins/reader) 复用既有载荷读取能力。
 
 原生 HDF5、Parquet、MCAP、ROS bag、JSON/episode、MP4 与 LeRobot 的载荷能力分别验收。HDF5 与旁边 MP4 的文件名相似或帧数相同不证明关联，需显式轨迹／帧映射；不得把三个视频文件计作三条机器人轨迹。
 

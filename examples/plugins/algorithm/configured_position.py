@@ -2,7 +2,7 @@
 
 This example only returns a signal shape; it is not an added quality method.
 """
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 
 
 class ConfiguredPosition:
@@ -30,3 +30,4 @@ class ConfiguredPosition:
 
 
 plugin=ConfiguredPosition()
+plugin.spec = __import__('dataclasses').replace(plugin.spec, example=True)

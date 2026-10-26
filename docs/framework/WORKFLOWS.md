@@ -2,51 +2,27 @@
 
 ## 两端接口与阶段交接
 
-**使用者端**维护三份配置：数据集描述（位置、版本、显式轨迹边界）、机器人描述（源 topic 与逻辑名、物理语义、源单位、时间及确认）、工作流（算法、参数、顺序与选择）。已有 `dqs run` 仍执行单次算法集合。
+**使用者端**使用总入口引用数据集、机器人、算法和工作流四类配置，支持导出完整单文件。机器人可供不同任务复用。详见 [统一配置](CONFIGURATION.md)。
 
 **算法开发者端**用 `AlgorithmSpec` 和 `run(context, params)`；算法只读取框架传入的通道及 SI 视图。外部插件的 `channel_param` 与通用 channels 同样解析逻辑名，推荐、预检与执行共用绑定。具体最低输入由 `data_requirements` / `input_requirements` / 自有 preflight 声明。
 
-**阶段交接**携带 `dqs_dataset_ref_v1`，其中有数据集 ID、版本、实际位置、读取后端、配置快照、源文件哈希、episode ID 与 selector。它只是对已有存储的引用，不是新的数据文件格式。`dqs.open_dataset_reference()` 校验后可重新打开，包括由不同文件组成的派生集合。
+**阶段交接**携带 `dqs_dataset_ref_v1`，其中有数据集 ID、版本、实际位置、读取后端、配置快照、源文件哈希、episode ID 与 selector。它只是对已有存储的引用，不是新的数据文件格式。`edc.open_dataset_reference()` 校验后可重新打开，包括由不同文件组成的派生集合。
 
 `context.upstream` 是递归只读结构，以阶段 ID 为键，包含精确 run ID、输入／输出数据引用、原始结果和质量放行。价值插件必须读取自身需要的数据；质量结果只是附加上下文。不要把质量评分当成默认价值评分。
 
 ## 配置与命令
 
-完整可运行示例由 [make_example.py](../../examples/workflows/make_example.py) 生成。
-
-```yaml
-schema_version: dqs_workflow_v1
-id: my_curation
-unit_policy: auto
-dataset:
-  path: /data/my_dataset
-  profile: /configs/robot.yaml
-  backend: auto
-stages:
-  - id: quality
-    kind: quality
-    input: source
-    algorithms: [Structure_Check, Numeric_Check]
-    params:
-      Numeric_Check:
-        channels: [joint/arm/left/feedback, joint/arm/right/feedback]
-  - id: value
-    kind: value
-    input: quality
-    algorithms: [team_example__dataset_inventory]
-    params:
-      team_example__dataset_inventory: {min_episodes: 1}
-```
-
-`dataset.path/profile` 相对配置文件解析。工作流 ID、阶段 ID 使用小写字母起始及小写字母／数字／下划线；input 只能引用 source 或前面的阶段，不允许循环。算法类别必须与 kind 相同。
+完整四类配置例程由 `examples/curation/make_example.py` 生成；与 [README 流程图](../../README.zh-CN.md#工作流) 的编辑／增强复检路径一致。
 
 ```bash
-dqs workflow check workflow.yaml
-dqs workflow run workflow.yaml --output /tmp/curation-results
-dqs workflow run workflow.yaml --output /tmp/curation-results --resume
+edc config check curation.yaml
+edc config recommend curation.yaml
+edc config export curation.yaml --output complete.yaml
+edc config run complete.yaml --output /tmp/curation-results
+edc config run complete.yaml --output /tmp/curation-results --resume
 ```
 
-`validate_workflow()` / `workflow check` 是静态校验，不会打开数据、下载模型或宣称输入可用。使用 `dqs recommend` 检查实际数据资格；执行时再使用同一绑定预检。完整流程的退出码仅表示阶段执行状态；质量达标另看 gate。
+静态 check 不替代输入预检；运行保存完整快照、推荐、按臂绑定、逐方法轨迹子集和证据。退出码只有最终 delivery_status=ready 才为成功；status 单独表示处理完成。stage 协议可供开发者直接构建有限阶段，使用者配置以总入口为准。
 
 ## 有限顺序与子集
 
@@ -55,11 +31,11 @@ dqs workflow run workflow.yaml --output /tmp/curation-results --resume
 - 编辑／增强每阶段只能选一个插件且必须写 `select`。通过有限阶段描述编辑与重检，不自动反复尝试修复。
 - `select: {all: true}` 或 `select: {episodes: [episode_0]}` 明确选集合；ID 必须存在。
 - 可增加 `where`：`[{algorithm: team__method, path: result.reports.0.metric, op: gte, value: 1}]`。只读取**直接输入阶段**的单一已完成结果，不搜索其它历史 run；无法找到唯一字段时不选入。
-- value 只接收质量 keep 的子集；augmentation 只接收其所选价值方法全部完成的子集。dataset 方法对当前集合调用一次；没有 segment 调度。
+- value 只接收质量 keep 的子集，再按各方法筛轨迹；augmentation 只接收对该样本适用且选定的价值方法完成后的子集。dataset 方法对自己的集合调用一次，显式 method_select 后重新检查集合最低条件。每方法的输出引用保存在 method_output_references，下阶段数据引用只含成功完成的轨迹并集；未满足条件的轨迹及原因仍保留，没有 segment 调度。
 
 每阶段分别保存可选轨迹、配置选中轨迹、实际进入轨迹以及被拦截轨迹和原因（available/requested/selected/withheld）。阶段执行错误或部分执行会反映在阶段状态；质量判断另看 gate。
 
-同一数据版本的多次质量检查累积放行约束，后一次通过不能抹掉前一次失败／缺输入／待复核。编辑与增强产生新版本，清除旧版的质量资格和价值完成状态。
+同一数据版本的多次质量检查累积放行约束，后一次通过不能抹掉前一次失败／缺输入／待复核。编辑与增强产生新版本，清除父版本的质量资格和价值完成状态。
 
 ## 放行与人工复核
 
@@ -75,15 +51,15 @@ dqs workflow run workflow.yaml --output /tmp/curation-results --resume
 缺记录和未执行项不能靠人工复核补为通过；原 `selection.json` 的历史口径不改写。
 
 ```bash
-dqs review /tmp/curation-results \
+edc review /tmp/curation-results \
   --run-id RUN_ID --algorithm Video_Integrity --object-id EPISODE_ID \
   --report-index 0 --action dismissed --reviewer 张三 \
   --reason '逐帧查看后确认是正常静止场景' --evidence '对应帧与人工检查记录路径'
 # confirmed 表示确认该线索违反所选标准；dismissed 表示驳回线索。
-dqs workflow run workflow.yaml --output /tmp/curation-results --resume
+edc config run curation.yaml --output /tmp/curation-results --resume
 ```
 
-`reviews.jsonl` 追加保存人员、时间、理由、证据、run、算法、对象与具体报告哈希。它不覆盖原评分、不自动扣分，也不能覆盖明确的自动失败。复核后恢复执行会复用未变的检测计算，重新计算 gate，再决定是否进入下游。旧工作流的放行快照保留。
+`reviews.jsonl` 追加保存人员、时间、理由、证据、run、算法、对象与具体报告哈希。它不覆盖原评分、不自动扣分，也不能覆盖明确的自动失败。复核后恢复执行会复用未变的检测计算，重新计算 gate，再决定是否进入下游。历史工作流的放行快照保留。
 
 ## 编辑与增强
 
@@ -118,3 +94,9 @@ v1 验证器要求新 ID／版本、插件自身工件目录中的副本、完�
 `catalog.json` 发现算法 run 和工作流；每次工作流生成独立 `workflow.json` 与 `report.html`，主固定版式报告包含工作流入口。源指纹和派生逐项校验有额外 I/O 成本，当前优先保证可追溯，不宣称零开销。
 
 首轮不提供分布式调度、自动无限编辑、通用人工标注平台或任意非 identity 变换。真实价值、编辑、增强方法须分别验收，不能把盘点示例写成估值实现。
+
+## 条件编辑和最终返回
+
+编辑阶段 `when: needs_editing` 只选明确不达标样本。无此样本则跳过编辑并保留数据引用；有失败样本时保留已达标轨迹，与校验通过的编辑副本共同进入质量复检。缺输入或待复核保持挂起，通过补充配置／复核和 --resume 更新推荐与 gate。
+
+增强后必须配置质量复检；最终 `outputs` 返回数据引用、accepted_episodes、质量状态和 published 标志，`pending` 汇总挂起原因。处理阶段 completed 不保证 delivery_status=ready。增强数据缺输入、待复核或不达标时挂起，不发布成可用数据。

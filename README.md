@@ -1,64 +1,44 @@
 # Embodied Data Curation Framework
 
-A framework for selecting data checks by declared inputs, inspecting evidence, and tracing derived embodied datasets.
+**EDC (Embodied Data Curation)** provides robot data ingestion, input-based algorithm recommendations, CPU inspection, auditable plugin workflows, and evidence reports.
 
-[中文文档](README.zh-CN.md) · [Workflow guide](docs/framework/WORKFLOWS.md) · [Contributing](CONTRIBUTING.md) · [Verified status](docs/framework/STATUS.md)
+[简体中文](README.zh-CN.md) · [Configuration](docs/framework/CONFIGURATION.md) · [Algorithms](docs/framework/ALGORITHMS.md) · [Validation tasks](FRIEND_VALIDATION.md)
 
-The first delivery contains a shared data core and **nine CPU quality algorithms**. Quality, value, editing and augmentation are separate plugin categories. The default workflow is **quality → value → optional augmentation**. Editing produces a new data version and requires quality checks again. A finite configuration controls all stages; there is no automatic repair loop.
+## News
 
-The existing `embodied-dqs` package and `dqs` Python/CLI remain compatible. `dqs` retains the historical abbreviation **Data Quality Service** and now exposes the wider curation workflow.
+- 2026-10-26: Python/CLI `edc`, distribution `embodied-data-curation`, and `src/edc` module layout.
+- Four reusable configuration components with standalone export; explicit single/dual arm scope; one robot across multiple task datasets.
+- Editing and augmentation create validated copies and return to quality checks. See [verified status and limits](docs/framework/STATUS.md).
 
-## Install and try
-
-Python ≥3.10. The base package requires only NumPy and PyYAML. Additional readers, image inspection and scientific methods use optional dependencies.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[formats]'
-dqs demo fetch synthetic --output /tmp/curation-demo
-dqs recommend /tmp/curation-demo
-dqs run /tmp/curation-demo --algorithm Numeric_Check --output /tmp/curation-results
-```
-
-The deterministic demo is synthetic and deliberately has unconfirmed requirements. Successful execution does not mean every quality requirement passed.
+## Quick start
 
 ```bash
+pip install -e '.[formats,test]'
 pip install -e examples/plugins/algorithm
-python examples/workflows/make_example.py --output /tmp/curation-workflow
-dqs workflow check /tmp/curation-workflow/workflow.yaml
-dqs workflow run /tmp/curation-workflow/workflow.yaml --output /tmp/curation-chain
-dqs workflow run /tmp/curation-workflow/workflow.yaml --output /tmp/curation-chain --resume
+python examples/curation/make_example.py --output /tmp/edc-demo
+edc config check /tmp/edc-demo/curation.yaml
+edc config recommend /tmp/edc-demo/curation.yaml
+edc config export /tmp/edc-demo/curation.yaml --output /tmp/edc-complete.yaml
+edc config run /tmp/edc-complete.yaml --output /tmp/edc-results
+edc config run /tmp/edc-complete.yaml --output /tmp/edc-results --resume
 ```
 
-This synthetic workflow inspects two episodes, creates edited copies, rechecks them, inventories the current collection once, creates four augmented episodes, and rechecks those copies. Inventory is **not valuation**; the brightness transform is **not validated repair or training benefit**.
+This is an explicitly synthetic SDK demonstration, not a robot repair, valuation, or training-benefit claim. Output starts at `catalog.json`, `report.html`, `_runs`, and `_workflows`.
 
 ## Contracts
 
-- Dataset → Episode → Channel retains stable IDs, explicit boundaries, selectors and provenance.
-- Dataset configuration declares storage and versions; robot configuration declares logical channels and semantics; workflow configuration selects algorithms and parameters.
-- Physical algorithms consume SI execution views. Storage stays unchanged; unknown units or semantics block physical evaluation. Raw finite-value checks remain available.
-- Acquisition, container, playback and synthetic time stay distinct. Cross-channel analysis requires a common clock or an explicit mapping. Mapping does not resample or establish clock truth.
-- `AlgorithmSpec` + `run(context, params)` plugins use `dqs.algorithms`; reader plugins use `dqs.readers`. Custom IDs use `team__algorithm`.
-- Execution status, data judgment and human review remain separate. No cross-algorithm aggregate score is generated.
-- Editing and augmentation return output, parameters and source mappings. The initial validator supports identity row mappings, unchanged shapes and explicit changed channels.
-- Immutable `context.upstream` supplies exact run references, source fingerprints and raw upstream results. Dataset plugins run once per selected collection.
-- `catalog.json` discovers `_runs`, fixed reports, and versioned `_workflows`. Review is append-only; resume checks inputs, configuration, code, environment and evidence.
+Dataset → Episode → Channel preserves explicit boundaries, original values, sources, task metadata and time evidence. Confirmed physical inputs use SI; unknown semantics block physical computation. Selecting a reference camera does not establish a common clock.
 
-## CPU methods
+`arms: all` selects arm parts explicitly declared by the robot. A neutral single arm uses `main`; dual arms use `left/right`. Missing declared arms remain missing. Algorithms preserve independent results without cross-arm or cross-method average scores.
 
-`Structure_Check`, `Numeric_Check`, `Action_Smoothness`, `Check_Timestamp`, `Sync_Check`, `Root_Cause`, `Dedup_Check`, `Reset_Detection`, `Video_Integrity`.
+Workflow: recommend → serial quality → gate → value recommendations and method-specific subsets → value → optional augmentation → consistency validation → quality recheck. Explicit editing also returns through validation and quality recheck. Missing input/review suspends downstream delivery; finite stages and resume implement the return paths.
 
-All support explicit channel selection. Original methods, scoring formulas and thresholds are retained. Image/frame inspection and video/container inspection have separate coverage. See the [Chinese algorithm table](README.zh-CN.md#cpu-质量算法) for minimum inputs and limitations.
+Plugins declare `AlgorithmSpec` and `run(context, params)`, discovered through `edc.algorithms` and `edc.readers`. Production auto-selection excludes SDK examples. Real value/edit/augmentation methods require separate acceptance.
 
-Readers include native HDF5, Parquet, MCAP, ROS bags, JSON/episode, MP4 and LeRobot. Reader availability is distinct from validated robot support. Official LeRobot is optional and version-pinned; see [LeRobot support](docs/framework/LEROBOT.md).
+## Repository
 
-## Layout and roadmap
+`src/edc/{data,robots,algorithms,execution,workflows,reporting}` contains the runtime. `configs/{datasets,robots,algorithms,workflows}`, `examples`, `tests/edc`, and `docs` provide configuration, demonstrations and evidence. The base install requires only NumPy/PyYAML; format and model dependencies are optional.
 
-`dqs/` exposes thin public APIs; `framework/` contains readers, robots, transforms, conversion, execution and workflows; `Quality_Assessment/` contains the nine CPU methods. `examples/`, `tests/`, `docs/` and CI support integration and review.
+CPU methods: Structure_Check, Numeric_Check, Action_Smoothness, Check_Timestamp, Sync_Check, Root_Cause, Dedup_Check, Reset_Detection, Video_Integrity.
 
-The core, CPU methods and synthetic workflow are the initial deliverable. Real value/editing/augmentation methods require independent input, environment, output and license validation before support is claimed. [Build plan](docs/framework/BUILD_PLAN.md) · [Contributor tasks](docs/framework/CONTRIBUTOR_TASKS.md).
-
-## Distribution status
-
-Private collaboration baseline. Repository-wide redistribution permission remains unresolved; no MIT/Apache license is asserted. Real data, model weights, private wheels, third-party submodules and historical experiments are excluded. See the [release checklist](docs/RELEASE_CHECKLIST.md) before any public release.
+This repository is a private development delivery. Licensing and redistribution of code, algorithms, models and data must be verified before publication; see the [release checklist](docs/RELEASE_CHECKLIST.md). The persisted record protocol remains `dqs_record_v1` (DQS: Data Quality Service); the public interface is EDC.

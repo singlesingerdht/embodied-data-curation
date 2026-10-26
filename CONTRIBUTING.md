@@ -9,7 +9,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[formats,test]'
 pip install -e examples/plugins/algorithm
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/dqs -q
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q
 python -m build
 ```
 
@@ -19,7 +19,7 @@ python -m build
 
 ## 契约要求
 
-- 自有内部代码导入 `framework`；外部使用者／插件导入 `dqs`。新公共接口由 `dqs` 导出，保持薄入口。
+- 自有内部代码直接导入 `edc` 下所属模块；外部使用者／插件通过公共接口接入。新公共函数由包顶层 `edc` 导出，保持薄入口。
 - 数据遵守 Dataset → Episode → Channel，metadata／映射确定轨迹边界，不按文件数猜。
 - 不猜单位、物理量、指令／反馈、左右、clock；SI 换算与时钟映射、采样对齐分别记录。
 - 算法使用 `AlgorithmSpec` 和 run；模型延迟加载；外部 ID `team__algorithm`。新算法不要修改核心 ID 分发表。

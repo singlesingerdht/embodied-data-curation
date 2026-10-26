@@ -4,8 +4,8 @@ from pathlib import Path
 import shutil
 import numpy as np
 import yaml
-from dqs.registry import AlgorithmSpec
-from dqs import dataset_reference
+from edc.algorithms.registry import AlgorithmSpec
+from edc import dataset_reference
 
 
 class ImageTransform:
@@ -62,3 +62,6 @@ class ImageTransform:
 
 editing_plugin = ImageTransform('editing')
 augmentation_plugin = ImageTransform('augmentation')
+from dataclasses import replace
+editing_plugin.spec = replace(editing_plugin.spec, example=True)
+augmentation_plugin.spec = replace(augmentation_plugin.spec, example=True)

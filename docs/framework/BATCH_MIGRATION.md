@@ -1,11 +1,5 @@
-# 原入口与结果兼容边界
+# 批处理与使用边界
 
-`dqs.open_dataset/run/recommend/report`、单次 `dqs run`、旧 `catalog.json` 与 `_runs` 可继续使用。新增工作流与复核由可选字段、`_workflows` 和独立 reviews.jsonl 表达，不改写旧 selection.json。
+公共命令使用 edc，安装包为 embodied-data-curation；总配置见 [CONFIGURATION](CONFIGURATION.md)。批处理转发命令只支持 workers=1；不接受 ndjson 作为恢复记录。恢复必须依据 catalog.json 中内容、参数、版本及证据匹配的 run。
 
-`python -m Quality_Assessment.batch_check --input INPUT --output OUTPUT` 继续转发到公共注册执行流程；只支持 workers=1。旧 ndjson 不能用作新执行器断点，必须选择新输出目录。
-
-历史 `assess_trajectory.py` 涉及未迁入的 GPU 视觉与跨模块融合总分，因此留在原研究仓库，不作为新 CPU 包接口。新库使用 dqs run 或 workflow run，不生成跨算法总分。
-
-公共包名保持 embodied-dqs，本轮版本 0.1.0a3；CPU 适配版本 ir-adapter-13。方法文件、原公式和阈值不变；新版本改变统一的物理语义门槛、逻辑绑定和显式时间映射。因此缺语义的旧配置可能新增 missing_input，不能靠更改算法阈值消除。
-
-详见 [迁移基线](../migration/source-manifest.json)、[工作流](WORKFLOWS.md) 与 [STATUS](STATUS.md)。
+任意片段调度、分布式处理和非 identity 变换尚未支持；未知单位不能用来运行依赖具体物理量的算法。各格式、机器人与方法的支持分别验收。结果协议保留 dqs_record_v1 等固定标识，历史证据不改写。

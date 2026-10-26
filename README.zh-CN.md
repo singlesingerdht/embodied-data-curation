@@ -1,165 +1,164 @@
-# Embodied Data Curation Framework
+<div align="center">
 
-**具身数据整理框架：统一接入数据，按条件选择算法，保留检测证据和每一步数据来源。**
+# 具身数据整理框架
 
-面向具身数据使用者与算法开发者，支持质量评估、价值评估、数据编辑及数据增强的插件工作流。
-当前交付公共核心与 **9 项 CPU 质量算法**；价值、编辑、增强通过可安装示例验证接口，真实研究方法后续逐项接入。
+**Embodied Data Curation Framework（EDC）**
 
-[English](README.md) · [工作流教程](docs/framework/WORKFLOWS.md) · [开发贡献](CONTRIBUTING.md) · [验收状态](docs/framework/STATUS.md)
+统一接入机器人数据，按输入条件选择算法，保留问题定位、处理版本和结果证据。
 
-## 最新进展与计划
+[English](README.md) · [快速开始](#快速开始) · [配置规范](docs/framework/CONFIGURATION.md) · [算法与输入](docs/framework/ALGORITHMS.md) · [协作验收](FRIEND_VALIDATION.md)
 
-- **已实现**：Dataset → Episode → Channel 接入、逻辑通道名、SI 执行视图、算法池与共享预检、固定版式报告。
-- **已实现**：有限阶段工作流、集合交接、编辑／增强输出回读校验、人工复核、内容与版本匹配的恢复执行。
-- **本轮验证**：合成 HDF5 的质量 → 编辑与复检 → 集合盘点 → 增强与复检；MCAP 显式时钟映射被三项时间算法消费。验证数字与范围见 [STATUS](docs/framework/STATUS.md)。
-- **后续**：真实价值方法、编辑方法和增强方法分别验收；完成许可核查后再考虑公开发布。本库当前是私有协作交付，不表示已获得开源分发许可。
+</div>
 
-兼容原 `embodied-dqs` 包及 `dqs` Python／CLI 入口；`dqs` 沿用 Data Quality Service 的缩写，现作为整个数据整理框架的公共入口。
+## 最新动态
 
-## 架构
+- **2026-10-26**：公共 Python／CLI 统一使用 `edc`；安装包为 `embodied-data-curation`，源码按六个模块组织。
+- **2026-10-26**：统一总入口可引用四类配置并导出完整单文件；机器人与任务数据集独立，支持单臂／双臂范围选择。
+- **2026-10-26**：算法推荐与实际执行共享绑定；编辑、增强生成新版本后经过来源校验与质量复检。验证结果与边界见 [STATUS](docs/framework/STATUS.md)。
+
+## 核心能力
+
+- **数据接入**：Dataset → Episode → Channel，保留任务、显式轨迹边界、源字段、selector 和时间来源。
+- **算法选择**：展示完整可运行、部分可运行及不可运行的原因；默认执行前两类。部分执行不等于完整达标。
+- **明确输入**：逻辑名定位信号；原值保留，已确认物理量进入 SI 执行视图。指令／反馈分别绑定。
+- **有限工作流**：质量 → 价值方法与子集 → 价值评估 → 可选增强 → 质量复检。编辑副本也必须复检。
+- **可追溯结果**：独立评分、事件、分布及证据，不产生跨算法总分；缺输入、待复核和执行失败分别记录。
+- **插件开发**：算法声明条件并实现 `run(context, params)`；安装插件后发现，无需修改核心分发表。
+
+## 工作流
 
 ```mermaid
-flowchart TB
-    User[数据使用者：数据集配置＋机器人配置＋工作流配置] --> Input[统一接入：Dataset → Episode → Channel]
-    Dev[算法开发者：AlgorithmSpec＋run] --> Pool[插件算法池：条件／参数／依赖]
-    Input --> Bind[共享预检与通道绑定：语义／SI／时间／来源]
-    Pool --> Bind
-    Bind --> Q[质量评估]
-    Q --> Gate{所选项目完整执行且达标？}
-    Gate -->|是| V[价值评估与显式样本选择]
-    Gate -->|按配置编辑| Edit[数据编辑：生成新版本]
-    Edit --> Check[回读与来源校验]
-    Check --> Q
-    Gate -->|缺输入／待复核／失败| Hold[挂起，补充配置或人工复核]
-    V --> Aug[可选数据增强]
-    Aug --> Verify[派生一致性校验＋质量复检]
-    V --> Out[数据引用／算法原输出／证据／处理历史]
-    Verify --> Out
+flowchart TD
+    A[数据＋机器人＋算法配置] --> B[输入检查与算法推荐]
+    B --> Q[依次运行所选质量算法]
+    Q --> G{所选范围是否达标}
+    G -->|达标| V[推荐价值方法及各自可用轨迹]
+    G -->|需处理且已配置编辑| E[编辑并生成新数据版本]
+    E --> C[一致性与来源校验]
+    C --> Q2[重新质量检查]
+    Q2 --> G
+    G -->|缺输入或待复核| P[补充配置或人工复核]
+    P --> B
+    V --> S[确定各方法的数据子集]
+    S --> R[运行价值评估]
+    R --> U{是否配置增强}
+    U -->|否| O[输出结果、数据引用与证据]
+    U -->|是| N[增强并生成新版本]
+    N --> C2[一致性与来源校验]
+    C2 --> Q3[增强数据质量复检]
+    Q3 --> G2{是否达标}
+    G2 -->|是| O
+    G2 -->|否| P2[挂起并说明原因]
 ```
 
-图中的回路由配置中的有限阶段实现，不自动反复修复。数据编辑与质量、价值、增强是不同业务模块；默认主顺序为 **质量 → 价值 → 可选增强**。增强后默认只做一致性与所选质量复检，不自动再次估值。
+箭头中的返回通过有限的显式阶段及恢复执行落实，不自动循环修改数据。人工复核不覆盖原分数，不把未执行项改成通过。处理完成与最终放行分别保存在 `status` 和 `delivery_status`。
 
 ## 快速开始
 
-Python ≥3.10。基础安装仅依赖 NumPy、PyYAML；格式读取、图像与科学计算按需安装。原数据保持只读，输出目录应放在源数据之外。
+Python ≥ 3.10。基础依赖仅 NumPy／PyYAML，格式与图像检查依赖单独安装；本仓库仍是私有开发交付，公开发布与许可核查见 [发布清单](docs/RELEASE_CHECKLIST.md)。
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e '.[formats]'
-
-dqs demo fetch synthetic --output /tmp/curation-demo
-dqs inspect /tmp/curation-demo
-dqs recommend /tmp/curation-demo
-dqs run /tmp/curation-demo --algorithm Numeric_Check --output /tmp/curation-results
-dqs report /tmp/curation-results
-```
-
-该示例是合成接口数据，刻意保留待确认项；不应把“执行完成”解释为“所有质量项合格”。
-
-体验全部阶段：
-
-```bash
+pip install -e '.[formats,test]'
 pip install -e examples/plugins/algorithm
-python examples/workflows/make_example.py --output /tmp/curation-workflow
-dqs workflow check /tmp/curation-workflow/workflow.yaml
-dqs workflow run /tmp/curation-workflow/workflow.yaml --output /tmp/curation-chain
-dqs workflow run /tmp/curation-workflow/workflow.yaml --output /tmp/curation-chain --resume
+
+# 明确标注的合成接口例程，不是真实任务或估值效果验证
+python examples/curation/make_example.py --output /tmp/edc-demo
+edc config check /tmp/edc-demo/curation.yaml
+edc config recommend /tmp/edc-demo/curation.yaml
+edc config export /tmp/edc-demo/curation.yaml --output /tmp/edc-complete.yaml
+edc config run /tmp/edc-complete.yaml --output /tmp/edc-results
+edc config run /tmp/edc-complete.yaml --output /tmp/edc-results --resume
 ```
 
-产生 2 条源轨迹、2 条编辑轨迹、4 条增强轨迹。价值示例仅盘点集合，编辑／增强示例仅改变合成图像亮度，**没有验证真实估值、修复效果或训练收益**。
+目录必须使用自己的全新路径。结果入口为 `/tmp/edc-results/catalog.json` 和 `report.html`；工作流页面位于 `_workflows/<id>/report.html`，逐算法证据位于 `_runs/<id>`。
 
-## 数据使用者如何配置
+Python 使用相同配置和执行器：
 
-| 配置 | 负责内容 | 示例／说明 |
-|---|---|---|
-| 数据集 `dataset.yaml` | 位置、版本、任务、显式轨迹 ID 与 selector | [数据模型](docs/framework/DATA_MODEL.md) |
-| 机器人 `robot.yaml` | 型号／实例、原 topic→逻辑名、部位、物理量、源单位、指令／反馈、坐标系、时间与确认状态 | [接入教程](docs/framework/ONBOARDING.md) |
-| 工作流 `workflow.yaml` | 阶段、算法、channels、参数、子集、放行 | [完整示例](examples/workflows/make_example.py) |
+```python
+from edc import load_config, recommend_config, run_workflow
+
+configuration = load_config("curation.yaml")
+pool = recommend_config(configuration)
+result = run_workflow(configuration, output="results")
+print(result["delivery_status"], result["outputs"], result["pending"])
+```
+
+## 配置与机器人复用
 
 ```yaml
-# robot.yaml 的 channels 片段；仅填写自己已确认的信息
-channels:
-  /right_arm/end_pose:
-    logical_name: pose/arm/right/feedback
-    modality: pose
-    fields: [position]
-    side: right
-    source_kind: feedback
-    unit: m
-    coordinate_frame: right_arm_neutral
-    representation: {quantity: position, semantic_status: confirmed}
-    time_source: acquisition
-    clock: robot_clock
+schema_version: edc_config_v1
+dataset: {ref: datasets/microwave.yaml}
+robot: {ref: robots/x1_pro.yaml}
+algorithms: {ref: algorithms/quality.yaml}
+workflow: {ref: workflows/curation.yaml}
 ```
 
-算法参数使用 `channels: [pose/arm/right/feedback]` 绑定到源 topic；平滑度当前一次选择一路，左臂、右臂可以分别调用。名称不代替语义和单位确认，也不允许两个不同信号占用一个逻辑名。
+| 配置 | 职责 |
+|---|---|
+| dataset | 位置、任务、版本、显式轨迹及批次映射 |
+| robot | 型号、工程设备代号、部件、逻辑名、物理语义及适用范围 |
+| algorithms | 默认执行范围、方法、输入、参数及选择规则 |
+| workflow | 串行顺序、放行、子集、编辑／增强和复检 |
 
-已确认源单位在执行时转换为 SI，存储原值不变；未知单位仍可做原值有限性检查，依赖物理意义的算法被阻塞。`--unit-policy manual` 禁止自动换算，此时调用者必须提供并声明 SI 输入。
+同一 X1 Pro 执行开抽屉和微波炉任务时，可只更换 `dataset.ref`。采集批次改变了源字段、单位或时钟时，仍须显式登记相应映射；机器人不会绑定固定目录或任务白名单。
 
-时间来源区分采集、容器、播放、合成和未知。单路保留原频率；跨路需要共同 clock 或显式映射。`target_clock` 仅调用机器人配置里的仿射映射，不重采样，也不因选了头部相机就证明硬件共时钟。详见 [时间与 SI](docs/framework/READING_UNITS_AND_TIME.md)、[变换](docs/framework/TRANSFORMS.md)。
+算法默认 `arms: all`：只展开 `parts` 中 `type: arm` 的部件。独立单臂用 `main`，双臂用 `left/right`；单项可设 `arms: [left]`。声明双臂而数据缺一侧会提示部分覆盖，不能自动当成单臂完整通过。
+
+X1 Pro 的 **32 路 topic、23 个逻辑名**合并在 [x1_pro.yaml](configs/robots/x1_pro.yaml)。六路末端 XYZ 的米制语义已登记；关节单位、共同 clock、深度比例和标定中的未知项继续阻塞对应物理检查。[单臂模板](configs/robots/single_arm.yaml)、[完整规范](docs/framework/CONFIGURATION.md)。
 
 ## CPU 质量算法
 
-方法、原评分公式与阈值沿用迁移基线，不跨算法汇总成一个分数。全部算法支持 `channels` 配置；具体可执行性由当前数据和参数共同决定。
-
-| 算法 ID | 用途／最低输入 | 输出及边界 |
+| 算法 ID | 检查内容 | 关键条件与边界 |
 |---|---|---|
-| `Structure_Check` | 文件与通道清单；相机要求需配置 | 结构、缺失和相机通道配置一致性；未配置的要求不能冒充已验收 |
-| `Numeric_Check` | 可读取数值字段；物理项需语义、SI、标定与作者确认 | NaN/Inf 位置与已配置的物理子项；有限值通过不等于物理项全部通过 |
-| `Action_Smoothness` | 一路实际末端 XYZ 反馈、m、有效记录时间 | 原平滑度与冲击／停滞结果；缺少可评估静止段保持未完整评估 |
-| `Check_Timestamp` | 单路单位明确的记录时间；跨路评分另需独立时间、共同 clock 和相机参考 | 单路节奏及跨路对齐；不以低频相机帧数认定高频关节缺帧 |
-| `Sync_Check` | 至少两路独立采集时间、s、共同 clock | 时间覆盖、对齐和稳定性；公共行时间不能证明采集同步 |
-| `Root_Cause` | 至少两路可比较的独立记录时间、共同 clock | 时间异常关联与归因线索；不推断硬件故障事实 |
-| `Dedup_Check` | 原始记录时间值，可附序号 | 时间重复段和额外重复计数；不检查图像内容，不自动删除 |
-| `Reset_Detection` | 关节 position、确认的 Home 参考／单位／容差 | 所选关节复位偏差；缺标定返回待标定 |
-| `Video_Integrity` | 可解码 RGB 帧或原视频 | 画面异常和复核线索；视频入口另有容器检查，检查对象、抽样和缩小比例均记录 |
+| Structure_Check | 文件、通道及相机配置一致性 | 按声明的所选范围检查 |
+| Numeric_Check | NaN／±Inf 与已配置物理子项 | 原值有限性可运行；物理子项需语义、SI、标定与确认 |
+| Action_Smoothness | 末端位置变化和平滑性 | 每条所选臂分别运行，米制反馈及有效记录时间 |
+| Check_Timestamp | 各路记录节奏及有条件的跨路对齐 | 相机低频不等于缺帧；跨路另需共同 clock |
+| Sync_Check | 独立采集时间轴之间的同步 | 至少两路及共同时钟或验证过的映射 |
+| Root_Cause | 时间异常关联和来源归因 | 不能从合成公共行时间推断采集根因 |
+| Dedup_Check | 原始时间／序列号重复 | 不判断图像内容，不自动删除记录 |
+| Reset_Detection | 关节反馈与 Home 的接近情况 | 所选关节、Home、单位和容差明确 |
+| Video_Integrity | 原视频或解码画面检查 | `auto/frames/video`，记录抽样及缩放；检查对象不同不混为同一结论 |
 
-图像算法参数 `input_mode: auto|frames|video` 由使用者在工作流算法参数中配置；开发者提供两种输入适配。`auto` 按原生存储选择；`frames` 不生成 MP4，容器子项不适用；`video` 检查原视频或明确标注的派生视频。原始编码证据与派生像素检查不能互相替代。
+详细最低输入、输出和默认绑定见 [算法表](docs/framework/ALGORITHMS.md)。方法、评分公式和阈值保持原有定义；选择范围和适配约束独立记录。
 
-## 读取范围与结果
+## 价值、编辑与增强
 
-读取器覆盖原生 HDF5、Parquet、MCAP、ROS bag、JSON/episode、MP4 及 LeRobot。**读取器存在不等于任意机器人已通过完整支持验收**：字段、编码、轨迹边界和语义均需验证。LeRobot v3 在官方可选依赖可用时默认官方读取；旧格式／兼容后端可显式选择，转换范围见 [LeRobot](docs/framework/LEROBOT.md)。
+CPU 基础包不强制安装研究或 GPU 环境。真实价值方法逐项接入和验收；数据集盘点、图像亮度变换是 **SDK 接口示例**，自动生产算法池排除这些示例。
 
-```text
-results/
-├── catalog.json                所有运行与工作流的发现入口
-├── report.html                 固定版式算法结果与证据
-├── reviews.jsonl               追加式人工复核（发生复核时生成）
-├── _runs/<run_id>/              配置、版本、原结果、错误、证据、历史筛选
-└── _workflows/<workflow_run>/   阶段、数据引用、放行、样本选择、工作流报告
-```
+价值方法各自推荐可用轨迹，并对自己的子集运行；上游质量结果通过只读 `context.upstream` 提供。需求条件化估值、相对已有数据的互补价值和使用后实际收益属于待验证研究方向，不写成已有工程收益。
 
-`dqs_record_v1` 分开记录处理状态和数据判断：缺输入、缺依赖、执行失败均不能变成质量通过。自动满分与待复核线索可以并存；人工确认／驳回记录到单独文件，不覆盖评分，不能补成未执行项。详见 [放行与复核](docs/framework/WORKFLOWS.md)。
+编辑／增强返回 `output / params / source_mapping`，保留原始数据，生成可回读的新版本；经过一致性与来源校验后重新检查质量。首轮变换校验仅覆盖 identity 行映射。
 
-## 算法开发者与协作
+## 输出与使用边界
 
-使用 `AlgorithmSpec` 声明类别、粒度、参数、输入、SI 单位、语义、时间与依赖；实现 `run(context, params)`。通过 `dqs.algorithms` 安装注册，新格式通过 `dqs.readers` 注册，不修改核心分发表。
+- 格式读取支持 HDF5、Parquet、MCAP、ROS1／ROS2 bag、JSON／episode、MP4 和 LeRobot，具体编码与官方依赖分别验收；可打开文件不代表全部算法适用。
+- 未知单位或物理量不进入物理算法。原始时间、容器时间、播放时间、合成时间分别记录；头部相机作为参考通道不自动建立共同 clock。
+- 选择轨迹和通道；任意 segment 调度、通用非 identity 变换、无限自动修复、平台账号和真实 VR 加速不在当前支持范围。
+- 结果协议沿用 `dqs_record_v1`，其中 DQS 是 Data Quality Service 的缩写；公共接口统一使用 EDC。原评分、证据与历史记录保留。
+- 真实数据、模型权重、私有 wheel 不随框架分发；许可未知不表示可公开分发。
 
-- [算法模板](examples/plugins/algorithm) 包含质量、dataset 盘点、编辑和增强示例；[读取器模板](examples/plugins/reader) 展示格式接入。
-- `context.upstream` 提供只读上游 run、数据引用、原结果与放行；dataset 粒度对当前集合调用一次，首轮没有 segment 调度。
-- 变换返回 `output / params / source_mapping`。v1 验证器限定逐行 identity 映射与不变的数据形状、语义；重采样、裁剪、改维等方法需扩展契约后单独验收。
-- [贡献指南](CONTRIBUTING.md)、[可并行分工](docs/framework/CONTRIBUTOR_TASKS.md)、[建设计划](docs/framework/BUILD_PLAN.md)。
+## 组织结构与参与开发
 
 ```text
 embodied-data-curation/
-├── dqs/                       公共薄入口，保持兼容
-├── framework/
-│   ├── ir/                    Dataset／Episode／Channel 与 SI 执行视图
-│   ├── readers/               读取器
-│   ├── robots/                机器人与通道配置
-│   ├── transforms/            单位、时钟、坐标、显式重采样工具
-│   ├── conversion/            LeRobot 转换
-│   └── workflows/             编排、交接、复核、放行与恢复
-├── Quality_Assessment/        9 项 CPU 方法及适配
-├── examples/                  配置、工作流、独立安装的插件
-├── tests/dqs/                 契约、边界、失败隔离及回归
-├── docs/                      使用、验收、迁移与来源
-└── .github/workflows/         测试与独立 wheel 安装
+├── README.md / README.zh-CN.md
+├── FRIEND_VALIDATION.md
+├── pyproject.toml
+├── src/edc/
+│   ├── data/          # IR、读取、单位与时钟变换、LeRobot 转换
+│   ├── robots/        # 机器人配置与部件范围
+│   ├── algorithms/    # 注册、契约、推荐与 CPU 方法
+│   ├── execution/     # CLI、执行和媒体复用
+│   ├── workflows/     # 子集、放行、复核、变换校验与恢复
+│   └── reporting/    # 结果与固定版式报告
+├── configs/{datasets,robots,algorithms,workflows}/
+├── examples/          # 数据接入、插件与完整合成工作流
+├── docs/              # 使用规范、状态与证据
+├── tests/edc/
+└── .github/workflows/
 ```
 
-新库作为迁出核心与 CPU 方法的维护源；原研究仓库保留未迁方法、GPU 环境和历史结果。迁移清单按**当前工作区快照**建立，包含必要的原未跟踪文件，不仅依赖旧 Git HEAD。
+算法插件使用 `edc.algorithms`，读取器插件使用 `edc.readers`；外部 ID 使用 `team__algorithm`。声明 `AlgorithmSpec`，实现 `run(context, params)`，并验证单位、时间、左右与失败隔离；dataset 方法可声明逐轨迹条件并提供集合预检。[插件模板](examples/plugins/algorithm)、[开发指南](docs/framework/PLUGIN_GUIDE.md)。
 
-## 许可与发布边界
-
-本轮不携带真实数据、模型权重、私有 wheel、第三方子模块或历史实验输出。源码、算法、依赖、模型和真实样例需分别核查来源与许可；当前仓库级分发许可尚未确认，不能按 MIT／Apache 对外宣称已开源。见 [来源与许可清单](docs/RELEASE_CHECKLIST.md)。
+朋友可从独立安装、配置体验、范围绑定、插件、工作流回路、恢复执行与报告检查入手，任务和提交证据统一列在根目录 [FRIEND_VALIDATION.md](FRIEND_VALIDATION.md)。贡献通过分支和 PR 提交；方法接入、许可和公开发布独立验收。

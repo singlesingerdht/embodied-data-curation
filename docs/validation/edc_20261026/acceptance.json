@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-26",
+  "version": "0.2.0a1",
+  "cpu_adapter": "ir-adapter-14",
+  "tests": {
+    "source": "484 passed, 21 skipped in 30.14s",
+    "wheel": "484 passed, 21 skipped in 20.88s",
+    "official": "67 passed, 2 skipped in 14.47s"
+  },
+  "test_environments": {
+    "source": "Python 3.13; editable package",
+    "wheel": "Python 3.12; isolated venv, outside source",
+    "official": "separate official LeRobot 0.6.1 environment; overlapping tests, not summed"
+  },
+  "skips": "14 official LeRobot, 3 research value bridges, 3 GPU extensions, 1 real registration fixture",
+  "base_install": {
+    "framework": "embodied-data-curation==0.2.0a1",
+    "runtime_dependencies": [
+      "numpy",
+      "PyYAML"
+    ],
+    "builtin_algorithms": 9,
+    "torch_imported": false,
+    "pip_check": "passed",
+    "source_outside_structure_demo": "2 completed"
+  },
+  "algorithm_parity": "9/9; same synthetic source and params; only elapsed fields and artifact roots normalized",
+  "real_mcap_evidence": {
+    "file": "x1-pro-mcap.json",
+    "phase": "real run before adapter version bump and final subset/review refinements",
+    "adapter_version_in_snapshot": "ir-adapter-13",
+    "same_method_files": true,
+    "recomputed_after_final_workflow_changes": false,
+    "source_unchanged": true,
+    "quality_delivery": "suspended; not full robot quality acceptance"
+  },
+  "real_value_edit_augmentation": "not accepted through public production workflow; SDK examples only",
+  "license_publication": "pending individual verification; private repository"
+}

@@ -1,8 +1,31 @@
 # 当前验收状态
 
-日期：**2026-10-26**。框架版本 **0.1.0a3**，CPU 适配 **ir-adapter-13**。
+日期：**2026-10-26**。框架版本 **0.2.0a1**，CPU 适配 **ir-adapter-14**。
 
-## 本轮结果
+## EDC 统一配置与复检路径验收（2026-10-26）
+
+- 公共 Python／CLI 为 `edc`，安装包 `embodied-data-curation`；实现位于 `src/edc/{data,robots,algorithms,execution,workflows,reporting}`。固定结果协议仍为 `dqs_record_v1`（DQS：Data Quality Service）。
+- 总入口 `edc_config_v1` 引用 dataset、robot、algorithms、workflow，可导出完整单文件并保存运行快照。单臂 main、双臂 all／单侧选择、缺侧不降级、同机器人两任务复用均有实际执行测试。
+- X1 Pro 32 路 topic／23 个逻辑名已合并；六路末端 XYZ 的米制语义已登记，未知关节单位、深度比例、标定和共同 clock 保持未知。
+- 默认执行完整与部分可运行项；推荐和执行共用实例绑定。部分覆盖不会得到完整质量放行；SDK 示例不进入自动生产池。
+- 编辑只处理明确失败样本，保留原先达标样本；副本经过一致性与来源校验后重新质量检查。缺输入／待复核样本单独挂起，不会在交接时消失。
+- 价值方法各自筛选轨迹，显式子集后重新检查集合条件；分别保存输入／输出引用，下阶段只接收成功完成的集合。增强新版本经同样校验及质量复检；不达标、缺输入或待复核时 `delivery_status=suspended`。
+- 复核后恢复执行重新计算 gate；数据、配置、代码、参数、依赖和证据匹配才复用。返回通过有限显式阶段实现，不自动无限编辑。
+
+| 验证项 | 当前实测 | 依据 |
+|---|---|---|
+| 源码回归 | **484 passed / 21 skipped**，Python 3.13 | [source-tests.log](../validation/edc_20261026/source-tests.log) |
+| 仓库外 wheel 回归 | **484 passed / 21 skipped**，独立 Python 3.12 venv | [wheel-tests.log](../validation/edc_20261026/wheel-tests.log) |
+| 官方 LeRobot 环境专项 | **67 passed / 2 skipped**；包含重叠测试，不与全量相加 | [official-tests.log](../validation/edc_20261026/official-tests.log) |
+| 源方法核对 | 213 个源快照文件未变；50 个 Python 方法文件在仅归一化模块路径后 AST 一致 | [method-migration.json](../validation/edc_20261026/method-migration.json) |
+| CPU 行为 | 同一合成 MCAP、同参数，9 项状态与原结果一致 | [cpu-comparison.json](../validation/edc_20261026/cpu-comparison.json) |
+| 完整示例与恢复 | 2→2→2→2→2→4 条输入；六阶段完成并在恢复时全部复用 | [workflow.json](../validation/edc_20261026/workflow.json) |
+| 基础安装 | 仅 NumPy／PyYAML，9 内置算法，无 Torch；pip check 与两条结构示例通过 | [acceptance.json](../validation/edc_20261026/acceptance.json) |
+| 真实 X1 Pro MCAP | 6 方法／7 记录（平滑度分双臂），处理完成、质量挂起，原始哈希不变 | [x1-pro-mcap.json](../validation/edc_20261026/x1-pro-mcap.json) |
+
+真实 MCAP 是本轮中间版本的输入与双臂绑定验证（记录 ir-adapter-13），不是最终全部功能或整机质量通过。最终子集／复核路径另由上述安装包测试验收。真实价值、编辑、增强效果与许可仍逐项待验收；接口示例不证明收益。CI 已调整到 EDC 配置与完整示例，远端实测状态以 Actions 为准。
+
+## 初次迁库基线（0.1.0a3）
 
 | 项目 | 实测结果 | 依据 |
 |---|---|---|
@@ -10,9 +33,9 @@
 | CPU 行为对照 | 同一合成 ROS2 MCAP、同参数；9 项均 completed，原结果逐项一致 | [cpu-comparison.json](../validation/cpu-comparison.json)、[复现脚本](../../scripts/compare_cpu_methods.py) |
 | 源码完整回归 | **465 passed / 21 skipped** | [测试摘要](../validation/tests.json) |
 | 源码外 wheel 完整回归 | **465 passed / 21 skipped**，从 /tmp 运行，导入安装包 | [测试摘要](../validation/tests.json) |
-| 最新工作流契约测试 | **37 passed**；最后一次代码变更后重验 | tests/dqs/test_workflows.py、test_workflow_inputs.py |
-| 官方 LeRobot 专项 | 独立官方依赖环境 **20 passed**；这是单独运行，不与完整测试简单相加 | tests/dqs/test_lerobot_official.py、[摘要](../validation/tests.json) |
-| 干净基础安装 | wheel 在无系统包、清除继承 PYTHONPATH 的 venv 中导入；仅 pip、NumPy、PyYAML、embodied-dqs；9 算法、未导入 Torch、pip check 通过 | [base-install.json](../validation/base-install.json) |
+| 最新工作流契约测试 | **37 passed**；最后一次代码变更后重验 | tests/edc/test_workflows.py、test_workflow_inputs.py |
+| 官方 LeRobot 专项 | 独立官方依赖环境 **20 passed**；这是单独运行，不与完整测试简单相加 | tests/edc/test_lerobot_official.py、[摘要](../validation/tests.json) |
+| 干净基础安装 | wheel 在无系统包、清除继承 PYTHONPATH 的 venv 中导入；仅 pip、NumPy、PyYAML、embodied-data-curation；9 算法、未导入 Torch、pip check 通过 | [base-install.json](../validation/base-install.json) |
 | 源码外完整示例 | 2→2→2→2→2→4 条阶段输入；全部阶段完成，恢复时六阶段均复用 | [wheel-workflow.json](../validation/wheel-workflow.json) |
 | 打包 | wheel 与 sdist 构建通过；wheel 包含 143 Python 文件、9 CPU 方法及复位配置，不含 GPU 方法／权重／私有 wheel | [package.json](../validation/package.json) |
 | GitHub 远端交付 | `main` 首次推送完成，本地与远端提交 `412a877` 一致，包含核心迁移及朋友验收指南 | [embodied-data-curation](https://github.com/singlesingerdht/embodied-data-curation) |
@@ -53,7 +76,7 @@ CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根�
 ```bash
 pip install -e '.[formats,test]'
 pip install -e examples/plugins/algorithm
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/dqs -q -rs
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q -rs
 python -m build
 python scripts/verify_migration.py --source /path/to/original-repository --output /tmp/migration.json
 python scripts/compare_cpu_methods.py --source /path/to/original-repository --output /tmp/new-comparison

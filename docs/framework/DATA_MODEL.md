@@ -106,7 +106,7 @@ clock/time_source；不允许省略时间基准后按视频 FPS 猜测。span �
 本版支持 dataset.yaml 显式元数据；尚未自动将所有格式的原生任务标注转换到该目录。
 
 ```python
-from dqs import open_dataset
+from edc import open_dataset
 with open_dataset('/path/to/dataset') as dataset:
     print(dataset.tasks)                     # 原任务定义
     print(dataset.task_catalog['pour_tea'])  # 按 ID 查询

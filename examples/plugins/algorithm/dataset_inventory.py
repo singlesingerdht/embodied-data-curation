@@ -1,5 +1,5 @@
 """Dataset-granularity contract example; not a data valuation method."""
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 
 
 class DatasetInventory:
@@ -25,3 +25,4 @@ class DatasetInventory:
 
 
 plugin = DatasetInventory()
+plugin.spec = __import__("dataclasses").replace(plugin.spec, example=True)

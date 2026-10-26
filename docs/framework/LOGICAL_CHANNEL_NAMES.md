@@ -46,7 +46,7 @@ Video_Integrity:
 现有 channels 源名与 Visual_Quality cameras 语义选择保持兼容。
 Visual_Quality 胸前评分档仍未支持，rgb/chest 不会变成 wrist。
 
-初始通用目录由 framework/channel_names.py 维护：RGB/深度相机、双臂关节与末端，
+初始通用目录由 src/edc/channel_names.py 维护：RGB/深度相机、双臂关节与末端，
 反馈和指令分别命名。自定义使用 team__ 前缀，例如 lab__tactile/left。
 同部位多设备使用实例名，例如 rgb/chest@front 和 rgb/chest@rear；
 请求 rgb/chest 不会自动挑其中一路。映射必须是精确源名，不能用通配符绑定。
@@ -74,18 +74,18 @@ position 和 orientation 继续作为字段，单位和坐标系分别保留。
 ## 目录、推荐池与执行证据
 
 ```python
-import dqs
-with dqs.open_dataset(source, profile=robot_yaml) as dataset:
+import edc
+with edc.open_dataset(source, profile=robot_yaml) as dataset:
     episode = next(dataset.iter_episodes())
-    print(dqs.channel_catalog(episode))
-    print(dqs.resolve_channel(episode, 'rgb/chest'))
+    print(edc.channel_catalog(episode))
+    print(edc.resolve_channel(episode, 'rgb/chest'))
 ```
 
 目录显示统一名称、真实通道、实际 LeRobot feature 的 source_mapping、fields、
 单位、角色、时钟、条数及原文件，并显示逐通道 image_storage（frames/video/unknown；非图像为 null）。
-公开函数由 dqs 薄导出，实现归 framework。
+公开函数由 edc 薄导出，实现归 framework。
 
-9 项 CPU 适配器支持 channels/channel/primary/families 的逻辑名称，保存请求名与实际绑定。外部插件在 data_requirements 声明 channel_param 时也由框架共享解析；其它自定义寻址应声明契约或显式调用 dqs.resolve_channel，不能假定任意字符串自动解析。
+9 项 CPU 适配器支持 channels/channel/primary/families 的逻辑名称，保存请求名与实际绑定。外部插件在 data_requirements 声明 channel_param 时也由框架共享解析；其它自定义寻址应声明契约或显式调用 edc.resolve_channel，不能假定任意字符串自动解析。
 
 配置归属见 [公共 README](../../README.zh-CN.md#数据使用者如何配置)，开发者契约见 [ONBOARDING](ONBOARDING.md)。
 
@@ -96,10 +96,10 @@ with dqs.open_dataset(source, profile=robot_yaml) as dataset:
 - logical_name 是寻址引用，名字里的 feedback 不代替 source_kind 的确认。
 - 算法适用性仍需原有单位、角色、标定、时间轴和模型依赖。
 - 原算法方法、评分、阈值不变；逻辑名初次适配版本 CPU ir-adapter-10、视觉/投影 ir-adapter-4；
-  本库 CPU 适配统一为 ir-adapter-13，实际方法保持原样；GPU 插件不在本库范围。
-- 旧配置与输出不自动改写；转换输出按既有流程保留源映射和独立验收。
+  本库 CPU 适配统一为 ir-adapter-14，实际方法保持原样；GPU 插件不在本库范围。
+- 已记录的配置与输出不原地改写；转换输出按既有流程保留源映射和独立验收。
 
 
 ## 本库验收
 
-逻辑名／原名、SI 与显式时钟映射的契约测试见 tests/dqs；版本和实测结果见 [STATUS](STATUS.md)。迁移前真实 X1 报告未随库分发。
+逻辑名／原名、SI 与显式时钟映射的契约测试见 tests/edc；版本和实测结果见 [STATUS](STATUS.md)。迁移前真实 X1 报告未随库分发。

@@ -1,7 +1,7 @@
 """Reader template: explicit custom manifest reusing existing episode readers."""
 from dataclasses import dataclass
 import json
-from dqs.dataset import Dataset, Episode
+from edc.data.ir.dataset import Dataset, Episode
 
 
 @dataclass(frozen=True)

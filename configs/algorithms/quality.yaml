@@ -1,0 +1,10 @@
+defaults:
+  arms: all
+  selection: runnable
+methods:
+  Video_Integrity:
+    params: {input_mode: auto, sample_step: 1, downscale: 4}
+  Sync_Check:
+    params: {primary: rgb/head}
+# Add target_clock only after an explicit verified clock mapping is registered.
+# Per-method override: Action_Smoothness: {arms: [left], params: {}}

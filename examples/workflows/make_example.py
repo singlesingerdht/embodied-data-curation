@@ -45,7 +45,7 @@ def generate(output):
             'algorithms': ['team_example__image_augment'],
             'params': {'team_example__image_augment': {'variants': 2}}},
         {'id': 'aug_recheck', 'kind': 'quality', 'input': 'augment', 'algorithms': ['Structure_Check']}]
-    config = {'schema_version': 'dqs_workflow_v1', 'id': 'synthetic_curation',
+    config = {'schema_version': 'edc_workflow_v1', 'id': 'synthetic_curation',
               'dataset': {'path': 'source'}, 'stages': stages}
     target = root / 'workflow.yaml'
     target.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False))

@@ -5,7 +5,7 @@
 基础安装仍只有 NumPy/PyYAML；官方读取与转换使用 Python 3.12 以上的可选安装：
 
 ~~~bash
-pip install 'embodied-dqs[lerobot]'
+pip install 'embodied-data-curation[lerobot]'
 ~~~
 
 首轮固定软件版本 LeRobot 0.6.1，目标数据格式 v3.0。v3 默认使用官方包装；v2.1 默认兼容读取。
@@ -16,14 +16,14 @@ pip install 'embodied-dqs[lerobot]'
 ## 转换和读取
 
 ~~~bash
-dqs convert-to-lerobot /path/to/episode.hdf5   --profile /path/to/robot.yaml --fps 30 --output /new/path/luoshi-v3
-dqs convert-to-lerobot /path/to/lerobot-v21   --profile /path/to/robot.yaml --output /new/path/dexhand-v3
-dqs inspect /new/path/luoshi-v3 --backend official
-dqs run /new/path/luoshi-v3 --output /new/path/detection   --params /path/to/algorithm-params.json
+edc convert-to-lerobot /path/to/episode.hdf5   --profile /path/to/robot.yaml --fps 30 --output /new/path/luoshi-v3
+edc convert-to-lerobot /path/to/lerobot-v21   --profile /path/to/robot.yaml --output /new/path/dexhand-v3
+edc inspect /new/path/luoshi-v3 --backend official
+edc run /new/path/luoshi-v3 --output /new/path/detection   --params /path/to/algorithm-params.json
 ~~~
 
 ~~~python
-from dqs import convert_to_lerobot, open_dataset
+from edc import convert_to_lerobot, open_dataset
 result = convert_to_lerobot(source, profile=profile, output=new_directory, fps=30)
 with open_dataset(new_directory, backend="official") as dataset:
     with next(dataset.iter_episodes()).opened() as episode:
@@ -86,7 +86,7 @@ LeRobot timestamp 为索引时间，HDF5 的原始时间单独保存。示例名
 
 catalog.json 的 conversions 索引 _runs/<run_id>/consistency.json、run.json、源映射、错误与逐帧哈希。
 acceptance.json 分开记录 conversion_status、fidelity_status、training_status、detection_status、quality_status。
-转换阶段不生成质量通过结论。检测通过现有 dqs run 生成固定 dqs_report_v2 HTML。
+转换阶段不生成质量通过结论。检测通过现有 edc run 生成固定 dqs_report_v2 HTML。
 训练侧验收官方 LeRobotDataset 和 DataLoader 每条轨迹首/中/末帧，保真侧验证所有元素及所有图像帧。
 
 统计归一化参数本轮明确留空：未经清洗的 NaN/Inf 不适合官方分位数统计，不为使统计通过而修改数据。

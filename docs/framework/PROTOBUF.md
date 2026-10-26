@@ -1,7 +1,7 @@
 # MCAP Protobuf 基础解码
 
 MCAP 容器读取、载荷解码、物理语义映射是三个步骤。此前只完成这份样例的容器读取；
-现在 `framework/readers/protobuf.py` 可根据 MCAP schema 内嵌的 FileDescriptorSet 动态创建消息类型，
+现在 `src/edc/data/readers/protobuf.py` 可根据 MCAP schema 内嵌的 FileDescriptorSet 动态创建消息类型，
 无需厂家生成的 Python 文件，不按珞石/双臂样例路径写死逻辑。
 
 安装 `pip install -e '.[formats]'`，其中 protobuf 是可选格式依赖，基础安装仍只需 NumPy/PyYAML。
@@ -11,7 +11,7 @@ MCAP 容器读取、载荷解码、物理语义映射是三个步骤。此前只
 ## 数值与图像接口
 
 ```python
-from dqs import open_dataset
+from edc import open_dataset
 
 with open_dataset('/path/to/record.mcap', profile='/path/to/robot.yaml') as dataset:
     for episode in dataset.iter_episodes():

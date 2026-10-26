@@ -1,5 +1,5 @@
 """Minimal independently installed algorithm with evidence."""
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 
 
 class SignalSummary:
@@ -13,6 +13,7 @@ class SignalSummary:
 
 
 plugin = SignalSummary()
+plugin.spec = __import__("dataclasses").replace(plugin.spec, example=True)
 
 
 class FiniteCheck:
@@ -40,7 +41,7 @@ class FiniteCheck:
             if not channel.value_available or not channel.fields:
                 raise ValueError(f"Numeric fields unavailable: {name}")
             for field in channel.fields:
-                values = episode.read_signal(name, field)
+                values = episode.inspect_recorded_signal(name, field)
                 if values.size == 0:
                     raise ValueError(f"Empty signal: {name}.{field}")
                 invalid = ~np.isfinite(values)
@@ -55,3 +56,4 @@ class FiniteCheck:
 
 
 finite_plugin = FiniteCheck()
+finite_plugin.spec = __import__("dataclasses").replace(finite_plugin.spec, example=True)

@@ -20,7 +20,7 @@ def generate(root):
     import yaml
     from rosbags.typesys import get_typestore,Stores
     from mcap.writer import Writer
-    from framework.robots.numeric_review import confirm_numeric_profile
+    from edc.robots.numeric_review import confirm_numeric_profile
     source=root/'synthetic.mcap'
     store=get_typestore(Stores.ROS2_HUMBLE)
     joint='sensor_msgs/msg/JointState';pose='geometry_msgs/msg/PoseStamped';image='sensor_msgs/msg/CompressedImage'
@@ -71,9 +71,15 @@ def generate(root):
 
 
 def worker(repository,root,label):
-    sys.path.insert(0,str(repository))
-    from framework.ir.dataset import open_dataset
-    from framework.execution import run
+    import importlib
+    if (repository/'src/edc').is_dir():
+        sys.path.insert(0, str(repository/'src'))
+        open_dataset=importlib.import_module('edc.data.ir.dataset').open_dataset
+        run=importlib.import_module('edc.execution.runner').run
+    else:
+        sys.path.insert(0, str(repository))
+        open_dataset=importlib.import_module('framework.ir.dataset').open_dataset
+        run=importlib.import_module('framework.execution').run
     with open_dataset(root/'synthetic.mcap',profile=root/'robot.yaml') as ds:
         summary=run(ds,output=root/label,algorithm_ids=IDS,params=json.loads((root/'params.json').read_text()))
     print(json.dumps(summary))

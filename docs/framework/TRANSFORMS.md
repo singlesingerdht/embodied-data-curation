@@ -1,7 +1,7 @@
 # 显式机器人变换与相机参数
 
 这些 API 只使用输入参数，不估计标定、不猜单位、不覆盖原始数据。内部实现位于
-`framework/transforms`，对外由 `dqs.transforms` 导出。基础安装仅用 NumPy/PyYAML。
+`src/edc/data/transforms`，对外由 `edc.data.transforms` 导出。基础安装仅用 NumPy/PyYAML。
 完整合成配置见 `examples/onboarding/transforms.yaml`；真实机器人必须替换示例参数。
 
 ## 配置与调用
@@ -12,8 +12,8 @@
 每个定义可附 `provenance`、日期或供应商版本等来源记录，变换结果会保留使用的定义。
 
 ```python
-from dqs import open_dataset
-from dqs.transforms import RobotTransforms
+from edc import open_dataset
+from edc.data.transforms import RobotTransforms
 
 with open_dataset('/path/to/data', profile='/path/to/robot.yaml') as dataset:
     transforms = RobotTransforms(dataset.profile)
@@ -28,7 +28,7 @@ with open_dataset('/path/to/data', profile='/path/to/robot.yaml') as dataset:
 ```
 
 上述 API 在直接读取源 Episode 时按需调用，原始 read_signal/read_values 保留源单位。
-公共执行入口 dqs.run / dqs run 默认创建算法专用 SI 视图，所有内置适配器和
+公共执行入口 edc.run / edc run 默认创建算法专用 SI 视图，所有内置适配器和
 插件的 context.episode、context.dataset.iter_episodes()、algorithm_view() 均通过该视图取数。
 它根据 channel.unit / field_metadata.<field>.unit 调用已有 convert_units；无需另配 transforms。
 源 profile 保留源单位，算法应从执行视图的 channel.field_spec() 获取执行单位，不能用源 profile
@@ -40,7 +40,7 @@ clock 变换不进行重采样；FK 不插值。投影结果的 source_mapping �
 ## 单位
 
 ```python
-from dqs.transforms import convert_units
+from edc.data.transforms import convert_units
 result = convert_units([0, 90, 180], 'deg', 'rad')
 ```
 
@@ -58,9 +58,9 @@ rad/s/deg/s、rad/s²/deg/s²、A/mA、N、N*m/N*mm、无量纲 `1`。
 
 
 ```bash
-dqs run /path/to/data --profile robot.yaml --output /path/to/results
+edc run /path/to/data --profile robot.yaml --output /path/to/results
 # 由用户自行转换：关闭自动换算，要求数据已为 SI，并如实声明转换后数据的单位。
-dqs run /path/to/si-data --profile robot.si.yaml --output /path/to/manual-results --unit-policy manual
+edc run /path/to/si-data --profile robot.si.yaml --output /path/to/manual-results --unit-policy manual
 ```
 
 Python 对应 run(dataset, unit_policy="auto") / run(dataset, unit_policy="manual")；
@@ -212,7 +212,7 @@ transforms:
 后续 URDF 文件改变不影响已经加载的配置。重新加载配置才使用新模型。
 
 ```python
-from dqs.transforms import import_urdf_chain, RobotTransforms
+from edc.data.transforms import import_urdf_chain, RobotTransforms
 chain = import_urdf_chain('/path/to/robot.urdf', 'base_link', 'left_tool')
 transforms = RobotTransforms({'transforms': {'chains': {'left_arm': chain}}})
 # 每个活动关节必须有对应值；支持标量或相同长度的批量样本。这里的名称仅是示意。
@@ -228,7 +228,7 @@ result = transforms.fk('left_arm', joint_positions_by_urdf_name)
 读取、检查、执行算法都不会自动重采样。开发者按需调用：
 
 ```python
-from dqs.transforms import resample
+from edc.data.transforms import resample
 r = resample([[0.0], [2.0], [4.0]], [0.0, 1.0, 2.0], [0.5, 1.5],
              method='linear', max_gap=1.0)
 # r.output == [[1.0], [3.0]]；时间以秒计，调用者必须确保处于同一时钟。

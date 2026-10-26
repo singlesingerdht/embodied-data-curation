@@ -1,0 +1,102 @@
+{
+  "schema_version": "edc_cpu_comparison_v1",
+  "dataset": "synthetic ROS2 MCAP; same source and params",
+  "normalization": [
+    "process_time_ms",
+    "adapter_elapsed_s",
+    "output artifact root"
+  ],
+  "algorithms": [
+    {
+      "algorithm": "Structure_Check",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Numeric_Check",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Action_Smoothness",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Check_Timestamp",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Sync_Check",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Root_Cause",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Dedup_Check",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Reset_Detection",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    },
+    {
+      "algorithm": "Video_Integrity",
+      "equal": true,
+      "source_status": [
+        "completed"
+      ],
+      "destination_status": [
+        "completed"
+      ]
+    }
+  ],
+  "passed": true
+}

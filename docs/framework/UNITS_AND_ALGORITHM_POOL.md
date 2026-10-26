@@ -68,13 +68,13 @@ channels:
 ## 使用者查看推荐池
 
 ~~~bash
-dqs recommend /path/to/data --profile /path/to/robot.yaml
-dqs inspect /path/to/data --profile /path/to/robot.yaml
-dqs recommend /path/to/data --profile /path/to/robot.yaml --params params.json --unit-policy manual
+edc recommend /path/to/data --profile /path/to/robot.yaml
+edc inspect /path/to/data --profile /path/to/robot.yaml
+edc recommend /path/to/data --profile /path/to/robot.yaml --params params.json --unit-policy manual
 ~~~
 
 ~~~python
-from dqs import open_dataset, recommend
+from edc import open_dataset, recommend
 with open_dataset('/path/to/data', profile='/path/to/robot.yaml') as dataset:
     pool = recommend(dataset, unit_policy='auto')
     for episode in pool['episodes']:
@@ -122,8 +122,8 @@ run 保存所有已注册算法的推荐快照；所选算法使用本次参数�
 ~~~
 
 ~~~bash
-dqs recommend /path/to/data --profile /path/to/robot.yaml --params params.json
-dqs run /path/to/data --profile /path/to/robot.yaml \
+edc recommend /path/to/data --profile /path/to/robot.yaml --params params.json
+edc run /path/to/data --profile /path/to/robot.yaml \
   --algorithm Action_Smoothness --algorithm Dedup_Check --algorithm Video_Integrity \
   --params params.json --output /path/to/new-results
 ~~~
@@ -142,7 +142,7 @@ Reset 的 reference/tolerance 等机器人标定复用 robot.yaml，不在算法
 固定绑定通过向后兼容的可选 AlgorithmSpec 字段声明：
 
 ~~~python
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 spec = AlgorithmSpec('myteam__angular_check', '1', '角度检测', 'myteam', '说明',
     input_requirements=({'channel': 'left_arm_position', 'field': 'position', 'unit': 'rad'},))
 ~~~
@@ -151,7 +151,7 @@ unit 必须为所需 SI 单位。共享预检检查字段存在、单位/语义�
 按参数选择通道及条件输入可用新增 data_requirements 声明：
 
 ~~~python
-from dqs.registry import AlgorithmSpec
+from edc.algorithms.registry import AlgorithmSpec
 
 spec = AlgorithmSpec(
     'myteam__position_check', '1', '位置方法', 'myteam', '描述实际方法',
@@ -187,7 +187,7 @@ clock_required 只检查单路时钟声明，跨路共同时钟/映射仍须算�
 成功返回 ('runnable', '')，失败返回状态和原因。模型/GPU 仍延迟加载，不在预检中执行。
 部分范围可通过可选 availability(episode, params) 返回 availability: partial、reason、scope、fields。
 钩子异常对该算法单独记录；不影响其它算法。不需修改核心 ID 分发表。
-旧插件不强制新增声明；未声明具体物理输入的插件只通过既有能力检查，不能据此宣称完整物理适配。
+插件可按其实现声明具体输入；未声明具体物理输入的插件只通过既有能力检查，不能据此宣称完整物理适配。
 
 ## 原始时间与去重范围
 

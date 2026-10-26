@@ -15,4 +15,4 @@
 
 迁移基线记录源 Git HEAD 和**工作区文件哈希**，含必要未跟踪文件，见 [source-manifest.json](migration/source-manifest.json)。它用于溯源，不表示清单里的文件全部原样进入新库；适配、测试夹具和文档的变更与排除另记迁移报告。
 
-验收命令与结果见 [STATUS](framework/STATUS.md)。远端建立后先确认 private；转公开必须单独核查并明确授权。
+验收命令与结果见 [STATUS](src/edc/STATUS.md)。远端建立后先确认 private；转公开必须单独核查并明确授权。
