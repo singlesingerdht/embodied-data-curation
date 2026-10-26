@@ -2,7 +2,7 @@
 
 目标：由未参与实现的人，在自己的环境中检查安装、数据注册、算法接入、阶段交接和报告是否符合约定。先记录问题，再单独提修复 PR；本轮不修改算法方法、评分公式或阈值。
 
-当前基础及已有结果见 [STATUS](STATUS.md)。以下是**待认领的独立验证任务**，不代表已经由朋友验收。新库位于 `/root/embodied-data-curation`，GitHub 私有远端尚未创建；远端就绪前可交付源码快照，不能将“本地已提交”写成“已推送”。
+当前基础及已有结果见 [STATUS](STATUS.md)。以下是**待认领的独立验证任务**，不代表已经由朋友验收。协作代码已推送到 [GitHub 仓库](https://github.com/singlesingerdht/embodied-data-curation)，获得仓库访问权限后可克隆验证。本机工作目录为 `/root/embodied-data-curation`。
 
 ## 如何分工
 

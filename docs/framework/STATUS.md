@@ -15,6 +15,7 @@
 | 干净基础安装 | wheel 在无系统包、清除继承 PYTHONPATH 的 venv 中导入；仅 pip、NumPy、PyYAML、embodied-dqs；9 算法、未导入 Torch、pip check 通过 | [base-install.json](../validation/base-install.json) |
 | 源码外完整示例 | 2→2→2→2→2→4 条阶段输入；全部阶段完成，恢复时六阶段均复用 | [wheel-workflow.json](../validation/wheel-workflow.json) |
 | 打包 | wheel 与 sdist 构建通过；wheel 包含 143 Python 文件、9 CPU 方法及复位配置，不含 GPU 方法／权重／私有 wheel | [package.json](../validation/package.json) |
+| GitHub 远端交付 | `main` 首次推送完成，本地与远端提交 `412a877` 一致，包含核心迁移及朋友验收指南 | [embodied-data-curation](https://github.com/singlesingerdht/embodied-data-curation) |
 
 CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根路径，不排除评分、阈值、事件或判断。对照数据为新生成的合成数据，不冒充真实机器人重新验收。
 
@@ -34,7 +35,6 @@ CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根�
 
 ## 尚未完成
 
-- **GitHub 私有远端未由本轮创建或推送**：本地 Git 仓库已准备；本机无 gh／可用 GitHub API 登录凭据，SSH 无法访问目标仓库。认证后可运行 [create_private_repo.sh](../../scripts/create_private_repo.sh) 创建 private 并推送；脚本不会覆盖已有 origin。
 - 真实价值／编辑／增强方法未通过本公共流程逐项验收；盘点及亮度变换只是合成接口示例。
 - 通用非 identity 变换、segment 调度、分布式执行、平台账号／权限／前端和真实 VR 加速未实现。
 - 本地校验使用 Python 3.13；3.10／3.12 矩阵已写 CI，本轮未在远端实际执行。
