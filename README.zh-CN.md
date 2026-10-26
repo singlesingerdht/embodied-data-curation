@@ -161,4 +161,4 @@ embodied-data-curation/
 
 算法插件使用 `edc.algorithms`，读取器插件使用 `edc.readers`；外部 ID 使用 `team__algorithm`。声明 `AlgorithmSpec`，实现 `run(context, params)`，并验证单位、时间、左右与失败隔离；dataset 方法可声明逐轨迹条件并提供集合预检。[插件模板](examples/plugins/algorithm)、[开发指南](docs/framework/PLUGIN_GUIDE.md)。
 
-朋友可从独立安装、配置体验、范围绑定、插件、工作流回路、恢复执行与报告检查入手，任务和提交证据统一列在根目录 [FRIEND_VALIDATION.md](FRIEND_VALIDATION.md)。贡献通过分支和 PR 提交；方法接入、许可和公开发布独立验收。
+三人协作分为数据接入与配置体验、算法插件与输入输出、串行工作流与闭环验收三个模块，负责人、难度和交付物统一见根目录 [FRIEND_VALIDATION.md](FRIEND_VALIDATION.md)。每轮验证统一到同一个 `main` 提交，修改通过分支和 PR 合入；方法接入、许可和公开发布独立验收。

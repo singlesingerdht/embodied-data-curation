@@ -2,7 +2,7 @@
 
 **EDC (Embodied Data Curation)** provides robot data ingestion, input-based algorithm recommendations, CPU inspection, auditable plugin workflows, and evidence reports.
 
-[简体中文](README.zh-CN.md) · [Configuration](docs/framework/CONFIGURATION.md) · [Algorithms](docs/framework/ALGORITHMS.md) · [Validation tasks](FRIEND_VALIDATION.md)
+[简体中文](README.zh-CN.md) · [Configuration](docs/framework/CONFIGURATION.md) · [Algorithms](docs/framework/ALGORITHMS.md) · [Three-person collaboration](FRIEND_VALIDATION.md)
 
 ## News
 
@@ -40,5 +40,7 @@ Plugins declare `AlgorithmSpec` and `run(context, params)`, discovered through `
 `src/edc/{data,robots,algorithms,execution,workflows,reporting}` contains the runtime. `configs/{datasets,robots,algorithms,workflows}`, `examples`, `tests/edc`, and `docs` provide configuration, demonstrations and evidence. The base install requires only NumPy/PyYAML; format and model dependencies are optional.
 
 CPU methods: Structure_Check, Numeric_Check, Action_Smoothness, Check_Timestamp, Sync_Check, Root_Cause, Dedup_Check, Reset_Detection, Video_Integrity.
+
+The three-person validation plan covers data configuration, algorithm plugins, and workflow acceptance. Each round uses the same `main` commit; see [roles and deliverables](FRIEND_VALIDATION.md).
 
 This repository is a private development delivery. Licensing and redistribution of code, algorithms, models and data must be verified before publication; see the [release checklist](docs/RELEASE_CHECKLIST.md). The persisted record protocol remains `dqs_record_v1` (DQS: Data Quality Service); the public interface is EDC.
