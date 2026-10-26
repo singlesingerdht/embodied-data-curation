@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "edc-example-reader"
+version = "0.1.0"
+dependencies = ["embodied-data-curation>=0.2.0a1"]
+[project.entry-points."edc.readers"]
+team_example__manifest = "manifest_reader:plugin"
+[tool.setuptools]
+py-modules = ["manifest_reader"]

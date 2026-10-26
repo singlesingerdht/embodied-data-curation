@@ -1,0 +1,780 @@
+schema_version: 1
+id: x1_pro
+version: 1.0.0
+status: partial_units_and_calibration_pending
+channels:
+  /left_arm/wrench_ext_world:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      registration_status: unknown_semantics
+  /right_arm/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: right
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation: {}
+    logical_name: joint/arm/right/feedback
+    robot_part: right
+  /left_gripper/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: gripper
+    side: left
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      device_type: gripper
+      device_type_status: confirmed
+      device_type_confirmed_by: user
+      control_origin: unknown
+    logical_name: joint/gripper/left/state
+    robot_part: left_gripper
+  /right_arm/wrench_ext_world:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      registration_status: unknown_semantics
+  /whole_body/left_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: left
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/left/feedback@whole_body
+    robot_part: left
+  /right_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: right
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/right/feedback
+    robot_part: right
+  /camera1/usb_cam1/image_raw/image_compressed:
+    modality: rgb
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: wrist
+    side: left
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: left_wrist
+    representation:
+      camera_role: wrist
+      camera_role_status: confirmed
+      camera_role_confirmed_by: user
+    logical_name: rgb/wrist/left
+    robot_part: left
+  /instruction_data:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      scoring_role: metadata
+  /take_over_data:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      scoring_role: metadata
+  /calibration_data:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      scoring_role: metadata
+  /distribute_data:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      scoring_role: metadata
+  /diversity_data:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      scoring_role: metadata
+  /camera_chest_front/color/image_raw/compressed:
+    modality: rgb
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: chest
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: chest_front
+    representation:
+      camera_role: chest
+      camera_role_status: confirmed
+      camera_role_confirmed_by: user
+    logical_name: rgb/chest
+  /camera_head_front/color/image_raw/compressed:
+    modality: rgb
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: head
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: head_front
+    representation:
+      camera_role: head
+      camera_role_status: confirmed
+      camera_role_confirmed_by: user
+    logical_name: rgb/head
+    robot_part: head
+  /left_arm/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions:
+    - 6
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: left
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names:
+    - left_arm_joint1
+    - left_arm_joint2
+    - left_arm_joint3
+    - left_arm_joint4
+    - left_arm_joint5
+    - left_arm_joint6
+    field_metadata:
+      position:
+        unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        dimensions:
+        - 6
+    sensor_id: null
+    representation:
+      quantity: joint_position
+      semantic_status: confirmed
+      semantic_source: user confirmed actual left arm position feedback
+      unit_candidate: rad
+      unit_confirmation: pending
+    logical_name: joint/arm/left/feedback
+    robot_part: left
+  /whole_body/right_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: right
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/right/feedback@whole_body
+    robot_part: right
+  /left_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: left
+    source_kind: feedback
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/left/feedback
+    robot_part: left
+  /right_arm/wrench_ext_local:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      registration_status: unknown_semantics
+  /right_gripper/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: gripper
+    side: right
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      device_type: gripper
+      device_type_status: confirmed
+      device_type_confirmed_by: user
+      control_origin: unknown
+    logical_name: joint/gripper/right/state
+    robot_part: right_gripper
+  /left_arm/wrench_ext_local:
+    modality: other
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      registration_status: unknown_semantics
+  /lift/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: lift
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        quantity: length
+        semantic_status: confirmed
+        unit: null
+    sensor_id: null
+    representation: {}
+    logical_name: joint/lift/state
+    robot_part: lift
+  /head/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: head
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        quantity: angle
+        semantic_status: confirmed
+        unit: null
+    sensor_id: null
+    representation: {}
+    logical_name: joint/head/state
+    robot_part: head
+  /odom:
+    modality: odometry
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: base
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation: {}
+    logical_name: odometry/base
+    robot_part: base
+  /tracked_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: null
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation: {}
+    logical_name: x1pro__tracking/pose
+  /master_right_arm/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: right
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      control_origin: master
+    logical_name: joint/arm/right/command
+    robot_part: right
+  /master_right_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: right
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/right/command
+    robot_part: right
+  /master_right_gripper/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: gripper
+    side: right
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      device_type: gripper
+      device_type_status: confirmed
+      device_type_confirmed_by: user
+      control_origin: master
+    logical_name: joint/gripper/right/command
+    robot_part: right_gripper
+  /master_left_gripper/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: gripper
+    side: left
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      device_type: gripper
+      device_type_status: confirmed
+      device_type_confirmed_by: user
+      control_origin: master
+    logical_name: joint/gripper/left/command
+    robot_part: left_gripper
+  /master_left_arm/joint_states:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    - effort
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: left
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: null
+    representation:
+      control_origin: master
+    logical_name: joint/arm/left/command
+    robot_part: left
+  /master_left_arm/end_pose:
+    modality: pose
+    fields:
+    - position
+    - orientation
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: arm
+    side: left
+    source_kind: command
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: user
+        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+    sensor_id: null
+    representation: {}
+    logical_name: pose/arm/left/command
+    robot_part: left
+  /camera3/usb_cam3/image_raw/image_compressed:
+    modality: rgb
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: wrist
+    side: right
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: right_wrist
+    representation:
+      camera_role: wrist
+      camera_role_status: confirmed
+      camera_role_confirmed_by: user
+    logical_name: rgb/wrist/right
+    robot_part: right
+  /camera_head_front/depth/image_raw/compressedDepth:
+    modality: depth
+    fields: []
+    unit: null
+    dimensions: null
+    time_source: acquisition
+    clock: null
+    body_part: head
+    side: unknown
+    source_kind: unknown
+    coordinate_frame: null
+    calibration_status: unknown
+    joint_names: null
+    field_metadata: {}
+    sensor_id: head_front
+    representation:
+      camera_role: head
+      camera_role_status: confirmed
+      camera_role_confirmed_by: user
+      depth_scale: null
+      depth_unit: null
+      invalid_value_rule: null
+    logical_name: depth/head
+    robot_part: head
+calibration: {}
+numeric_check:
+  thresholds:
+    joint:
+      vel_threshold: 1.0
+      velocity_peak: 20.0
+      reset_ratio: 0.6
+      limits: null
+    imu:
+      gyro_max: 10.0
+      acc_max: 196.2
+      gyro_bias_max: 0.05
+      acc_bias_max: 0.5
+      min_static_frames: 50
+    cmd:
+      jerk_threshold: 10.0
+    pose_freeze:
+      min_run: 3
+      lookback: 10
+      vel_threshold: 0.01
+      freeze_eps: 1.0e-06
+  weights: null
+numeric_review:
+  status: pending
+  confirmed_by: null
+  configuration_sha256: null
+unit_system_suggestion: SI
+model: X1 Pro
+camera_requirements:
+  left_wrist:
+  - rgb
+  right_wrist:
+  - rgb
+  head_front:
+  - rgb
+  chest_front:
+  - rgb
+native_timeline_note: User confirmed header generation time; common clock unknown.
+  No resampling or assumed clock relation.
+instance_id: null
+parts:
+  left:
+    type: arm
+    side: left
+    dof: 6
+  right:
+    type: arm
+    side: right
+    dof: 6
+  left_gripper:
+    type: gripper
+    side: left
+    arm: left
+  right_gripper:
+    type: gripper
+    side: right
+    arm: right
+  head:
+    type: head
+    side: unknown
+  lift:
+    type: lift
+    side: unknown
+  base:
+    type: base
+    side: unknown
+confirmation_scope: User-confirmed topic semantics; per-capture units/calibration/clocks
+  must be checked for applicability.

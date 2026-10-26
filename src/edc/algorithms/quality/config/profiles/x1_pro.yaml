@@ -1,0 +1,13 @@
+robot: x1_pro
+formats: [mcap, rosbag]
+note: X1 Pro 机器人 (Projection_Alignment 默认机型); mcap/rosbag 格式
+topics:
+  "/camera_head_front/color/image_raw/compressed": {modality: image}
+  "/left_arm/end_pose":   {modality: pose, fields: [position, orientation]}
+  "/right_arm/end_pose":  {modality: pose, fields: [position, orientation]}
+  "/joint_states":        {modality: joint_state, fields: [position, velocity, effort]}
+  "/imu/data":            {modality: imu, fields: [ang_vel, lin_acc, orientation]}
+required_channels:
+  - /camera_head_front/color/image_raw/compressed
+  - /left_arm/end_pose
+  - /right_arm/end_pose

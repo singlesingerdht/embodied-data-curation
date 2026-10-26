@@ -1,0 +1,451 @@
+{
+  "elapsed_s": 93.47984467819333,
+  "status": "completed",
+  "delivery_status": "suspended",
+  "source_hash_before": "95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2",
+  "source_hash_after": "95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2",
+  "records": [
+    {
+      "algorithm": "Structure_Check",
+      "instance_id": "episode",
+      "status": "completed",
+      "reason": "",
+      "scope": {
+        "arms": [
+          "left",
+          "right"
+        ],
+        "selection": "all",
+        "mode": "channels",
+        "channels": [
+          "/left_arm/wrench_ext_world",
+          "/right_arm/joint_states",
+          "/left_gripper/joint_states",
+          "/right_arm/wrench_ext_world",
+          "/whole_body/left_arm/end_pose",
+          "/right_arm/end_pose",
+          "/camera1/usb_cam1/image_raw/image_compressed",
+          "/instruction_data",
+          "/take_over_data",
+          "/calibration_data",
+          "/distribute_data",
+          "/diversity_data",
+          "/camera_chest_front/color/image_raw/compressed",
+          "/camera_head_front/color/image_raw/compressed",
+          "/left_arm/joint_states",
+          "/whole_body/right_arm/end_pose",
+          "/left_arm/end_pose",
+          "/right_arm/wrench_ext_local",
+          "/right_gripper/joint_states",
+          "/left_arm/wrench_ext_local",
+          "/lift/joint_states",
+          "/head/joint_states",
+          "/odom",
+          "/tracked_pose",
+          "/master_right_arm/joint_states",
+          "/master_right_arm/end_pose",
+          "/master_right_gripper/joint_states",
+          "/master_left_gripper/joint_states",
+          "/master_left_arm/joint_states",
+          "/master_left_arm/end_pose",
+          "/camera3/usb_cam3/image_raw/image_compressed",
+          "/camera_head_front/depth/image_raw/compressedDepth"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        95.5
+      ]
+    },
+    {
+      "algorithm": "Numeric_Check",
+      "instance_id": "episode",
+      "status": "completed",
+      "reason": "Finiteness checks available; physical checks configured for 0/44 fields. Unconfirmed units/semantics are never passed to physical checks",
+      "scope": {
+        "arms": [
+          "left",
+          "right"
+        ],
+        "selection": "all",
+        "mode": "numeric",
+        "channels": [
+          "/right_arm/joint_states",
+          "/left_gripper/joint_states",
+          "/whole_body/left_arm/end_pose",
+          "/right_arm/end_pose",
+          "/left_arm/joint_states",
+          "/whole_body/right_arm/end_pose",
+          "/left_arm/end_pose",
+          "/right_gripper/joint_states",
+          "/lift/joint_states",
+          "/head/joint_states",
+          "/tracked_pose",
+          "/master_right_arm/joint_states",
+          "/master_right_arm/end_pose",
+          "/master_right_gripper/joint_states",
+          "/master_left_gripper/joint_states",
+          "/master_left_arm/joint_states",
+          "/master_left_arm/end_pose"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "algorithm": "Action_Smoothness",
+      "instance_id": "left",
+      "status": "completed",
+      "reason": "",
+      "scope": {
+        "arms": [
+          "left"
+        ],
+        "selection": "all",
+        "mode": "pose_feedback",
+        "channels": [
+          "/left_arm/end_pose"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        0
+      ]
+    },
+    {
+      "algorithm": "Action_Smoothness",
+      "instance_id": "right",
+      "status": "completed",
+      "reason": "",
+      "scope": {
+        "arms": [
+          "right"
+        ],
+        "selection": "all",
+        "mode": "pose_feedback",
+        "channels": [
+          "/right_arm/end_pose"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        0
+      ]
+    },
+    {
+      "algorithm": "Check_Timestamp",
+      "instance_id": "episode",
+      "status": "completed",
+      "reason": "可观察现有单路或公共行时间的间隔；缺少独立时间轴、共同 clock 或相机参考，跨通道对齐不评估。",
+      "scope": {
+        "arms": [
+          "left",
+          "right"
+        ],
+        "selection": "all",
+        "mode": "channels",
+        "channels": [
+          "/left_arm/wrench_ext_world",
+          "/right_arm/joint_states",
+          "/left_gripper/joint_states",
+          "/right_arm/wrench_ext_world",
+          "/whole_body/left_arm/end_pose",
+          "/right_arm/end_pose",
+          "/camera1/usb_cam1/image_raw/image_compressed",
+          "/instruction_data",
+          "/take_over_data",
+          "/calibration_data",
+          "/distribute_data",
+          "/diversity_data",
+          "/camera_chest_front/color/image_raw/compressed",
+          "/camera_head_front/color/image_raw/compressed",
+          "/left_arm/joint_states",
+          "/whole_body/right_arm/end_pose",
+          "/left_arm/end_pose",
+          "/right_arm/wrench_ext_local",
+          "/right_gripper/joint_states",
+          "/left_arm/wrench_ext_local",
+          "/lift/joint_states",
+          "/head/joint_states",
+          "/odom",
+          "/tracked_pose",
+          "/master_right_arm/joint_states",
+          "/master_right_arm/end_pose",
+          "/master_right_gripper/joint_states",
+          "/master_left_gripper/joint_states",
+          "/master_left_arm/joint_states",
+          "/master_left_arm/end_pose",
+          "/camera3/usb_cam3/image_raw/image_compressed",
+          "/camera_head_front/depth/image_raw/compressedDepth"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        null
+      ]
+    },
+    {
+      "algorithm": "Dedup_Check",
+      "instance_id": "episode",
+      "status": "completed",
+      "reason": "部分通道缺有效原始时间；只能检查其余可用通道。",
+      "scope": {
+        "arms": [
+          "left",
+          "right"
+        ],
+        "selection": "all",
+        "mode": "channels",
+        "channels": [
+          "/left_arm/wrench_ext_world",
+          "/right_arm/joint_states",
+          "/left_gripper/joint_states",
+          "/right_arm/wrench_ext_world",
+          "/whole_body/left_arm/end_pose",
+          "/right_arm/end_pose",
+          "/camera1/usb_cam1/image_raw/image_compressed",
+          "/instruction_data",
+          "/take_over_data",
+          "/calibration_data",
+          "/distribute_data",
+          "/diversity_data",
+          "/camera_chest_front/color/image_raw/compressed",
+          "/camera_head_front/color/image_raw/compressed",
+          "/left_arm/joint_states",
+          "/whole_body/right_arm/end_pose",
+          "/left_arm/end_pose",
+          "/right_arm/wrench_ext_local",
+          "/right_gripper/joint_states",
+          "/left_arm/wrench_ext_local",
+          "/lift/joint_states",
+          "/head/joint_states",
+          "/odom",
+          "/tracked_pose",
+          "/master_right_arm/joint_states",
+          "/master_right_arm/end_pose",
+          "/master_right_gripper/joint_states",
+          "/master_left_gripper/joint_states",
+          "/master_left_arm/joint_states",
+          "/master_left_arm/end_pose",
+          "/camera3/usb_cam3/image_raw/image_compressed",
+          "/camera_head_front/depth/image_raw/compressedDepth"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
+      ]
+    },
+    {
+      "algorithm": "Video_Integrity",
+      "instance_id": "episode",
+      "status": "completed",
+      "reason": "图像入口直接检查解码画面；视频容器子项不适用，不生成完整视频综合分。",
+      "scope": {
+        "arms": [
+          "left",
+          "right"
+        ],
+        "selection": "all",
+        "mode": "rgb",
+        "channels": [
+          "/camera1/usb_cam1/image_raw/image_compressed",
+          "/camera_chest_front/color/image_raw/compressed",
+          "/camera_head_front/color/image_raw/compressed",
+          "/camera3/usb_cam3/image_raw/image_compressed"
+        ],
+        "missing_arms": []
+      },
+      "scores": [
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "algorithm": {
+        "id": "Structure_Check",
+        "version": "ir-adapter-13"
+      },
+      "availability": "available",
+      "reason": ""
+    },
+    {
+      "algorithm": {
+        "id": "Numeric_Check",
+        "version": "ir-adapter-13"
+      },
+      "availability": "partial",
+      "reason": "Finiteness checks available; physical checks configured for 0/44 fields. Unconfirmed units/semantics are never passed to physical checks"
+    },
+    {
+      "algorithm": {
+        "id": "Action_Smoothness",
+        "version": "ir-adapter-13"
+      },
+      "availability": "available",
+      "reason": ""
+    },
+    {
+      "algorithm": {
+        "id": "Check_Timestamp",
+        "version": "ir-adapter-13"
+      },
+      "availability": "partial",
+      "reason": "可观察现有单路或公共行时间的间隔；缺少独立时间轴、共同 clock 或相机参考，跨通道对齐不评估。"
+    },
+    {
+      "algorithm": {
+        "id": "Sync_Check",
+        "version": "ir-adapter-13"
+      },
+      "availability": "unavailable",
+      "reason": "时间条件不足：需要有效且单位明确的时间轴；跨通道检查还需要独立的原始时间轴和共同 clock。只有公共行时间、未知单位或合成时间时，不能评估原始采集同步；现有时间仍保留。"
+    },
+    {
+      "algorithm": {
+        "id": "Root_Cause",
+        "version": "ir-adapter-13"
+      },
+      "availability": "unavailable",
+      "reason": "时间条件不足：需要有效且单位明确的时间轴；跨通道检查还需要独立的原始时间轴和共同 clock。只有公共行时间、未知单位或合成时间时，不能评估原始采集同步；现有时间仍保留。"
+    },
+    {
+      "algorithm": {
+        "id": "Dedup_Check",
+        "version": "ir-adapter-13"
+      },
+      "availability": "partial",
+      "reason": "部分通道缺有效原始时间；只能检查其余可用通道。"
+    },
+    {
+      "algorithm": {
+        "id": "Reset_Detection",
+        "version": "ir-adapter-13"
+      },
+      "availability": "unavailable",
+      "reason": "Provide algorithm-specific calibration"
+    },
+    {
+      "algorithm": {
+        "id": "Video_Integrity",
+        "version": "ir-adapter-13"
+      },
+      "availability": "partial",
+      "reason": "图像入口直接检查解码画面；视频容器子项不适用，不生成完整视频综合分。"
+    },
+    {
+      "algorithm": {
+        "id": "team_example__configured_position",
+        "version": "0.1.0"
+      },
+      "availability": "unavailable",
+      "reason": "Invalid algorithm parameters: team_example__configured_position.channel: required"
+    },
+    {
+      "algorithm": {
+        "id": "team_example__finite_check",
+        "version": "0.1.0"
+      },
+      "availability": "available",
+      "reason": ""
+    },
+    {
+      "algorithm": {
+        "id": "team_example__image_augment",
+        "version": "1"
+      },
+      "availability": "unavailable",
+      "reason": "Example transform accepts explicitly synthetic HDF5 fixtures only"
+    },
+    {
+      "algorithm": {
+        "id": "team_example__image_edit",
+        "version": "1"
+      },
+      "availability": "unavailable",
+      "reason": "Example transform accepts explicitly synthetic HDF5 fixtures only"
+    },
+    {
+      "algorithm": {
+        "id": "team_example__signal_summary",
+        "version": "0.1.0"
+      },
+      "availability": "available",
+      "reason": ""
+    }
+  ]
+}

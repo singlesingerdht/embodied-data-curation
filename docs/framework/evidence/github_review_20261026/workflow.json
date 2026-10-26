@@ -1,0 +1,91 @@
+{
+  "module_path": "/tmp/edc-github-review-20261026-EaQ1em/full/lib/python3.12/site-packages/edc/__init__.py",
+  "workflow_count": 2,
+  "runs": [
+    {
+      "status": "completed",
+      "delivery_status": "ready",
+      "stages": [
+        {
+          "id": "quality",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        },
+        {
+          "id": "edit",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        },
+        {
+          "id": "recheck",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        },
+        {
+          "id": "value",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        },
+        {
+          "id": "augment",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        },
+        {
+          "id": "aug_recheck",
+          "status": "completed",
+          "reused": false,
+          "selected": null
+        }
+      ]
+    },
+    {
+      "status": "completed",
+      "delivery_status": "ready",
+      "stages": [
+        {
+          "id": "quality",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        },
+        {
+          "id": "edit",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        },
+        {
+          "id": "recheck",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        },
+        {
+          "id": "value",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        },
+        {
+          "id": "augment",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        },
+        {
+          "id": "aug_recheck",
+          "status": "completed",
+          "reused": true,
+          "selected": null
+        }
+      ]
+    }
+  ],
+  "passed": true
+}

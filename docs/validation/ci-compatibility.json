@@ -1,0 +1,39 @@
+{
+  "schema_version": "edc_ci_compatibility_v1",
+  "date": "2026-10-26",
+  "initial_failed_run": {
+    "id": 40278894553,
+    "url": "https://github.com/singlesingerdht/embodied-data-curation/actions/runs/40278894553",
+    "commit": "2fc51bc6529f2e897ec5f8cab3260c95e7d2d64d",
+    "python": "3.10.22",
+    "pyarrow": "25.0.1",
+    "failed": 23,
+    "passed": 442,
+    "skipped": 21,
+    "reason": "Numeric Arrow to_pandas_dtype implicitly imports an undeclared pandas dependency"
+  },
+  "local_python": "3.12.3",
+  "local_pyarrow": "25.0.1",
+  "runs": [
+    {
+      "name": "source_suite",
+      "summary": "466 passed, 21 skipped in 11.77s",
+      "log_sha256": "764024c01dc762dc16b00d4fb5cac4ccd760779546523d216bd32fdbf7ee13bf"
+    },
+    {
+      "name": "installed_wheel_suite",
+      "summary": "466 passed, 21 skipped in 12.01s",
+      "log_sha256": "a8ed59824a4149f8f9ab90362be667524a8aaa80ace325d6839dcf3c753d424d"
+    },
+    {
+      "name": "regression_before_fix",
+      "summary": "1 failed in 0.68s",
+      "log_sha256": "d26a8b5429eb2b8c28bf0c6e264f8a91f9917ee15eed8559fe9aeeb57d99ccec"
+    }
+  ],
+  "base_install": "passed; exactly nine algorithms; Structure_Check demo and pip check completed",
+  "workflow": "passed; check, run and resume outside source",
+  "algorithm_methods_modified": false,
+  "base_dependencies_added": false,
+  "remote_recheck": "See repository Actions for the commit containing this repair"
+}

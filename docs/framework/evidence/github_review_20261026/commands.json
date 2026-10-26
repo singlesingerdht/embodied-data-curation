@@ -1,0 +1,75 @@
+[
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/python",
+      "/root/embodied-data-curation/examples/curation/make_example.py",
+      "--output",
+      "/tmp/edc-github-review-20261026-EaQ1em/workflow-demo"
+    ],
+    "returncode": 0,
+    "output_sha256": "fbe0e704e065fc55d86b37ea65b19b1f86fdd1e163366f59984b50056227275a",
+    "output_bytes": 67
+  },
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/edc",
+      "config",
+      "export",
+      "/tmp/edc-github-review-20261026-EaQ1em/workflow-demo/curation.yaml",
+      "--output",
+      "/tmp/edc-github-review-20261026-EaQ1em/complete.yaml"
+    ],
+    "returncode": 0,
+    "output_sha256": "3922d277bfd26392afa6d8b0c1e631f026ca3729a1e1c2a2edd372c2dc060357",
+    "output_bytes": 71
+  },
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/edc",
+      "config",
+      "check",
+      "/tmp/edc-github-review-20261026-EaQ1em/complete.yaml"
+    ],
+    "returncode": 0,
+    "output_sha256": "460224cb56dce84a29416b2117e2da5a4811097041a93139a1c2c5fa3b85450d",
+    "output_bytes": 5625
+  },
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/edc",
+      "config",
+      "run",
+      "/tmp/edc-github-review-20261026-EaQ1em/complete.yaml",
+      "--output",
+      "/tmp/edc-github-review-20261026-EaQ1em/workflow-results"
+    ],
+    "returncode": 0,
+    "output_sha256": "7f49de3634665010db3af3398a0afa9337b46869be164e0d800d831f9d8e064d",
+    "output_bytes": 2168079
+  },
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/edc",
+      "config",
+      "run",
+      "/tmp/edc-github-review-20261026-EaQ1em/complete.yaml",
+      "--output",
+      "/tmp/edc-github-review-20261026-EaQ1em/workflow-results",
+      "--resume"
+    ],
+    "returncode": 0,
+    "output_sha256": "a7e69105358ee35f39d782f87353abb9ea829ab3b245e5d9fece88cea57806cf",
+    "output_bytes": 2168073
+  },
+  {
+    "command": [
+      "/tmp/edc-github-review-20261026-EaQ1em/full/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "returncode": 0,
+    "output_sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09",
+    "output_bytes": 30
+  }
+]

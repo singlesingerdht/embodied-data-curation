@@ -1,0 +1,6 @@
+id: curation
+stages:
+  - {id: quality, kind: quality, input: source, algorithms: recommended}
+  - {id: value, kind: value, input: quality, algorithms: recommended}
+# Install a real value plugin before enabling its stage. SDK inventory is example-only.
+# An empty real-method pool is reported during configuration validation.
