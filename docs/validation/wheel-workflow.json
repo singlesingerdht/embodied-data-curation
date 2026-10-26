@@ -1,0 +1,18 @@
+{
+  "schema_version": "edc_wheel_workflow_v1",
+  "module": "/tmp/edc-formats-wheel-env/lib/python3.13/site-packages/dqs/__init__.py",
+  "config": "/root/embodied-data-curation-demo/workflow.yaml",
+  "output": "/root/embodied-data-curation-demo-results",
+  "first_workflow_run": "20261026T051455Z-cfe71d6ed8",
+  "resumed_workflow_run": "20261026T051456Z-79c0bff23f",
+  "stage_counts": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    4
+  ],
+  "all_stages_completed": true,
+  "all_resume_stages_reused": true
+}

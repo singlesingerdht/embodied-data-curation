@@ -1,0 +1,58 @@
+{
+  "Structure_Check": {
+    "channels": [
+      "/camera1/usb_cam1/image_raw/image_compressed",
+      "/camera3/usb_cam3/image_raw/image_compressed",
+      "/camera_head_front/color/image_raw/compressed",
+      "/camera_chest_front/color/image_raw/compressed"
+    ]
+  },
+  "Numeric_Check": {
+    "channels": [
+      "/right_arm/end_pose"
+    ]
+  },
+  "Action_Smoothness": {
+    "channel": "/right_arm/end_pose"
+  },
+  "Check_Timestamp": {
+    "channels": [
+      "/camera_head_front/color/image_raw/compressed",
+      "/right_arm/joint_states"
+    ]
+  },
+  "Sync_Check": {
+    "channels": [
+      "/camera_head_front/color/image_raw/compressed",
+      "/right_arm/joint_states"
+    ],
+    "primary": "/camera_head_front/color/image_raw/compressed"
+  },
+  "Root_Cause": {
+    "channels": [
+      "/camera_head_front/color/image_raw/compressed",
+      "/right_arm/joint_states"
+    ]
+  },
+  "Dedup_Check": {
+    "channels": [
+      "/tracked_pose"
+    ]
+  },
+  "Reset_Detection": {
+    "channels": [
+      "/right_arm/joint_states"
+    ]
+  },
+  "Video_Integrity": {
+    "channels": [
+      "/camera1/usb_cam1/image_raw/image_compressed",
+      "/camera_chest_front/color/image_raw/compressed",
+      "/camera_head_front/color/image_raw/compressed",
+      "/camera3/usb_cam3/image_raw/image_compressed"
+    ],
+    "input_mode": "frames",
+    "sample_step": 1,
+    "downscale": 4
+  }
+}

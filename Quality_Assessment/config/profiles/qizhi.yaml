@@ -1,0 +1,19 @@
+robot: qizhi
+formats: [parquet]
+note: 启智数据集 parquet 格式 (11 列 schema)
+topics:
+  "/task_name":            {modality: other}
+  "/xhand_state":          {modality: joint_state, fields: [position]}
+  "/xhand_control":        {modality: cmd, fields: [joint_q]}
+  "/left_ee_pose":         {modality: pose, fields: [position, orientation], pose_layout: {position: [0, 3], orientation: [3, 7]}}
+  "/right_ee_pose":        {modality: pose, fields: [position, orientation], pose_layout: {position: [0, 3], orientation: [3, 7]}}
+  "/left_ee_target":       {modality: cmd, fields: [joint_q]}
+  "/right_ee_target":      {modality: cmd, fields: [joint_q]}
+  "/target_q_pos":         {modality: cmd, fields: [joint_q]}
+  "/tauff":                {modality: cmd, fields: [tau]}
+  "/head_torso":           {modality: pose, fields: [position]}
+  "/compressed_image_image": {modality: image}
+required_channels:
+  - /xhand_state
+  - /left_ee_pose
+  - /right_ee_pose

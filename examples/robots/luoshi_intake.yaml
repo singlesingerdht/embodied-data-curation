@@ -1,0 +1,133 @@
+# Draft for the local kaiyang_luoshi sample; NOT a completed robot acceptance.
+# Source: accompanying HDF5_FORMAT.md + repository physical profile + user correction.
+# Ordering is a documented candidate and still needs robot-owner confirmation.
+# Hand is a dexterous hand per robot owner; effector array semantics are unconfirmed.
+# Array length is recorded shape, NOT verified dexterous-hand joint DOF.
+schema_version: 1
+id: luoshi_intake
+version: '1'
+status: pending_robot_owner_confirmation
+# SI is a proposal for review, not a conversion or a verified source-unit claim.
+unit_system_suggestion: SI
+numeric_review: {status: pending, confirmed_by: null, configuration_sha256: null}
+numeric_check:
+  thresholds:
+    joint: {vel_threshold: 1.0, velocity_peak: 20.0, reset_ratio: 0.6, limits: null}
+    imu: {gyro_max: 10.0, acc_max: 196.2, gyro_bias_max: 0.05, acc_bias_max: 0.5, min_static_frames: 50}
+    cmd: {jerk_threshold: 10.0}
+    pose_freeze: {min_run: 3, lookback: 10, vel_threshold: 0.01, freeze_eps: 0.000001}
+timestamp_column: timestamp/t
+timestamp_unit: unknown
+lerobot:
+  non_frame_fields: [subtask_transitions]
+parts:
+  both_arms: {dof: 14}
+  left_arm: {dof: 7}
+  right_arm: {dof: 7}
+channels:
+  timestamp/t:
+    modality: other
+    fields: [recorded_values]
+    unit: unknown
+    time_source: unknown
+  action/arm/position:
+    modality: joint_space
+    fields: [position]
+    robot_part: both_arms
+    body_part: arm
+    side: both
+    source_kind: command
+    dimensions: [14]
+    unit: rad
+    calibration_status: pending
+  observation/state/arm/position:
+    modality: joint_space
+    fields: [position]
+    robot_part: both_arms
+    body_part: arm
+    side: both
+    source_kind: feedback
+    dimensions: [14]
+    unit: rad
+    calibration_status: pending
+  left_arm_position:
+    modality: joint_space
+    fields: [position]
+    robot_part: left_arm
+    body_part: arm
+    side: left
+    source_kind: feedback
+    unit: rad
+    dimensions: [7]
+    calibration_status: pending
+    select: {channel: observation/state/arm/position, field: position, indices: [0, 1, 2, 3, 4, 5, 6]}
+  right_arm_position:
+    modality: joint_space
+    fields: [position]
+    robot_part: right_arm
+    body_part: arm
+    side: right
+    source_kind: feedback
+    unit: rad
+    dimensions: [7]
+    calibration_status: pending
+    select: {channel: observation/state/arm/position, field: position, indices: [7, 8, 9, 10, 11, 12, 13]}
+  action/effector/position:
+    modality: other
+    fields: [recorded_values]
+    body_part: hand
+    side: both
+    source_kind: command
+    unit: null
+    dimensions: [2]
+    calibration_status: pending
+    representation: {device_type: dexterous_hand, quantity: unknown, semantic_status: pending_owner_confirmation}
+  observation/state/effector/position:
+    modality: other
+    fields: [recorded_values]
+    body_part: hand
+    side: both
+    source_kind: feedback
+    unit: null
+    dimensions: [2]
+    calibration_status: pending
+    representation: {device_type: dexterous_hand, quantity: unknown, semantic_status: pending_owner_confirmation}
+  # Confirm quantity per component before mapping to physical joint fields:
+  # rotary/tilt -> angle (rad/deg); extension -> length (m/mm).
+  # Split mixed components with explicit select indices; do not assign one unit to both.
+  action/head/position:
+    modality: other
+    fields: [recorded_values]
+    body_part: head
+    source_kind: command
+    dimensions: [2]
+    unit: null
+    calibration_status: pending
+    representation: {quantity: unknown, semantic_status: pending_owner_confirmation}
+  observation/state/head/position:
+    modality: other
+    fields: [recorded_values]
+    body_part: head
+    source_kind: feedback
+    dimensions: [2]
+    unit: null
+    calibration_status: pending
+    representation: {quantity: unknown, semantic_status: pending_owner_confirmation}
+  # Source name does not establish velocity vs acceleration, nor angular vs linear.
+  observation/state/arm/velocity:
+    modality: other
+    fields: [recorded_values]
+    dimensions: [14]
+    unit: unknown
+    source_kind: feedback
+    representation: {quantity: unknown, semantic_status: pending_owner_confirmation}
+  observation/state/arm/torque:
+    modality: other
+    fields: [recorded_values]
+    dimensions: [14]
+    unit: unknown
+    source_kind: feedback
+    representation: {quantity: unknown, semantic_status: pending_owner_confirmation}
+  observation/images/*/color: {modality: rgb}
+  observation/images/*/depth: {modality: depth}
+  '*': {modality: other}

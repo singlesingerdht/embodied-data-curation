@@ -1,0 +1,24 @@
+{
+  "schema_version": "edc_base_install_v1",
+  "version": "0.1.0a3",
+  "module": "/tmp/edc-base-wheel-env/lib/python3.13/site-packages/dqs/__init__.py",
+  "algorithms": [
+    "Structure_Check",
+    "Numeric_Check",
+    "Action_Smoothness",
+    "Check_Timestamp",
+    "Sync_Check",
+    "Root_Cause",
+    "Dedup_Check",
+    "Reset_Detection",
+    "Video_Integrity"
+  ],
+  "torch_imported": false,
+  "installed_distributions": [
+    "PyYAML",
+    "embodied-dqs",
+    "numpy",
+    "pip"
+  ],
+  "pip_check": "No broken requirements found."
+}

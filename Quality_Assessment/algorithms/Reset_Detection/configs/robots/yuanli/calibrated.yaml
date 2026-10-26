@@ -1,0 +1,132 @@
+robot:
+  name: yuanli
+  parameters:
+    left_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: false
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    right_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: false
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+home_position:
+  left_arm:
+    joint_positions:
+    - -0.8729373812675476
+    - -0.26985928416252136
+    - -0.08695909380912781
+    - 1.5212031602859497
+    - 0.3451140224933624
+    - -1.5452361106872559
+    ee_position:
+    - 0.1983616203069687
+    - -0.23009711503982544
+    - 0.17210005223751068
+    ee_orientation:
+    - -0.006660731648756322
+    - 0.010290503059461603
+    - -0.41502752695330747
+    - 0.9097262731567711
+    gripper: 0.00032982730970781466
+  right_arm:
+    joint_positions:
+    - 0.8698856830596924
+    - -0.2807833254337311
+    - -0.08564125746488571
+    - -0.9781553149223328
+    - -0.20369061827659607
+    - 1.0089507102966309
+    ee_position:
+    - 0.1979844719171524
+    - 0.23155364394187927
+    - 0.17020483314990997
+    ee_orientation:
+    - 0.0090617045378011
+    - 0.0150485219214361
+    - 0.4175116356225374
+    - 0.9085017675374348
+    gripper: 0.0002345709263781001
+tolerance1:
+  left_arm:
+    joint_positions:
+    - 0.04732120782136917
+    - 0.03444190323352814
+    - 0.006322500295937061
+    - 0.17311590909957886
+    - 0.03623948618769646
+    - 0.1656186729669571
+    ee_position:
+    - 0.009094408713281155
+    - 0.008308879099786282
+    - 0.015121959149837494
+    ee_orientation: 0.024534412936998613
+    gripper: 0.0004555583706028805
+  right_arm:
+    joint_positions:
+    - 0.062341850250959396
+    - 0.03753124922513962
+    - 0.002388415392488241
+    - 2.5194077491760254
+    - 0.5948554277420044
+    - 2.5185818672180176
+    ee_position:
+    - 0.007814697921276093
+    - 0.0071496739983558655
+    - 0.006249628029763699
+    ee_orientation: 0.028766260508493662
+    gripper: 0.00038320265313757253
+tolerance2:
+  left_arm:
+    joint_positions:
+    - 0.07098181545734406
+    - 0.051662854850292206
+    - 0.00948375090956688
+    - 0.2596738636493683
+    - 0.054359227418899536
+    - 0.24842801690101624
+    ee_position:
+    - 0.013641612604260445
+    - 0.012463318184018135
+    - 0.02268293872475624
+    ee_orientation: 0.03680161940549792
+    gripper: 0.0006833375559043207
+  right_arm:
+    joint_positions:
+    - 0.09351277351379395
+    - 0.05629687383770943
+    - 0.003582623088732362
+    - 3.779111623764038
+    - 0.8922831416130066
+    - 3.7778728008270264
+    ee_position:
+    - 0.011722046881914139
+    - 0.010724510997533798
+    - 0.00937444157898426
+    ee_orientation: 0.04314939076274049
+    gripper: 0.0005748039797063588

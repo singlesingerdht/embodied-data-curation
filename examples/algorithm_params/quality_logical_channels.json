@@ -1,0 +1,60 @@
+{
+  "Structure_Check": {
+    "channels": [
+      "rgb/head",
+      "rgb/chest",
+      "rgb/wrist/left",
+      "rgb/wrist/right"
+    ]
+  },
+  "Numeric_Check": {
+    "channels": [
+      "pose/arm/right/feedback"
+    ]
+  },
+  "Action_Smoothness": {
+    "channels": [
+      "pose/arm/right/feedback"
+    ]
+  },
+  "Check_Timestamp": {
+    "channels": [
+      "rgb/head",
+      "joint/arm/right/feedback"
+    ]
+  },
+  "Sync_Check": {
+    "channels": [
+      "rgb/head",
+      "joint/arm/right/feedback"
+    ],
+    "primary": "rgb/head"
+  },
+  "Root_Cause": {
+    "channels": [
+      "rgb/head",
+      "joint/arm/right/feedback"
+    ]
+  },
+  "Dedup_Check": {
+    "channels": [
+      "joint/arm/right/feedback"
+    ]
+  },
+  "Reset_Detection": {
+    "channels": [
+      "joint/arm/right/feedback"
+    ]
+  },
+  "Video_Integrity": {
+    "channels": [
+      "rgb/head",
+      "rgb/chest",
+      "rgb/wrist/left",
+      "rgb/wrist/right"
+    ],
+    "input_mode": "auto",
+    "sample_step": 1,
+    "downscale": 4
+  }
+}

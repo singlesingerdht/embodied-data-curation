@@ -1,0 +1,33 @@
+# Synthetic layout example ONLY: actual left/right indices must come from the data owner.
+schema_version: 1
+timestamp_unit: s
+id: split_demo
+version: '1'
+parts:
+  left_arm: {dof: 7}
+  right_arm: {dof: 7}
+channels:
+  state:
+    modality: other
+    fields: [position]
+    time_source: unknown
+  left_arm_position:
+    modality: joint_space
+    fields: [position]
+    robot_part: left_arm
+    body_part: arm
+    side: left
+    source_kind: feedback
+    dimensions: [7]
+    unit: rad
+    select: {channel: state, field: position, indices: [0, 1, 2, 3, 4, 5, 6]}
+  right_arm_position:
+    modality: joint_space
+    fields: [position]
+    robot_part: right_arm
+    body_part: arm
+    side: right
+    source_kind: feedback
+    dimensions: [7]
+    unit: rad
+    select: {channel: state, field: position, indices: [7, 8, 9, 10, 11, 12, 13]}

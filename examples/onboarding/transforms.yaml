@@ -1,0 +1,57 @@
+# Synthetic geometry for tests. Replace every value with your robot's supplied parameters.
+schema_version: 1
+timestamp_unit: s
+id: transform_demo
+version: '1'
+channels:
+  /joint_states:
+    modality: joint_state
+    fields: [position]
+    unit: deg
+    dimensions: [2]
+    joint_names: [shoulder, wrist]
+    source_kind: feedback
+    time_source: acquisition
+    clock: robot_clock
+transforms:
+  clocks:
+    robot_to_host:
+      source: robot_clock
+      target: host_clock
+      scale: 1.00001
+      offset_seconds: 0.25
+      valid_range: [0, 3600]
+      provenance: supplied_example_only
+  frames:
+    base_to_camera:
+      source: base
+      target: camera_optical
+      translation_unit: m
+      matrix: [[1,0,0,0], [0,1,0,0], [0,0,1,2], [0,0,0,1]]
+      provenance: supplied_example_only
+  chains:
+    arm:
+      base_frame: base
+      tip_frame: tool
+      joints:
+        - name: shoulder
+          type: revolute
+          origin: [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]]
+          translation_unit: m
+          axis: [0,0,1]
+          unit: deg
+          limits: [-180,180]
+          input: {channel: /joint_states, field: position, index: 0}
+        - name: tool_offset
+          type: fixed
+          origin: [[1,0,0,1], [0,1,0,0], [0,0,1,0], [0,0,0,1]]
+          translation_unit: m
+  cameras:
+    head:
+      channel: /head/image
+      frame: camera_optical
+      image_size: [640,480]
+      K: [[500,0,320], [0,500,240], [0,0,1]]
+      distortion_model: plumb_bob
+      distortion: [0,0,0,0,0] # k1,k2,p1,p2,k3; explicitly supplied, not inferred
+      provenance: supplied_example_only

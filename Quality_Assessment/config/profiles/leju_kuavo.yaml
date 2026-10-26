@@ -1,0 +1,19 @@
+robot: leju_kuavo
+formats: [ros1_bag]
+note: 乐聚 KUAVO 机器人; 23 topics 固定; 3 相机 30Hz; /sensors_data_raw 含关节+IMU
+topics:
+  "/cam_h/color/image_raw/compressed":         {modality: image}
+  "/cam_h/depth/image_raw/compressedDepth":    {modality: image}
+  "/cam_l/color/image_raw/compressed":          {modality: image}
+  "/cam_l/depth/image_raw/compressedDepth":    {modality: image}
+  "/cam_r/color/image_raw/compressed":          {modality: image}
+  "/cam_r/depth/image_raw/compressedDepth":    {modality: image}
+  "/dexhand/state":        {modality: joint_state, fields: [position, velocity, effort]}
+  "/kuavo_arm_traj":       {modality: joint_state, fields: [position, velocity, effort]}
+  "/joint_cmd":            {modality: cmd, fields: [joint_q, joint_v, tau]}
+  "/control_robot_hand_position": {modality: cmd, fields: [joint_q]}
+  "/sensors_data_raw":     {modality: joint_state, fields: [joint_q, joint_v, tau]}
+required_channels:
+  - /cam_h/color/image_raw/compressed
+  - /kuavo_arm_traj
+  - /joint_cmd

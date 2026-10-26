@@ -1,0 +1,13 @@
+robot: yuanli
+
+output:
+  dir: /mnt/public/dht/原力不合格数据/二次夹取
+
+data:
+  raw_path: /mnt/public/dht/原力不合格数据/二次夹取
+
+calibration:
+  data_path: /mnt/public/dht/fold_towel
+  exclude_episodes: []
+  tolerance1_factor: 2.0
+  tolerance2_factor: 3.0
