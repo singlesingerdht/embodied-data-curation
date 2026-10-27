@@ -1,0 +1,6 @@
+# Configuration example only; no real source, calibration or hardware approval is claimed.
+path: ../../data/odometry_pending
+id: odometry_pending
+version: '1'
+source_bindings:
+  odometry/base: null

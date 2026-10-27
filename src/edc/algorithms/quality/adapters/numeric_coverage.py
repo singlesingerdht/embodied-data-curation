@@ -2,7 +2,8 @@
 import numpy as np
 
 
-def coverage(values, eligibility, settings, result, physical, unit_reason=None, imu_pair=None):
+def coverage(values, eligibility, settings, result, physical, unit_reason=None, imu_pair=None,
+             extra_checks=(), shape_valid=True):
     rows = []
     target = eligibility['target'][0] if eligibility['target'] else None
     n = len(values) if values.ndim else 0
@@ -12,7 +13,7 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
     def add(ident, name, *, applicable=True, configured=True, enough=True,
             events=(), group=None, threshold=None, unit=None, reason=''):
         state = ('not_applicable' if not applicable else 'unconfigured' if not configured
-                 else 'insufficient_input' if not enough or not values.size
+                 else 'insufficient_input' if not enough or not values.size or not shape_valid
                  else 'blocked_nonfinite' if not finite
                  else 'pending_confirmation' if not physical else 'evaluated')
         detected = (result.get('numeric') or {}).get(group) or {}
@@ -22,7 +23,8 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
         rows.append({'id': ident, 'name': name, 'status': state,
             'outcome': ('finding' if matches else 'no_finding') if state == 'evaluated' else None,
             'threshold': threshold, 'unit': unit, 'events': matches,
-            'reason': (reason if state != 'pending_confirmation' else blockers)})
+            'reason': (blockers if state == 'pending_confirmation' else
+                       '字段形状或样本数不满足输入契约，未执行。' if not shape_valid and applicable else reason)})
 
     rows.append({'id': 'finite', 'name': '有限值（NaN / +Inf / −Inf）',
         'status': 'evaluated' if values.size else 'insufficient_input',
@@ -52,7 +54,7 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
     if target == 'gyro':
         minimum = settings['imu']['min_static_frames']
         segments = []
-        if physical and finite and values.ndim == 2 and values.size >= minimum:
+        if physical and shape_valid and finite and values.ndim == 2 and values.size >= minimum:
             from edc.algorithms.quality.algorithms.Numeric_Check.numeric_check import _find_runs
             static = np.abs(np.diff(np.linalg.norm(values, axis=1))) < 0.02
             segments = _find_runs(~static, minimum)
@@ -78,6 +80,7 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
         rows.append({'id': 'other_physical', 'name': '其他物理子项',
             'status': 'pending_confirmation' if blockers else 'unsupported', 'outcome': None,
             'reason': blockers or '现有 Numeric_Check 未实现此字段的物理检查，仅查有限值。'})
+    rows.extend(extra_checks)
     return {'schema_version': 'dqs_numeric_coverage_v1', 'checks': rows,
         'coverage_complete': all(row['status'] in {'evaluated', 'not_applicable'} for row in rows),
         'legacy_completeness_scope': 'assessment_complete retains the existing configured-detector eligibility rule; use checks for actual subcheck coverage',

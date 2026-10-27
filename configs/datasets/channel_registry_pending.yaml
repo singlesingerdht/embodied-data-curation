@@ -1,0 +1,7 @@
+# Example only. A null source binding blocks execution until explicitly supplied.
+path: ../../data/channel_registry_pending
+id: channel_registry_pending
+version: '1'
+source_bindings:
+  imu/main: null
+  lab__tactile/palm: null

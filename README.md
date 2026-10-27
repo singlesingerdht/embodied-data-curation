@@ -6,6 +6,8 @@
 
 ## News
 
+- 2026-10-27 (0.2.0a2): automatic XYZW quaternion orientation reads; configurable 107-name channel registry with IMU, odometry, hand, gripper and tactile templates. [Contract and migration](docs/framework/ORIENTATION_HAND_TACTILE.md).
+
 - 2026-10-26: Python/CLI `edc`, distribution `embodied-data-curation`, and `src/edc` module layout.
 - Four reusable configuration components with standalone export; explicit single/dual arm scope; one robot across multiple task datasets.
 - Editing and augmentation create validated copies and return to quality checks. See [verified status and limits](docs/framework/STATUS.md).

@@ -3,7 +3,8 @@ import copy
 
 INPUT_DESCRIPTIONS = {
     'Structure_Check': ('源文件与通道清单；相机配置一致性子项需要 camera_requirements 和 sensor_id/modality 映射。',),
-    'Numeric_Check': ('数值字段可做 NaN/Inf 检查；物理检查还需明确物理量、可转换到 SI 的单位、标定及作者确认。',),
+    'Numeric_Check': ('数值字段可做 NaN/Inf 检查；物理检查还需明确物理量、可转换到 SI 的单位、标定及作者确认。',
+                      '动作位置指令需要独立 command_limits.limits；数值冻结只报告同 Episode 逐分量恒值区间，运动后恒值需复核。'),
     'Dedup_Check': ('至少一条非合成原始时间序列；单位未知仍可比较相等，不能据此评估采集间隔或同步。',
                     '有效序列号为可选输入；不检查图像或轨迹内容，不自动删除记录。'),
     'Check_Timestamp': ('已有、单位明确的记录时间可逐路观察间隔；公共行时间只表示公共行节奏。',

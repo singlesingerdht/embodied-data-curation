@@ -1,0 +1,7 @@
+# Example extension only; it does not claim that any dataset has this sensor.
+schema_version: edc_channel_registry_v1
+version: 'lab-example-1'
+channels:
+  lab__tactile/palm:
+    modality: tactile
+    side: left

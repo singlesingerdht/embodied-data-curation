@@ -15,10 +15,24 @@ def validate_mapping_config(profile):
             raise ValueError(f'{name}: invalid physical side')
         if 'dof' in spec and (type(spec['dof']) is not int or spec['dof'] <= 0):
             raise ValueError('Declared dof must be a positive integer')
+        if 'type' in spec and (not isinstance(spec['type'], str) or not spec['type']):
+            raise ValueError(f'{name}: type must be a nonempty part category')
+    for name, spec in parts.items():
+        if spec.get('arm') is not None:
+            arm = spec['arm']
+            if not isinstance(arm, str) or arm == name or parts.get(arm, {}).get('type') != 'arm':
+                raise ValueError(f'{name}: arm must reference another declared arm part')
+            if (spec.get('side') in {'left', 'right'} and parts[arm].get('side') in {'left', 'right'}
+                    and spec['side'] != parts[arm]['side']):
+                raise ValueError(f'{name}: part side conflicts with arm {arm}')
     for name, spec in profile.get('channels', {}).items():
         part = spec.get('robot_part')
-        if part is not None and part not in parts:
+        if part is not None and (not isinstance(part, str) or part not in parts):
             raise ValueError(f'{name}: robot_part must reference declared parts')
+        if part is not None:
+            side, part_side = spec.get('side'), parts[part].get('side')
+            if side in {'left', 'right'} and part_side in {'left', 'right'} and side != part_side:
+                raise ValueError(f'{name}: channel side conflicts with robot_part {part}')
         binding = spec.get('select')
         if binding is None:
             continue

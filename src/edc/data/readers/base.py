@@ -159,7 +159,7 @@ class DataReader(ABC):
         """返回 (channel_name, TopicInfo) 指定侧的 pose 通道, 含指定物理量。
 
         side: "left" / "right" / "any"
-        field: "position" (笛卡尔 XYZ) / "orientation" (四元数)
+        field: "position" (笛卡尔 XYZ) / "orientation" (显式声明的姿态表示)
         """
         candidates = [(n, ti) for n, ti in info.topics.items()
                        if ti.modality == MODALITY_POSE and ti.value_available
@@ -236,6 +236,23 @@ class DataReader(ABC):
         array = np.asarray([row[field] for row in values])
         if array.dtype.kind not in 'bfiu':
             raise ValueError(f'{name}.{field}: expected numeric source values, got {array.dtype}')
+        if field == 'orientation':
+            metadata = getattr(ti, 'field_metadata', {}).get(field, {})
+            representation = dict(metadata.get('representation') or getattr(ti, 'representation', {}))
+            if 'unit' not in representation:
+                unit = metadata.get('unit', getattr(ti, 'unit', None))
+                if unit is not None:
+                    representation['unit'] = unit
+            if representation.get('kind') in {'quaternion', 'rpy', 'rotation_matrix'}:
+                from edc.data.transforms.orientation import sample_shape
+                expected = sample_shape(representation)
+                if array.shape[1:] == expected:
+                    return array  # Already a separate field; never re-slice a quaternion/matrix.
+                if ti.pose_layout is not None:
+                    sliced = self._slice_pose_layout(ti, array, field)
+                    if sliced is not None and sliced.shape[1:] == expected:
+                        return sliced
+                raise ValueError(f'{name}.{field}: declared orientation shape {expected}, got {array.shape[1:]}')
         # ROS decoding already separates XYZ and XYZW. A quaternion-only array
         # must not enter the layout inference for a flattened XYZ+quaternion row.
         # The message schema establishes storage structure, never source units.

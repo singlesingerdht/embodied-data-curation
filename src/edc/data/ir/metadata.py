@@ -104,6 +104,7 @@ class TopicInfo:
     recorded_timestamp_values: Optional[List[Any]] = None
     recorded_timestamp_unit: Optional[str] = None
     time_evidence: Optional[Dict] = None
+    frame_evidence: Optional[Dict] = None
 
     def capability_summary(self) -> str:
         caps = []
@@ -155,6 +156,10 @@ def classify_channel(name: str, msg_type: str = "",
         for pattern, modality in hints.items():
             if fnmatch.fnmatch(name, pattern) or fnmatch.fnmatch(msg_type, pattern):
                 return modality
+
+    # A declared Odometry schema is stronger than a misleading topic spelling.
+    if msg_type in {'nav_msgs/msg/Odometry', 'nav_msgs/Odometry'}:
+        return 'odometry'
 
     lower = name.lower()
     parts = lower.split("/")

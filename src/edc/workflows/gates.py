@@ -36,6 +36,8 @@ def quality_gate(records, episode_ids, run_id, reviews=(), required_algorithms=N
                 reasons.append('Declared arm coverage incomplete: ' + str(record.get('input_scope', {})))
             for index, result in enumerate(record['result']['reports']):
                 verdict = result.get('verdict')
+                if result.get('supplemental_verdict') == 'DO_NOT_USE':
+                    state = 'exclude'; reasons.append('Selected supplemental check failed'); continue
                 if verdict == 'DO_NOT_USE' or result.get('passed') is False and verdict != 'NEEDS_REVIEW':
                     state = 'exclude'; reasons.append('Selected item failed'); continue
                 # Review cannot turn missing coverage into an assessed item.
@@ -55,7 +57,7 @@ def quality_gate(records, episode_ids, run_id, reviews=(), required_algorithms=N
                     if state != 'exclude': state = 'unassessed'
                     reasons.append('No acceptable judgment for selected scope')
         decisions[ident] = {'episode_id': ident, 'decision': state,
-                            'reasons': reasons, 'policy_version': 'workflow_gate_v2'}
+                            'reasons': reasons, 'policy_version': 'workflow_gate_v3'}
     return decisions
 
 

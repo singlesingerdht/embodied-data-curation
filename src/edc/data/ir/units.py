@@ -48,10 +48,11 @@ def require_si_field(episode, name, field, expected_unit=None):
 
 
 class SIEpisode:
-    """Execution-local metadata and payload view; public source reads stay raw."""
+    """SI scalars/vectors and canonical XYZW orientations for every algorithm."""
 
     def __init__(self, source, unit_policy="auto"):
-        self._source = source
+        from edc.data.ir.canonical import CanonicalEpisode
+        self._source = source if isinstance(source, CanonicalEpisode) else CanonicalEpisode(source)
         self.unit_policy = validate_unit_policy(unit_policy)
         self.channels = {}
         self._rules = {}
@@ -79,6 +80,11 @@ class SIEpisode:
                             "field": channel.selection.get("field", field),
                             "selection": channel.selection, "rows": "identity",
                             "elements": channel.selection.get("indices", "identity")}}
+                if field == 'orientation':
+                    rule.update(target_unit='1', factor=1., status='identity',
+                                representation_normalization='orientation-normalization.json')
+                    self._rules[(name, field)] = rule
+                    continue
                 try:
                     target = require_si_field(self._source, name, field)
                     rule.update(target_unit=target, factor=UNITS[spec["unit"]][1],
@@ -115,14 +121,26 @@ class SIEpisode:
         return {"schema_version": "dqs_units_v1", "unit_policy": self.unit_policy,
                 "algorithm_unit_system": "SI", "source_unchanged": True,
                 "timeline_unit": "s", "timeline_conversion": "already performed by reader; no second scaling",
-                "fields": fields}
+                "fields": fields, "orientation_normalization": self.orientation_evidence()}
 
     def reset_unit_evidence(self):
         """Start a per-algorithm read ledger; conversion plans alone are not execution."""
         self._read_counts.clear()
+        self._source.reset_orientation_evidence()
+
+    def orientation_evidence(self):
+        return self._source.orientation_evidence()
+
+    @property
+    def recorded_channels(self):
+        return self._source.recorded_channels
 
     def read_signal(self, channel, field):
         self.open()
+        from edc.algorithms.channel_names import resolve_channel
+        channel = resolve_channel(self, channel)
+        if field == 'orientation':
+            return self._source.read_signal(channel, field)
         # Validate the source field before consulting its execution rule.
         self.channels[channel].field_spec(field)
         rule = self._rules.get((channel, field))
@@ -139,6 +157,8 @@ class SIEpisode:
 
     def read_values(self, channel, indices=None):
         self.open()
+        from edc.algorithms.channel_names import resolve_channel
+        channel = resolve_channel(self, channel)
         fields = self.channels[channel].fields
         signals = {field: self.read_signal(channel, field) for field in fields}
         rows = range(self.channels[channel].count) if indices is None else indices
@@ -146,7 +166,7 @@ class SIEpisode:
 
     def inspect_recorded_signal(self, channel, field):
         """Raw values ONLY for unit-independent finite/equality diagnostics, never physics."""
-        return self._source.read_signal(channel, field)
+        return self._source.inspect_recorded_signal(channel, field)
 
     def describe(self):
         description = self._source.describe()
@@ -174,6 +194,10 @@ class SIEpisode:
     def transform_timestamps(self, channel, target_clock):
         from edc.data.transforms.episode import timestamps
         return timestamps(self, channel, target_clock)
+
+    def transform_orientation(self, channel, *, target, field='orientation', tolerance=1e-6):
+        # Representation includes its own units: convert raw data exactly once.
+        return self._source.transform_orientation(channel, target=target, field=field, tolerance=tolerance)
 
     def forward_kinematics(self, chain_name):
         from edc.data.transforms.episode import fk

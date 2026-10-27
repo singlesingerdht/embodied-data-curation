@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 import yaml
-from edc.data.ir.dataset import open_dataset
+from edc.data.ir.canonical import open_dataset
 from edc.execution.runner import run
 from edc.algorithms.registry import algorithms
 from edc.robots.profiles import add_profile
@@ -40,6 +40,12 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("algorithms").add_argument('--diagnostics', action='store_true',
         help='Include entry-point import failures; default output remains the algorithm list')
+    p = sub.add_parser('channels', help='List logical vocabulary or inspect actual episode bindings')
+    p.add_argument('input', nargs='?')
+    group = p.add_mutually_exclusive_group()
+    group.add_argument('--profile')
+    group.add_argument('--registry', help='YAML/JSON vocabulary extension; no dataset input')
+    p.add_argument('--backend', choices=['auto', 'official', 'compat'], default='auto')
     for command in ("inspect", "recommend", "run"):
         p = sub.add_parser(command)
         p.add_argument("input")
@@ -111,6 +117,23 @@ def main(argv=None):
     p.add_argument('--evidence', required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'channels':
+            from edc.data.channel_registry import load_channel_registry
+            from edc.algorithms.channel_names import channel_catalog
+            from edc.robots.profiles import load_profile
+            if args.input:
+                if args.registry:
+                    raise ValueError('Use a robot --profile to bind a registry to dataset channels')
+                with open_dataset(args.input, profile=args.profile, backend=args.backend) as dataset:
+                    rows = []
+                    for episode in dataset.iter_episodes():
+                        with episode.opened():
+                            rows.append(channel_catalog(episode))
+                    emit({'dataset_id': dataset.id, 'episodes': rows})
+            else:
+                value = load_profile(args.profile).get('channel_registry') if args.profile else args.registry
+                emit(load_channel_registry(value))
+            return 0
         if args.command == 'config':
             from edc.configuration import export_config, recommend_config
             from edc.workflows.validation import validate_workflow

@@ -1,0 +1,22 @@
+# Replace source path and null bindings with verified channels/features; null blocks execution.
+path: ../../data/hand_gripper_tactile_pending
+id: hand_gripper_tactile_pending
+version: '1'
+backend: auto
+source_bindings:
+  joint/hand/left/feedback: null
+  joint/hand/left/command: null
+  joint/gripper/left/feedback: null
+  joint/gripper/left/command: null
+  tactile/hand/left@palm: null
+  tactile/hand/left@index_tip: null
+  joint/hand/right/feedback: null
+  joint/hand/right/command: null
+  joint/gripper/right/feedback: null
+  joint/gripper/right/command: null
+  tactile/hand/right@palm: null
+  tactile/hand/right@index_tip: null
+metadata:
+  binding_status: pending
+  note: No real hand/tactile source is claimed. Remove unused devices; confirm physical
+    fields and binding.

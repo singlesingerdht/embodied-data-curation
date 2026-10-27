@@ -38,6 +38,7 @@ class Channel:
     source_mapping: dict = field(default_factory=dict)
     time_evidence: dict = field(default_factory=dict)
     logical_name: str | None = None
+    frame_evidence: dict = field(default_factory=dict)
 
     def __post_init__(self):
         from edc.data.ir.modalities import normalize_modality
@@ -94,6 +95,9 @@ class Episode:
             for name, topic in info.topics.items():
                 mapping = next((v for pattern, v in self.profile.get("channels", {}).items()
                                 if fnmatch.fnmatchcase(name, pattern)), {})
+                if (topic.msg_type in {'nav_msgs/msg/Odometry', 'nav_msgs/Odometry'}
+                        and mapping.get('modality', 'odometry') != 'odometry'):
+                    raise ValueError(f'{name}: Odometry source requires modality odometry; use an explicit transform for other signals')
                 if "joint_cur" in name.lower() and "fields" not in mapping:
                     topic.fields = ["current"]
                 if mapping.get("modality"):
@@ -132,6 +136,7 @@ class Episode:
                     topic.source, mapping.get("unit"), mapping.get("dimensions"), origin,
                     mapping.get("clock", getattr(topic, "clock", None)), topic.value_available, topic.image_available, topic.timestamps)
                 channels[name].source_kind = source_kind
+                channels[name].frame_evidence = copy.deepcopy(getattr(topic, 'frame_evidence', None) or {})
                 channels[name].time_evidence = copy.deepcopy(getattr(topic, 'time_evidence', None) or {})
                 channels[name].time_evidence.update(requested_time_source=requested_origin,
                     selected_time_source=origin, clock=channels[name].clock,
@@ -146,6 +151,11 @@ class Episode:
                 for key in ("sensor_id", "representation", "body_part", "side", "source_kind", "coordinate_frame", "calibration_status", "joint_names", "field_metadata"):
                     if key in mapping:
                         setattr(channels[name], key, copy.deepcopy(mapping[key]))
+                from edc.data.transforms.orientation import source_orientation_metadata
+                source_orientation_metadata(channels[name], topic.msg_type or '')
+                topic.field_metadata = copy.deepcopy(channels[name].field_metadata)
+                topic.representation = copy.deepcopy(channels[name].representation)
+                topic.unit = channels[name].unit
                 topic.side = channels[name].side
                 topic.strict_side = self.backend == 'official'
                 if self.backend == "official":
@@ -185,7 +195,7 @@ class Episode:
                 topic.timestamps, topic.time_source = c.timestamps, c.time_source
                 topic.timestamps_synthetic = c.time_source not in {'acquisition', 'container'}
             from edc.algorithms.channel_names import validate_channel_index
-            validate_channel_index(channels)
+            validate_channel_index(channels, self.profile.get('channel_registry'))
             info.extra["dqs_profile"] = self.profile
             self._reader, self._info, self.channels = reader, info, channels
             if self.selector.get('edc_channels') is not None:
@@ -309,6 +319,10 @@ class Episode:
     def transform_timestamps(self, channel, target_clock):
         from edc.data.transforms.episode import timestamps
         return timestamps(self, channel, target_clock)
+
+    def transform_orientation(self, channel, *, target, field='orientation', tolerance=1e-6):
+        from edc.data.transforms.orientation import orientation
+        return orientation(self, channel, target=target, field=field, tolerance=tolerance)
 
     def forward_kinematics(self, chain):
         from edc.data.transforms.episode import fk

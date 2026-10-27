@@ -54,11 +54,16 @@ def test_decoded_pose_fields_never_enter_flat_layout_inference(tmp_path, storage
     hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in files if p.is_file()}
     with open_dataset(source) as dataset:
         with next(dataset.iter_episodes()).opened() as episode:
-            # Read quaternion first: cached flat layout must not affect XYZ.
+            # Invalid rotations stay auditable; canonical reads fail explicitly.
+            with pytest.raises(ValueError, match='finite numeric values'):
+                episode.read_signal('/right_arm/end_pose', 'orientation')
+            # Read source quaternion first: cached layout must not affect XYZ.
             for field, expected in [('orientation', orientations), ('position', positions),
                                     ('orientation', orientations)]:
-                actual = episode.read_signal('/right_arm/end_pose', field)
+                actual = episode.inspect_recorded_signal('/right_arm/end_pose', field)
                 np.testing.assert_array_equal(actual, expected)
+            np.testing.assert_array_equal(
+                episode.read_signal('/right_arm/end_pose', 'position'), positions)
             channel = episode.channels['/right_arm/end_pose']
             assert channel.field_spec('position')['unit'] is None
             assert channel.time_source == 'container'

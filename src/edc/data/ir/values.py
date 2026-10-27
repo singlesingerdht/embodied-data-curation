@@ -26,7 +26,9 @@ def infer_fields(name: str, msg_type: str = "") -> Optional[List[str]]:
         return ["joint_q", "joint_v", "tau"]
     if "sensorsdata" in mt:
         return ["joint_q", "joint_v", "tau"]
-    if "pose" in mt or "odometry" in mt:
+    if "odometry" in mt:
+        return ["position", "orientation", "lin_vel", "ang_vel", "pose_covariance", "twist_covariance"]
+    if "pose" in mt:
         return ["position", "orientation"]
 
     # ── name 关键词推断 (扁平格式) ──
@@ -105,7 +107,20 @@ def ros_values_to_dict(msg: Any, msg_type: str = "") -> Dict[str, Any]:
                 "joint_v": list(getattr(jd, "joint_v", [])),
                 "tau": list(getattr(jd, "joint_torque", [])),
             }
-        if any(k in mt for k in ("pose", "odometry")):
+        if "odometry" in mt:
+            # Odom orientation/velocity are estimates, not raw IMU readings.
+            # Keep pose and twist covariance separate; never synthesize acceleration.
+            pose = msg.pose.pose
+            twist = msg.twist.twist
+            return {
+                "position": xyz(pose.position),
+                "orientation": xyzw(pose.orientation),
+                "lin_vel": xyz(twist.linear),
+                "ang_vel": xyz(twist.angular),
+                "pose_covariance": list(msg.pose.covariance),
+                "twist_covariance": list(msg.twist.covariance),
+            }
+        if "pose" in mt:
             pose = getattr(msg, "pose", msg)
             # Odometry/PoseWithCovariance adds one more pose wrapper.
             pose = getattr(pose, "pose", pose)

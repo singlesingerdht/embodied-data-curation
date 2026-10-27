@@ -1,0 +1,353 @@
+# Logical vocabulary only; entries do not install readers or algorithms.
+schema_version: edc_channel_registry_v1
+version: 2026.10.27
+channels:
+  rgb/head:
+    modality: rgb
+    camera_role: head
+  rgb/chest:
+    modality: rgb
+    camera_role: chest
+  rgb/wrist/left:
+    modality: rgb
+    camera_role: wrist
+    side: left
+  rgb/wrist/right:
+    modality: rgb
+    camera_role: wrist
+    side: right
+  rgb/wrist/main:
+    modality: rgb
+    camera_role: wrist
+  depth/head:
+    modality: depth
+    camera_role: head
+  depth/chest:
+    modality: depth
+    camera_role: chest
+  joint/arm/left/feedback:
+    modality: joint_space
+    side: left
+    source_kind: feedback
+  joint/arm/left/command:
+    modality: joint_space
+    side: left
+    source_kind: command
+  joint/arm/right/feedback:
+    modality: joint_space
+    side: right
+    source_kind: feedback
+  joint/arm/right/command:
+    modality: joint_space
+    side: right
+    source_kind: command
+  joint/arm/main/feedback:
+    modality: joint_space
+    side: main
+    source_kind: feedback
+  joint/arm/main/command:
+    modality: joint_space
+    side: main
+    source_kind: command
+  pose/arm/left/feedback:
+    modality: pose
+    side: left
+    source_kind: feedback
+  pose/arm/left/command:
+    modality: pose
+    side: left
+    source_kind: command
+  pose/arm/right/feedback:
+    modality: pose
+    side: right
+    source_kind: feedback
+  pose/arm/right/command:
+    modality: pose
+    side: right
+    source_kind: command
+  pose/arm/main/feedback:
+    modality: pose
+    side: main
+    source_kind: feedback
+  pose/arm/main/command:
+    modality: pose
+    side: main
+    source_kind: command
+  joint/gripper/left/state:
+    modality: joint_space
+    side: left
+    device_type: gripper
+  joint/gripper/left/feedback:
+    modality: joint_space
+    side: left
+    device_type: gripper
+    source_kind: feedback
+  joint/gripper/left/command:
+    modality: joint_space
+    side: left
+    device_type: gripper
+    source_kind: command
+  joint/gripper/right/state:
+    modality: joint_space
+    side: right
+    device_type: gripper
+  joint/gripper/right/feedback:
+    modality: joint_space
+    side: right
+    device_type: gripper
+    source_kind: feedback
+  joint/gripper/right/command:
+    modality: joint_space
+    side: right
+    device_type: gripper
+    source_kind: command
+  joint/gripper/main/state:
+    modality: joint_space
+    side: main
+    device_type: gripper
+  joint/gripper/main/feedback:
+    modality: joint_space
+    side: main
+    device_type: gripper
+    source_kind: feedback
+  joint/gripper/main/command:
+    modality: joint_space
+    side: main
+    device_type: gripper
+    source_kind: command
+  joint/head/state:
+    modality: joint_space
+    body_part: head
+  joint/lift/state:
+    modality: joint_space
+    body_part: lift
+  odometry/base:
+    modality: odometry
+  imu/main:
+    modality: imu
+  imu/base:
+    modality: imu
+  imu/head:
+    modality: imu
+  imu/chest:
+    modality: imu
+  imu/wrist/left:
+    modality: imu
+    side: left
+  imu/wrist/right:
+    modality: imu
+    side: right
+  imu/wrist/main:
+    modality: imu
+    side: main
+  rgb/main:
+    modality: rgb
+  depth/main:
+    modality: depth
+  depth/wrist/left:
+    modality: depth
+    side: left
+  depth/wrist/right:
+    modality: depth
+    side: right
+  depth/wrist/main:
+    modality: depth
+  infrared/main:
+    modality: infrared
+  infrared/head:
+    modality: infrared
+  infrared/chest:
+    modality: infrared
+  infrared/wrist/left:
+    modality: infrared
+    side: left
+  infrared/wrist/right:
+    modality: infrared
+    side: right
+  infrared/wrist/main:
+    modality: infrared
+  thermal/main:
+    modality: thermal
+  joint/hand/left/state:
+    modality: joint_space
+    side: left
+    device_type: dexterous_hand
+  joint/hand/left/feedback:
+    modality: joint_space
+    side: left
+    source_kind: feedback
+    device_type: dexterous_hand
+  joint/hand/left/command:
+    modality: joint_space
+    side: left
+    source_kind: command
+    device_type: dexterous_hand
+  joint/hand/right/state:
+    modality: joint_space
+    side: right
+    device_type: dexterous_hand
+  joint/hand/right/feedback:
+    modality: joint_space
+    side: right
+    source_kind: feedback
+    device_type: dexterous_hand
+  joint/hand/right/command:
+    modality: joint_space
+    side: right
+    source_kind: command
+    device_type: dexterous_hand
+  joint/hand/main/state:
+    modality: joint_space
+    device_type: dexterous_hand
+  joint/hand/main/feedback:
+    modality: joint_space
+    source_kind: feedback
+    device_type: dexterous_hand
+  joint/hand/main/command:
+    modality: joint_space
+    source_kind: command
+    device_type: dexterous_hand
+  joint/leg/left/state:
+    modality: joint_space
+    side: left
+  joint/leg/left/feedback:
+    modality: joint_space
+    side: left
+    source_kind: feedback
+  joint/leg/left/command:
+    modality: joint_space
+    side: left
+    source_kind: command
+  joint/leg/right/state:
+    modality: joint_space
+    side: right
+  joint/leg/right/feedback:
+    modality: joint_space
+    side: right
+    source_kind: feedback
+  joint/leg/right/command:
+    modality: joint_space
+    side: right
+    source_kind: command
+  joint/base/state:
+    modality: joint_space
+    body_part: base
+  joint/base/feedback:
+    modality: joint_space
+    body_part: base
+    source_kind: feedback
+  joint/base/command:
+    modality: joint_space
+    body_part: base
+    source_kind: command
+  joint/torso/state:
+    modality: joint_space
+    body_part: torso
+  joint/torso/feedback:
+    modality: joint_space
+    body_part: torso
+    source_kind: feedback
+  joint/torso/command:
+    modality: joint_space
+    body_part: torso
+    source_kind: command
+  joint/head/feedback:
+    modality: joint_space
+    body_part: head
+    source_kind: feedback
+  joint/head/command:
+    modality: joint_space
+    body_part: head
+    source_kind: command
+  joint/lift/feedback:
+    modality: joint_space
+    body_part: lift
+    source_kind: feedback
+  joint/lift/command:
+    modality: joint_space
+    body_part: lift
+    source_kind: command
+  pose/base/feedback:
+    modality: pose
+    source_kind: feedback
+  pose/base/command:
+    modality: pose
+    source_kind: command
+  twist/base/feedback:
+    modality: twist
+    source_kind: feedback
+  twist/base/command:
+    modality: twist
+    source_kind: command
+  pose/tracker/main:
+    modality: pose
+  wrench/arm/left/feedback:
+    modality: wrench
+    source_kind: feedback
+    side: left
+  wrench/arm/left/command:
+    modality: wrench
+    source_kind: command
+    side: left
+  tactile/hand/left:
+    modality: tactile
+    side: left
+  wrench/arm/right/feedback:
+    modality: wrench
+    source_kind: feedback
+    side: right
+  wrench/arm/right/command:
+    modality: wrench
+    source_kind: command
+    side: right
+  tactile/hand/right:
+    modality: tactile
+    side: right
+  wrench/arm/main/feedback:
+    modality: wrench
+    source_kind: feedback
+  wrench/arm/main/command:
+    modality: wrench
+    source_kind: command
+  tactile/hand/main:
+    modality: tactile
+  contact/foot/left:
+    modality: contact
+    side: left
+  contact/foot/right:
+    modality: contact
+    side: right
+  contact/hand/left:
+    modality: contact
+    side: left
+  contact/hand/right:
+    modality: contact
+    side: right
+  point_cloud/main:
+    modality: point_cloud
+  point_cloud/base:
+    modality: point_cloud
+  range_scan/base:
+    modality: range_scan
+  event_camera/main:
+    modality: event_camera
+  audio/main:
+    modality: audio
+  gnss/main:
+    modality: gnss
+  system_status/robot:
+    modality: system_status
+  system_status/battery:
+    modality: system_status
+  system_status/motor:
+    modality: system_status
+  task_text/instruction:
+    modality: task_text
+  annotation/main:
+    modality: annotation
+  annotation/calibration:
+    modality: annotation
+  annotation/intervention:
+    modality: annotation
+  other/main:
+    modality: other

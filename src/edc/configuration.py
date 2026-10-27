@@ -3,6 +3,7 @@ import copy
 from pathlib import Path
 import yaml
 from edc.robots.profiles import load_profile
+from edc.data.channel_registry import read_unique_yaml
 
 
 def _component(value, base, stack=()):
@@ -15,7 +16,7 @@ def _component(value, base, stack=()):
     path = (base / value['ref']).resolve()
     if path in stack:
         raise ValueError('Cyclic configuration reference')
-    return _component(yaml.safe_load(path.read_text()), path.parent, (*stack, path))
+    return _component(read_unique_yaml(path.read_text()), path.parent, (*stack, path))
 
 
 def load_config(config):
@@ -23,7 +24,7 @@ def load_config(config):
     if isinstance(config, (str, Path)):
         path = Path(config).resolve()
         base = path.parent
-        config = yaml.safe_load(path.read_text())
+        config = read_unique_yaml(path.read_text())
     if (not isinstance(config, dict) or config.get('schema_version') != 'edc_config_v1'
             or set(config) - {'schema_version', 'dataset', 'robot', 'algorithms', 'workflow', 'unit_policy'}):
         raise ValueError('Configuration requires edc_config_v1 and dataset/robot/algorithms/workflow')
@@ -47,7 +48,9 @@ def load_config(config):
             for chain in item.get('transforms', {}).get('chains', {}).values():
                 if 'urdf' in chain:
                     chain['urdf'] = str((origin / chain['urdf']).resolve())
-            item = load_profile(item)
+            item = load_profile(item, base=origin)
+            from edc.data.channel_registry import load_channel_registry
+            item.setdefault('channel_registry', load_channel_registry())
         if key == 'algorithms':
             if set(item) - {'defaults', 'methods'}:
                 raise ValueError('algorithms supports defaults and methods')
@@ -103,14 +106,17 @@ def execution_profile(config):
     if not isinstance(bindings, dict):
         raise ValueError('source_bindings maps logical names to actual source channels')
     index = {v.get('logical_name'): k for k, v in profile.get('channels', {}).items() if v.get('logical_name')}
+    if set(bindings) - set(index):
+        raise ValueError('source_bindings references an undeclared logical name')
+    for logical_name, source in bindings.items():
+        if source is None:
+            raise ValueError(f'Unbound source channel {logical_name}: set dataset.source_bindings to the actual recorded topic/feature')
     remapped = {}
     for source, channel in profile.get('channels', {}).items():
         target = bindings.get(channel.get('logical_name'), source)
         if not isinstance(target, str) or not target or target in remapped:
             raise ValueError('source_bindings must preserve unique source signals')
         remapped[target] = channel
-    if set(bindings) - set(index):
-        raise ValueError('source_bindings references an undeclared logical name')
     profile['channels'] = remapped
     capture = config['dataset'].get('capture', {})
     check_scope(capture)
@@ -165,7 +171,8 @@ def open_config_dataset(config):
         dataset = open_dataset(data['path'], profile=profile, backend=data.get('backend', 'auto'))
     metadata = {'id': data.get('id', dataset.id), 'version': data.get('version', dataset.version),
                 'tasks': data.get('tasks', dataset.tasks), 'metadata': data.get('metadata', dataset.metadata)}
-    return Dataset(dataset.path, profile, metadata, list(dataset.iter_episodes()))
+    from edc.data.ir.canonical import CanonicalDataset
+    return CanonicalDataset(Dataset(dataset.path, profile, metadata, list(dataset.iter_episodes())))
 
 
 def workflow_config(config):
@@ -189,7 +196,16 @@ def workflow_config(config):
             method = methods.get(ident, {})
             params[ident] = {**method.get('params', {}), **params.get(ident, {})}
             plugin = registry.plugins.get(ident)
-            if plugin and callable(getattr(plugin, 'instances', None)):
+            channels = cfg['robot'].get('channels', {})
+            imu_only = (not cfg['robot'].get('parts') and bool(channels)
+                        and all(c.get('modality') == 'imu' for c in channels.values()))
+            parts = cfg['robot'].get('parts', {})
+            declared_without_arms = bool(parts) and all(
+                p.get('type') and p['type'] != 'arm' for p in parts.values())
+            # An explicit base/leg/sensor-only topology does not require arms.
+            # Unknown topology and explicitly requested arm scopes still fail.
+            if plugin and callable(getattr(plugin, 'instances', None)) and (
+                    not (imu_only or declared_without_arms) or 'arms' in method or defaults['arms'] != 'all'):
                 params[ident].setdefault('arms', method.get('arms', defaults['arms']))
     return workflow
 

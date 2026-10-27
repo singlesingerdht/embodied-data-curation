@@ -42,6 +42,7 @@ class Context:
 def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, params=None, on_preflight=None,
         unit_policy="auto", *, upstream=None, selection_policy="explicit", config_snapshot=None, method_select=None):
     from edc.data.ir.units import SIDataset, UnitInputError, validate_unit_policy
+    from edc.data.ir.canonical import OrientationInputError, QUATERNION
     if selection_policy not in {"explicit", "runnable"}:
         raise ValueError("selection_policy must be explicit or runnable")
     validate_unit_policy(unit_policy)
@@ -76,8 +77,10 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
         root = output / "_runs" / run_id
         root.mkdir(parents=True)
         inventory = [{"id": ep.id, "source": str(ep.path), "selector": ep.selector, "metadata": getattr(ep, "metadata", {}), "source_stat": source_stat(ep.path)} for ep in dataset.iter_episodes()]
+        from edc.data.channel_registry import load_channel_registry
         write_json(root / "run.json", {"schema_version": "dqs_run_v1", "run_id": run_id,
-            "framework_version": "0.2.0a1", "config_snapshot": config_snapshot, "selection_policy": selection_policy, "dependencies": dependency_versions(selected), "dataset": {"id": dataset.id, "version": dataset.version,
+            "channel_registry": load_channel_registry(dataset.profile.get('channel_registry')),
+            "framework_version": "0.2.0a2", "config_snapshot": config_snapshot, "selection_policy": selection_policy, "dependencies": dependency_versions(selected), "dataset": {"id": dataset.id, "version": dataset.version,
                 "source": str(dataset.path), "tasks": getattr(dataset, "tasks", []), "metadata": getattr(dataset, "metadata", {}), "episodes": inventory}, "profile": dataset.profile,
             "algorithms": [asdict(p.spec) for p in selected], "params": params,
             "discovery_errors": registry.discovery_errors,
@@ -85,6 +88,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             "policy_version": "episode_filter_v1", "preset": preset,
             "recommendations": {"path": (root / 'recommendations.json').relative_to(output).as_posix(),
                 "scope": "all_registered_algorithms", "selected_params": params},
+            "orientation_normalization": {"policy": "auto", "target_representation": QUATERNION},
             "unit_normalization": {"policy": unit_policy, "algorithm_unit_system": "SI",
                 "source_profile_preserved": True, "threshold_units": "SI; thresholds are not rescaled"}})
         records_paths = []
@@ -173,7 +177,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                                 record["status"] = "completed"
                             record["result"] = {"reports": reports}
                         except Exception as exc:
-                            record["status"] = ("missing_input" if isinstance(exc, UnitInputError) else
+                            record["status"] = ("missing_input" if isinstance(exc, (UnitInputError, OrientationInputError)) else
                                                 "missing_dependency" if isinstance(exc, ImportError) else "processing_error")
                             record["reason"] = f"{type(exc).__name__}: {exc}"
                         # Failed workers can still produce logs, mappings and raw
@@ -182,6 +186,10 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                     if open_error is None:
                         artifact_dir.mkdir(exist_ok=True)
                         write_json(artifact_dir / "unit-normalization.json", episode.unit_evidence())
+                        write_json(artifact_dir / "orientation-normalization.json", episode.orientation_evidence())
+                        record["orientation_normalization"] = {"policy": "auto",
+                            "target_representation": QUATERNION,
+                            "evidence": (artifact_dir / "orientation-normalization.json").relative_to(output).as_posix()}
                         record["unit_normalization"] = {"policy": unit_policy, "algorithm_unit_system": "SI",
                             "evidence": (artifact_dir / "unit-normalization.json").relative_to(output).as_posix()}
                         record["artifacts"] = [p.relative_to(output).as_posix() for p in sorted(artifact_dir.rglob("*")) if p.is_file()]
@@ -199,7 +207,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             complete = bool(quality) and all(record_complete(r) for r in quality)
             decision = quality_gate(quality, [episode.id], run_id)[episode.id]['decision']
             selection.append({"episode_id": episode.id, "source": str(episode.path), "decision": decision,
-                              "assessment_complete": complete, "policy_version": "episode_filter_v2"})
+                              "assessment_complete": complete, "policy_version": "episode_filter_v3"})
         dataset_checks = recommend_dataset(execution_dataset, registry.plugins, params,
                                             selected=ids, method_select=method_select)
         try:
@@ -243,6 +251,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
 def run_dataset_plugin(plugin, dataset, root, output, check, media_cache, upstream=None):
     """One call for the whole SI dataset; never synthesize per-episode scores."""
     from edc.data.ir.units import UnitInputError
+    from edc.data.ir.canonical import OrientationInputError, QUATERNION
     work = root / plugin.spec.id
     artifact_dir = work / 'artifacts' / 'dataset'
     artifact_dir.mkdir()
@@ -271,7 +280,7 @@ def run_dataset_plugin(plugin, dataset, root, output, check, media_cache, upstre
             if unavailable:
                 record['reason'] = '; '.join(str(r.get('reasons')) for r in unavailable)
     except Exception as exc:
-        record['status'] = ('missing_input' if isinstance(exc, UnitInputError) else
+        record['status'] = ('missing_input' if isinstance(exc, (UnitInputError, OrientationInputError)) else
                             'missing_dependency' if isinstance(exc, ImportError) else 'processing_error')
         record['reason'] = f'{type(exc).__name__}: {exc}'
     finally:
@@ -286,6 +295,14 @@ def run_dataset_plugin(plugin, dataset, root, output, check, media_cache, upstre
                 episode.close()
         write_json(artifact_dir / 'unit-normalization.json', {'unit_system': 'SI',
             'episodes': evidence})
+        write_json(artifact_dir / 'orientation-normalization.json', {
+            'policy': 'auto', 'target_representation': QUATERNION, 'episodes': [
+                {'episode_id': item['episode_id'],
+                 'evidence': item.get('evidence', {}).get('orientation_normalization'),
+                 **({'reason': item['reason']} if 'reason' in item else {})} for item in evidence]})
+        record['orientation_normalization'] = {'policy': 'auto',
+            'target_representation': QUATERNION,
+            'evidence': (artifact_dir / 'orientation-normalization.json').relative_to(output).as_posix()}
     record['artifacts'] = [p.relative_to(output).as_posix() for p in sorted(artifact_dir.rglob('*')) if p.is_file()]
     append_record(work / 'records.jsonl', record)
     if record['status'] != 'completed':

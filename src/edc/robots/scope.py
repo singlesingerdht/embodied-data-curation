@@ -33,6 +33,7 @@ def instances(episode, supplied, mode):
     params.pop('arms', None)
     # Explicit channel selection restricts scope and may never reintroduce another arm.
     missing_channels = []
+    reference_by_source = {}
     if 'channels' in params:
         references = params.pop('channels')
         if not isinstance(references, list) or not references:
@@ -56,6 +57,7 @@ def instances(episode, supplied, mode):
                 if name in names:
                     raise ValueError('Duplicate channel selection after resolving logical names')
                 names.append(name)
+                reference_by_source[name] = reference
         params = resolve_channel_parameters(episode, params)
         params['channels'] = names
         resolved = params
@@ -111,6 +113,17 @@ def instances(episode, supplied, mode):
                 'complete': bool(name), 'error': '' if name else f'{arm}: missing {reference}'})
         return rows
     expected_arms = arms
+    if named is not None and mode in {'numeric', 'channels'}:
+        # Explicit base/IMU selections do not imply evaluating every arm.
+        # Missing explicitly selected arm channels remain in missing_channels.
+        requested_arms = {channel_arm(profile, n, episode.channels[n]) for n in named}
+        for reference in missing_channels:
+            declaration = next(v for k, v in profile.get('channels', {}).items()
+                if k == reference or v.get('logical_name') == reference)
+            part = declaration.get('robot_part')
+            part_spec = profile.get('parts', {}).get(part, {})
+            requested_arms.add(part if part_spec.get('type') == 'arm' else part_spec.get('arm'))
+        expected_arms = [arm for arm in arms if arm in requested_arms]
     if mode == 'rgb':
         # An arm does not imply a wrist camera. Only explicitly declared RGB
         # cameras in this run's scope establish arm-specific media requirements.
@@ -131,5 +144,5 @@ def instances(episode, supplied, mode):
         return [{'id': 'episode', 'params': params, 'scope': scope, 'complete': False,
                  'error': 'No channels in the declared arm scope'}]
     params.pop('channel', None)
-    params['channels'] = selected
+    params['channels'] = [reference_by_source.get(n, n) for n in selected]
     return [{'id': 'episode', 'params': params, 'scope': scope, 'complete': not missing and not missing_channels}]

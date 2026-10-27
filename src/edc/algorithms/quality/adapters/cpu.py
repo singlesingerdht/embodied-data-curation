@@ -297,7 +297,7 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = 'ir-adapter-15' if ident == 'Numeric_Check' else 'ir-adapter-14'
+        version = 'ir-adapter-16' if ident == 'Numeric_Check' else 'ir-adapter-14'
         descriptions, schema = cpu_parameters(ident)
         self.spec = AlgorithmSpec(ident, version, ident, "Repository contributors",
             "Existing CPU implementation; see edc.algorithms.quality/algorithms/" + ident,
@@ -356,9 +356,14 @@ class LegacyAlgorithm:
             kind = target[0] if target else None
             if kind == 'joint_positions' and settings['joint']['limits'] is None:
                 blockers.append('关节限位未配置；范围检查不会执行')
+            if kind == 'cmd_positions' and settings['command_limits']['limits'] is None:
+                blockers.append('动作指令独立限位未配置；不借用关节反馈限位')
             minimum = (3 if kind in {'joint_positions', 'cmd_positions'} else
                 settings['imu']['min_static_frames'] + 1 if kind in {'gyro', 'accel'} else
                 settings['pose_freeze']['min_run'] if kind == 'pose_freeze_positions' else 1)
+            from .numeric_supplements import FREEZE_GROUPS
+            if kind in FREEZE_GROUPS:
+                minimum = max(minimum, settings[FREEZE_GROUPS[kind]]['min_run'])
             if channel.count < minimum:
                 blockers.append(f'至少需要 {minimum} 个样本才能执行全部适用子项')
             if kind == 'accel':
@@ -553,27 +558,37 @@ class LegacyAlgorithm:
                 continue
             for field in channel.fields:
                 unit_reason = None
+                recorded_orientation = field == 'orientation' and callable(getattr(ep, 'inspect_recorded_signal', None))
                 try:
-                    values = ep.read_signal(channel.name, field)
+                    if recorded_orientation:
+                        values = ep.inspect_recorded_signal(channel.name, field)
+                        unit_reason = 'Source orientation finiteness diagnostic; canonical conversion is not a physical quality check'
+                    else:
+                        values = ep.read_signal(channel.name, field)
                 except UnitInputError as exc:
                     # Finiteness does not require units. Never forward these raw
                     # values to a physical detector or another algorithm.
                     values = ep.inspect_recorded_signal(channel.name, field)
                     unit_reason = str(exc)
-                spec = channel.field_spec(field)
+                spec = (ep.recorded_channels[channel.name] if recorded_orientation else channel).field_spec(field)
                 eligibility = numeric_field_status(ep, channel, field, review)
                 target = eligibility['target']
                 unit = spec["unit"]
                 finite = bool(np.isfinite(values).all())
                 physical = not unit_reason and eligibility['physical_checks_available']
+                shape_valid = (values.ndim == 2 and values.shape[1] > 0 and len(values) == channel.count
+                    and (not target or target[0] not in {'gyro', 'accel'} or values.shape[1] == 3))
                 if values.size == 0:
                     result = {"score": None, "verdict": "NOT_APPLICABLE", "assessment_complete": False,
                               "reason": "Empty numeric field", "finite": None}
                 elif not finite:
                     result = {"score": None, "verdict": "DO_NOT_USE", "finite": False,
                               "reason": "Nonfinite numeric values"}
-                elif physical:
+                elif physical and shape_valid:
                     result = module.assess(**{target[0]: values}, **review['settings'])
+                elif physical:
+                    result = {'score': None, 'verdict': 'NOT_APPLICABLE', 'finite': True,
+                              'reason': 'Numeric field shape/count does not match the declared input'}
                 else:
                     finite = bool(np.isfinite(values).all())
                     result = {"score": None, "verdict": "NOT_APPLICABLE" if finite else "DO_NOT_USE",
@@ -605,8 +620,8 @@ class LegacyAlgorithm:
                               nonfinite_indices=[x['indices'] for x in examples], nonfinite_examples=examples,
                               nonfinite_indices_truncated=len(bad) > 100,
                               finite=finite if values.size else None,
-                              assessment_complete=bool(values.size and finite and physical),
-                              physical_checks_applied=bool(values.size and finite and physical),
+                              assessment_complete=bool(values.size and finite and physical and shape_valid),
+                              physical_checks_applied=bool(values.size and finite and physical and shape_valid),
                               configuration_review={k: v for k, v in review.items() if k not in {'settings', 'unit_suggestions'}},
                               suggested_unit=target[1] if target else None,
                               source_mapping={'source': channel.source, 'channel': selection.get('channel', channel.name),
@@ -622,18 +637,27 @@ class LegacyAlgorithm:
                 result["source_kind"] = spec["source_kind"]
                 result["calibration_status"] = spec["calibration_status"]
                 result["shape"] = list(values.shape)
+                from .numeric_supplements import supplements
+                extra_checks = supplements(values, ep, channel, field, target[0] if target else None,
+                    review['settings']['thresholds'], physical, getattr(context, 'workdir', None))
+                result['supplemental_checks'] = extra_checks
+                if any(check.get('verdict') == 'DO_NOT_USE' for check in extra_checks):
+                    result['supplemental_verdict'] = 'DO_NOT_USE'
+                result['review_candidates'] = [{'check': check['id'], 'needs_review': True,
+                    'events': check['events'], 'reason': check['reason']} for check in extra_checks
+                    if any(event.get('needs_review') for event in check['events'])]
                 imu_pair = None
                 if target and target[0] == 'accel' and physical and finite and values.size:
                     from .imu_pair import paired_bias
                     imu_pair = paired_bias(ep, channel, values, review)
                     result['imu_pair_check'] = imu_pair
                     if imu_pair['events']:
-                        result['review_candidates'] = [{'check': 'accel_bias',
+                        result['review_candidates'].append({'check': 'accel_bias',
                             'needs_review': True, 'events': imu_pair['events'],
-                            'reason': '联合输入发现加速度偏置线索，保留历史评分并请求复核。'}]
+                            'reason': '联合输入发现加速度偏置线索，保留历史评分并请求复核。'})
                 from .numeric_coverage import coverage
                 result['check_coverage'] = coverage(values, eligibility, review['settings']['thresholds'],
-                    result, physical, unit_reason, imu_pair)
+                    result, physical, unit_reason, imu_pair, extra_checks, shape_valid)
                 result['coverage_complete'] = result['check_coverage']['coverage_complete']
                 joint_result = (result.get('numeric') or {}).get('joint') or {}
                 for event in joint_result.get('events', []):

@@ -25,7 +25,15 @@ def _recommend_episode(episode, plugins, params=None, selected=None):
         hook = getattr(plugin, 'input_bindings', None)
         if parameter_status == 'valid' and callable(hook):
             try:
-                bindings += hook(episode, effective)
+                for binding in hook(episode, effective):
+                    existing = next((b for b in bindings if b.get('parameter') == binding.get('parameter')
+                                     and b.get('channel') == binding.get('channel')), None)
+                    if existing is None:
+                        bindings.append(binding)
+                    else:
+                        # Enrich source evidence without replacing the caller's logical reference.
+                        for key, value in binding.items():
+                            existing.setdefault(key, value)
             except ValueError as exc:
                 status, reason = 'missing_input', str(exc)
         details = {}

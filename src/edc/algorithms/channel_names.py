@@ -1,48 +1,31 @@
 """Logical channel names are references, never destructive source renames."""
 import copy
-import re
+
+from edc.data.channel_registry import NAME_PATTERN, load_channel_registry
+
+# Compatibility export; validation always reads an isolated registry snapshot.
+STANDARD_CHANNELS = load_channel_registry()['channels']
 
 
-# Framework vocabulary, not a LeRobot feature-name or ROS-topic standard.
-STANDARD_CHANNELS = {
-    'rgb/head': {'modality': 'rgb', 'camera_role': 'head'},
-    'rgb/chest': {'modality': 'rgb', 'camera_role': 'chest'},
-    'rgb/wrist/left': {'modality': 'rgb', 'camera_role': 'wrist', 'side': 'left'},
-    'rgb/wrist/right': {'modality': 'rgb', 'camera_role': 'wrist', 'side': 'right'},
-    'rgb/wrist/main': {'modality': 'rgb', 'camera_role': 'wrist'},
-    'depth/head': {'modality': 'depth', 'camera_role': 'head'},
-    'depth/chest': {'modality': 'depth', 'camera_role': 'chest'},
-    **{f'{kind}/arm/{side}/{role}': {'modality': modality, 'side': side, 'source_kind': role}
-       for kind, modality in [('joint', 'joint_space'), ('pose', 'pose')]
-       for side in ('left', 'right', 'main') for role in ('feedback', 'command')},
-    **{f'joint/gripper/{side}/{role}': {
-        'modality': 'joint_space', 'side': side, 'device_type': 'gripper',
-        **({'source_kind': role} if role != 'state' else {})}
-       for side in ('left', 'right', 'main') for role in ('state', 'feedback', 'command')},
-    'joint/head/state': {'modality': 'joint_space', 'body_part': 'head'},
-    'joint/lift/state': {'modality': 'joint_space', 'body_part': 'lift'},
-    'odometry/base': {'modality': 'odometry'},
-}
-_NAME = re.compile(r'[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)+(?:@[a-z][a-z0-9_]*)?')
-
-
-def _validate_name(name):
-    if not isinstance(name, str) or not _NAME.fullmatch(name):
+def _validate_name(name, registry=None):
+    if not isinstance(name, str) or not NAME_PATTERN.fullmatch(name):
         raise ValueError(f'Invalid logical_name: {name!r}; use rgb/chest or rgb/chest@front')
+    standards = registry['channels'] if registry is not None else load_channel_registry()['channels']
     base = name.split('@', 1)[0]
-    if base not in STANDARD_CHANNELS and '__' not in base.split('/')[0]:
+    if base not in standards and '__' not in base.split('/')[0]:
         raise ValueError(f'Unknown logical_name: {name}; custom names require a team__ namespace')
-    return STANDARD_CHANNELS.get(base, {})
+    return standards.get(base, {})
 
 
-def _check_semantics(name, spec, source):
-    expected = _validate_name(name)
+def _check_semantics(name, spec, source, registry=None):
+    expected = _validate_name(name, registry)
     representation = spec.get('representation', {})
     actual = {**spec, 'camera_role': representation.get('camera_role'),
               'device_type': representation.get('device_type')}
-    position = spec.get('field_metadata', {}).get('position', {})
-    if position.get('source_kind') not in (None, 'unknown'):
-        actual['source_kind'] = position['source_kind']
+    for field, metadata in spec.get('field_metadata', {}).items():
+        role = metadata.get('source_kind')
+        if expected.get('source_kind') and role not in (None, 'unknown', expected['source_kind']):
+            raise ValueError(f'{source}.{field}: logical_name {name} conflicts with source_kind={role!r}')
     from edc.data.ir.modalities import normalize_modality
     if actual.get('modality'):
         actual['modality'] = normalize_modality(actual['modality'])
@@ -54,12 +37,13 @@ def _check_semantics(name, spec, source):
 
 def validate_logical_names(profile):
     """Validate explicit declarations without inferring missing physical metadata."""
+    registry = load_channel_registry(profile.get('channel_registry'))
     seen = {}
     for source, spec in profile.get('channels', {}).items():
         name = spec.get('logical_name')
         if name is None:
             continue
-        _check_semantics(name, spec, source)
+        _check_semantics(name, spec, source, registry)
         if any(ch in source for ch in '*?['):
             raise ValueError(f'{source}: logical_name requires an exact channel binding, not a wildcard')
         if name in seen:
@@ -67,14 +51,15 @@ def validate_logical_names(profile):
         seen[name] = source
 
 
-def validate_channel_index(channels):
+def validate_channel_index(channels, registry=None):
+    registry = load_channel_registry(registry)
     index = {}
     for source, channel in channels.items():
         name = getattr(channel, 'logical_name', None)
         if name is None:
             continue
         _check_semantics(name, {key: getattr(channel, key, None) for key in
-            ('modality', 'body_part', 'side', 'source_kind', 'field_metadata', 'representation')}, source)
+            ('modality', 'body_part', 'side', 'source_kind', 'field_metadata', 'representation')}, source, registry)
         if name in index:
             raise ValueError(f'Ambiguous logical_name {name}: {index[name]}, {source}')
         if name in channels and name != source:
@@ -89,7 +74,7 @@ def resolve_channel(episode, reference):
         raise ValueError('Channel reference must be a nonempty string')
     if not episode.channels and callable(getattr(episode, 'open', None)):
         episode.open()
-    index = validate_channel_index(episode.channels)
+    index = validate_channel_index(episode.channels, getattr(episode, 'profile', {}).get('channel_registry'))
     if reference in index:
         return index[reference]
     if reference in episode.channels:
@@ -100,13 +85,26 @@ def resolve_channel(episode, reference):
 def channel_catalog(episode):
     """List loaded channels and their source/feature evidence, without reading payloads."""
     episode.open()
-    validate_channel_index(episode.channels)
+    validate_channel_index(episode.channels, getattr(episode, 'profile', {}).get('channel_registry'))
     storage = getattr(episode, 'image_storage', None)
+    declared = getattr(episode, 'profile', {}).get('channels', {})
+    logical = {c.logical_name for c in episode.channels.values() if c.logical_name}
     return {'schema_version': 'dqs_channel_catalog_v1', 'episode_id': episode.id,
+        'channel_registry': load_channel_registry(getattr(episode, 'profile', {}).get('channel_registry')),
+        'binding_coverage': {
+            'source_channel_count': len(episode.channels),
+            'logical_channel_count': len(logical),
+            'without_logical_name': [c.name for c in episode.channels.values() if not c.logical_name],
+            'missing_declared_logical_names': [spec['logical_name'] for spec in declared.values()
+                if spec.get('logical_name') and spec['logical_name'] not in logical]},
         'channels': [{'logical_name': getattr(c, 'logical_name', None), 'channel': c.name,
             'modality': c.modality, 'fields': list(c.fields), 'sensor_id': c.sensor_id,
+            'robot_part': c.robot_part,
+            'part_definition': copy.deepcopy(getattr(episode, 'profile', {}).get('parts', {}).get(c.robot_part)),
+            'value_available': c.value_available, 'image_available': c.image_available,
             'side': c.side, 'source_kind': c.source_kind, 'unit': c.unit,
             'field_metadata': copy.deepcopy(c.field_metadata),
+            'frame_evidence': copy.deepcopy(c.frame_evidence),
             'representation': copy.deepcopy(c.representation),
             'image_storage': (storage(c.name) if callable(storage) else 'unknown') if c.image_available else None,
             'time_source': c.time_source, 'clock': c.clock, 'count': c.count,

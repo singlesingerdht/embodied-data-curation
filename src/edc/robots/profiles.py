@@ -4,16 +4,17 @@ import copy
 import re
 from pathlib import Path
 import yaml
+from edc.data.channel_registry import read_unique_yaml
 
 
 def profile_dir():
     return Path(os.environ.get("EDC_CONFIG_HOME", Path.home() / ".config" / "edc")) / "robots"
 
 
-def load_profile(value=None):
+def load_profile(value=None, *, base=None):
     if value is None:
         return {}
-    profile = copy.deepcopy(value) if isinstance(value, dict) else yaml.safe_load(Path(value).read_text())
+    profile = copy.deepcopy(value) if isinstance(value, dict) else read_unique_yaml(Path(value).read_text())
     if not isinstance(profile, dict):
         raise ValueError("Robot profile must be a mapping")
     if profile.get("schema_version") != 1 or not profile.get("version"):
@@ -64,9 +65,30 @@ def load_profile(value=None):
                 raise ValueError(f"Invalid source_kind: {name}")
             if item.get("calibration_status", "unknown") not in {"confirmed", "pending", "unknown"}:
                 raise ValueError(f"Invalid calibration_status: {name}")
+            if 'representation' in item and not isinstance(item['representation'], dict):
+                raise ValueError(f'representation must be a mapping: {name}')
+        if 'orientation' in fields:
+            item = metadata.get('orientation', {})
+            representation = item.get('representation') or channel.get('representation', {})
+            if representation.get('kind') in {'quaternion', 'rpy', 'rotation_matrix'}:
+                from edc.data.transforms.orientation import orientation_spec, sample_shape
+                declared = dict(representation)
+                unit = item.get('unit', channel.get('unit'))
+                if 'unit' not in declared and unit is not None:
+                    declared['unit'] = unit
+                normalized = orientation_spec(declared)
+                if unit not in (None, 'unknown', normalized['unit']):
+                    raise ValueError(f'{name}: orientation representation unit conflicts with field unit')
+                if item.get('dimensions') is not None and tuple(item['dimensions']) != sample_shape(declared):
+                    raise ValueError(f'{name}: orientation dimensions conflict with representation')
         origin = channel.get("time_source", "unknown")
         if origin not in {"unknown", "acquisition", "container", "playback", "synthetic"}:
             raise ValueError(f"Invalid time_source: {origin}")
+    if 'channel_registry' in profile:
+        from edc.data.channel_registry import load_channel_registry
+        registry_base = (Path(value).resolve().parent if not isinstance(value, dict)
+                         else Path(base) if base is not None else Path.cwd())
+        profile['channel_registry'] = load_channel_registry(profile['channel_registry'], base=registry_base)
     from edc.algorithms.channel_names import validate_logical_names
     validate_logical_names(profile)
     from edc.robots.mapping import validate_mapping_config

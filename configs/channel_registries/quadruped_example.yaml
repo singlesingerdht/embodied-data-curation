@@ -1,0 +1,16 @@
+# Configuration example only; no real source, calibration or hardware approval is claimed.
+schema_version: edc_channel_registry_v1
+version: quadruped-example-1
+channels:
+  lab__imu/leg/front_left:
+    modality: imu
+    side: left
+  lab__imu/leg/front_right:
+    modality: imu
+    side: right
+  lab__imu/leg/rear_left:
+    modality: imu
+    side: left
+  lab__imu/leg/rear_right:
+    modality: imu
+    side: right

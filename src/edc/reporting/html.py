@@ -76,6 +76,11 @@ def reports(record):
 
 def findings(item):
     result = []
+    if item.get('supplemental_verdict') == 'DO_NOT_USE':
+        result.append('动作指令超出已确认的独立限位：筛选建议排除，原算法评分保留。')
+    if any(candidate.get('check') in {'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'}
+           for candidate in item.get('review_candidates', [])):
+        result.append('发现运动后恒值区间，可能为正常保持或数值冻结，需要复核；不据此确认采集故障。')
     if item.get('inspection_object') == 'derived_preview':
         result.append('检查对象为派生预览；该结果不能证明原始 JPEG／视频编码完整性。')
     elif item.get('inspection_object') == 'original_encoded_video':
@@ -177,11 +182,15 @@ def configuration_panel(profile, params, normalization=None, recommendations=Non
                    if policy == 'auto' else '自动换算已关闭：调用方须自行准备 SI 数据并声明其真实单位；非 SI 或未知物理输入被阻止。'
                    if policy == 'manual' else '历史运行未记录自动换算策略；不能据此认定已完成单位适配。')
     units = '；'.join(f'{key}={value}' for key, value in review['unit_suggestions'].items())
-    labels = {'joint': '关节反馈', 'cmd': '动作指令', 'imu': 'IMU', 'pose_freeze': '位姿冻结'}
+    labels = {'joint': '关节反馈', 'cmd': '动作指令', 'imu': 'IMU', 'pose_freeze': '位姿冻结',
+              'command_limits': '动作指令独立限位', 'joint_freeze': '关节反馈冻结候选',
+              'cmd_freeze': '动作指令冻结候选', 'gyro_freeze': '角速度冻结候选',
+              'accel_freeze': '加速度冻结候选'}
     descriptions = {'vel_threshold': '相邻样本差阈值（非每秒速度）', 'velocity_peak': '单步差峰值',
                     'reset_ratio': '大步差占比（非 Home 复位）', 'limits': '逐维范围',
                     'jerk_threshold': '二阶样本差阈值（非物理 jerk）', 'min_run': '最短冻结样本数',
                     'lookback': '回看样本数', 'freeze_eps': '冻结位移阈值',
+                    'motion_threshold': '此前运动全幅差阈值（非速度）',
                     'gyro_max': '角速度幅值上限', 'acc_max': '加速度幅值上限',
                     'gyro_bias_max': '角速度偏置上限', 'acc_bias_max': '加速度偏置上限',
                     'min_static_frames': '最短静止样本数'}
@@ -189,11 +198,15 @@ def configuration_panel(profile, params, normalization=None, recommendations=Non
     for group, values in review['settings']['thresholds'].items():
         for key, value in values.items():
             value = '未设置，不检查该范围' if value is None else json.dumps(value, ensure_ascii=False)
+            description = ('恒值区间全幅差阈值' if key == 'freeze_eps' and group != 'pose_freeze'
+                           else descriptions[key])
             unit = ('样本' if key in {'min_run', 'lookback', 'min_static_frames'} else '比例' if key == 'reset_ratio'
+                    else {'joint_freeze': 'rad', 'cmd_freeze': 'rad', 'gyro_freeze': 'rad/s',
+                          'accel_freeze': 'm/s²'}[group] if group in {'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'}
                     else 'rad' if key == 'limits' else 'rad/样本' if group == 'joint'
                     else 'rad/样本²' if group == 'cmd' else 'm' if key == 'freeze_eps'
                     else 'm/样本' if group == 'pose_freeze' else 'rad/s' if key.startswith('gyro') else 'm/s²')
-            rows.append(f'<tr><td>{esc(labels[group])}</td><td>{esc(descriptions[key])}<span class="muted block">{esc(key)}</span></td><td>{esc(value)}</td><td>{esc(unit)}</td></tr>')
+            rows.append(f'<tr><td>{esc(labels[group])}</td><td>{esc(description)}<span class="muted block">{esc(key)}</span></td><td>{esc(value)}</td><td>{esc(unit)}</td></tr>')
     return ('<section class="report-section" data-section="configuration"><h3>参数与单位确认</h3>'
         f'<p class="notice">{esc(state)}。有限值检查始终执行；相关物理检查须完成确认。</p>'
         f'<p>默认建议单位系统：SI。{esc(units)}。</p><p>{esc(policy_note)}</p>'
@@ -266,7 +279,8 @@ def numeric_panel(records, root):
     downloads = []
     states = {'evaluated': '已检查', 'not_applicable': '不适用', 'unconfigured': '未配置',
               'pending_confirmation': '待确认', 'insufficient_input': '缺少有效输入／区段',
-              'blocked_nonfinite': '有限值异常，未执行物理项', 'unsupported': '当前未实现'}
+              'blocked_nonfinite': '有限值异常，未执行物理项', 'unsupported': '当前未实现',
+              'invalid_configuration': '配置与当前字段维度不匹配'}
     for record in records:
         if record['algorithm']['id'] != 'Numeric_Check':
             continue
@@ -293,7 +307,8 @@ def numeric_panel(records, root):
             else:
                 checks = []
                 for check in coverage.get('checks', []):
-                    outcome = {'finding': '发现线索／异常', 'no_finding': '本项未发现异常'}.get(check.get('outcome'), '未作判断')
+                    outcome = {'finding': '发现线索／异常', 'no_finding': '本项未发现异常',
+                               'observation': '恒值观察，未判故障'}.get(check.get('outcome'), '未作判断')
                     checks.append('<tr>' + ''.join('<td>' + esc(v) + '</td>' for v in (
                         check['name'], states.get(check['status'], check['status']), outcome,
                         json.dumps(check.get('threshold'), ensure_ascii=False) if check.get('threshold') is not None else '—',
@@ -301,6 +316,27 @@ def numeric_panel(records, root):
                 subchecks.append('<details class="subdetail"><summary>' + esc(label) + ' · 分项检查覆盖</summary>'
                     '<div class="scroll"><table><tr><th>子项</th><th>执行状态</th><th>结果</th><th>阈值</th><th>单位／基准</th><th>说明</th></tr>'
                     + ''.join(checks) + '</table></div></details>')
+            for check in item.get('supplemental_checks', []):
+                events = check.get('events', []) + check.get('observations', [])
+                if not events:
+                    continue
+                evidence = json.dumps({'source_mapping': check['source_mapping'],
+                    'timeline': check.get('timeline'), 'events': events[:20]}, ensure_ascii=False, indent=2)
+                event_rows = []
+                for event in events[:20]:
+                    interval = (f"[{event['start']}, {event['stop']})" if 'start' in event else event['source_row'])
+                    duration = event.get('duration_s')
+                    meaning = event.get('interpretation') or f"值 {event['value']:g}，允许 [{event['lower']:g}, {event['upper']:g}] rad"
+                    event_rows.append('<tr>' + ''.join('<td>' + esc(value) + '</td>' for value in (
+                        event['source_component_index'], interval,
+                        f'{duration:g} s' if duration is not None else '—', meaning)) + '</tr>')
+                subchecks.append('<details class="subdetail"><summary>' + esc(label + ' · ' + check['name'])
+                    + (' · 指令越界，筛选排除（原评分保留）' if check.get('verdict') == 'DO_NOT_USE' else ' · 区间证据，恒值不等于采集故障')
+                    + '</summary><p>行号从 0 开始，区间 [start, stop)；持续时间仅来自当前通道有效记录时间。'
+                    '预览最多 20 条，全部事件保存在原始记录及 CSV。</p><div class="scroll"><table>'
+                    '<tr><th>源分量</th><th>源行／区间</th><th>记录时间跨度</th><th>说明</th></tr>'
+                    + ''.join(event_rows) + '</table></div><details><summary>来源与原始证据</summary><pre>'
+                    + esc(evidence) + '</pre></details></details>')
             source_unit = item.get('source_unit', item.get('unit')) or '未知'
             execution_unit = (item.get('unit') or '未知') if item.get('input_scope') == 'SI' else '未进入 SI 物理检测' if item.get('input_scope') == 'recorded_finiteness_only' else '旧记录未区分'
             conversion = (item.get('unit_normalization_reason') or ('已自动换算' if source_unit != item.get('unit') else '原始已为 SI')) if item.get('input_scope') else '历史记录未保存'

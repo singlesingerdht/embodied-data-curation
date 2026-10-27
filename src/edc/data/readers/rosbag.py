@@ -63,7 +63,7 @@ class RosBagReader(DataReader):
                     image = modality == 'image' and 'depth' not in name.lower() and connection.msgtype.endswith(('/Image', '/CompressedImage'))
                     topics[name] = TopicInfo(name=name, msg_type=connection.msgtype, modality=modality,
                         fields=infer_fields(name, connection.msgtype),
-                        value_available=modality in {'joint_state','cmd','imu','pose'},
+                        value_available=modality in {'joint_state','cmd','imu','pose','odometry'},
                         image_available=image, image_compressed=connection.msgtype.endswith('/CompressedImage'),
                         source=self._path, timestamps=[], time_source='container')
                     acquired[name], sequences[name], recorded[name] = [], [], []
@@ -74,6 +74,8 @@ class RosBagReader(DataReader):
                 try:
                     message = reader.deserialize(raw, connection.msgtype)
                     from .timeline import header_nanoseconds
+                    from .ros_metadata import record_odometry_frames
+                    record_odometry_frames(topic, message, topic.count - 1)
                     acquired[name].append(header_nanoseconds(message))
                     sequences[name].append(getattr(getattr(message, 'header', None), 'seq', None))
                 except Exception:

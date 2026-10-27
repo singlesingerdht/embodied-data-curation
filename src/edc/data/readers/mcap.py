@@ -26,7 +26,7 @@ try:
 except ImportError:
     _HAS_ROSBAGS = False
 
-_NUMERIC_MODALITIES = {MODALITY_IMU, MODALITY_JOINT_STATE, MODALITY_CMD, MODALITY_POSE}
+_NUMERIC_MODALITIES = {MODALITY_IMU, MODALITY_JOINT_STATE, MODALITY_CMD, MODALITY_POSE, 'odometry'}
 
 
 class McapReader(DataReader):
@@ -101,7 +101,10 @@ class McapReader(DataReader):
                         store, typename = ros_stores[ch.topic]
                         from .timeline import header_nanoseconds
                         decode = store.deserialize_cdr if ch.message_encoding == 'cdr' else store.deserialize_ros1
-                        stamp = header_nanoseconds(decode(msg.data, typename))
+                        decoded = decode(msg.data, typename)
+                        stamp = header_nanoseconds(decoded)
+                        from .ros_metadata import record_odometry_frames
+                        record_odometry_frames(ti, decoded, ti.count)
                     except Exception as exc:
                         errors.setdefault(ch.topic + ':header', str(exc))
                 raw_header[ch.topic].append(stamp)

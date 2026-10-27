@@ -10,6 +10,9 @@
 
 </div>
 
+
+0.2.0a2：中间层姿态自动统一为 XYZW 单位四元数；支持参数化的 107 项逻辑通道词表及 IMU、里程计、手部、夹爪、触觉模板。源值审计、适用边界和迁移说明见 [姿态契约](docs/framework/ORIENTATION_HAND_TACTILE.md)。
+
 ## 最新动态
 
 - **2026-10-26**：公共 Python／CLI 统一使用 `edc`；安装包为 `embodied-data-curation`，源码按六个模块组织。

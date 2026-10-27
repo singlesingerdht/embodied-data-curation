@@ -1,0 +1,30 @@
+# Logical declaration slots. Bind actual recorded sources in dataset.source_bindings.
+schema_version: 1
+id: channel_registry_example
+version: '1'
+channel_registry:
+  ref: ../channel_registries/lab_example.yaml
+channels:
+  imu/main:
+    logical_name: imu/main
+    modality: imu
+    fields: [ang_vel, lin_acc, orientation]
+    time_source: unknown
+    clock: null
+    source_kind: unknown
+    calibration_status: unknown
+    field_metadata:
+      ang_vel: {quantity: angular_velocity, dimensions: [3], unit: null, semantic_status: pending}
+      lin_acc: {quantity: acceleration, dimensions: [3], unit: null, semantic_status: pending}
+      orientation: {quantity: orientation, dimensions: [4], unit: null, semantic_status: pending}
+  lab__tactile/palm:
+    logical_name: lab__tactile/palm
+    modality: tactile
+    side: left
+    fields: [taxels]
+    unit: null
+    dimensions: null
+    time_source: unknown
+    clock: null
+    source_kind: unknown
+    calibration_status: unknown

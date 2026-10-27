@@ -1,0 +1,12 @@
+# Configuration example only; no real source, calibration or hardware approval is claimed.
+defaults:
+  selection: explicit
+methods:
+  Numeric_Check:
+    params:
+      channels:
+      - odometry/base
+  Dedup_Check:
+    params:
+      channels:
+      - odometry/base

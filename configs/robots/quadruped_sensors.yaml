@@ -1,0 +1,152 @@
+# Opt-in configuration; bind and confirm actual hardware. Unknown IMU orientation is not assumed to be quaternion.
+schema_version: 1
+id: quadruped_sensors
+version: '1'
+parts:
+  base:
+    type: base
+    side: unknown
+  front_left:
+    type: leg
+    side: left
+  front_right:
+    type: leg
+    side: right
+  rear_left:
+    type: leg
+    side: left
+  rear_right:
+    type: leg
+    side: right
+channel_registry:
+  ref: ../channel_registries/quadruped_example.yaml
+channels:
+  odometry/base:
+    logical_name: odometry/base
+    modality: odometry
+    robot_part: base
+    fields:
+    - position
+    - orientation
+    - lin_vel
+    - ang_vel
+    - pose_covariance
+    - twist_covariance
+    source_kind: unknown
+    time_source: unknown
+    clock: null
+    calibration_status: unknown
+    coordinate_frame: null
+    field_metadata:
+      position:
+        quantity: length
+        dimensions:
+        - 3
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+      orientation:
+        quantity: orientation
+        dimensions:
+        - 4
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+        representation:
+          kind: quaternion
+          order: xyzw
+      lin_vel:
+        quantity: velocity
+        dimensions:
+        - 3
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+      ang_vel:
+        quantity: angular_velocity
+        dimensions:
+        - 3
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+      pose_covariance:
+        quantity: pose_covariance
+        dimensions:
+        - 36
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+      twist_covariance:
+        quantity: twist_covariance
+        dimensions:
+        - 36
+        unit: null
+        coordinate_frame: null
+        semantic_status: pending
+  imu/base:
+    logical_name: imu/base
+    modality: imu
+    robot_part: base
+    fields:
+    - ang_vel
+    - lin_acc
+    - orientation
+    source_kind: unknown
+    time_source: unknown
+    clock: null
+    calibration_status: unknown
+    coordinate_frame: null
+    field_metadata:
+      ang_vel:
+        quantity: angular_velocity
+        dimensions:
+        - 3
+        unit: null
+        semantic_status: pending
+      lin_acc:
+        quantity: acceleration
+        dimensions:
+        - 3
+        unit: null
+        semantic_status: pending
+      orientation:
+        quantity: orientation
+        dimensions: null
+        unit: null
+        semantic_status: pending
+        representation:
+          kind: unknown
+  lab__imu/leg/front_left:
+    logical_name: lab__imu/leg/front_left
+    modality: imu
+    robot_part: front_left
+    fields:
+    - ang_vel
+    - lin_acc
+    - orientation
+    source_kind: unknown
+    time_source: unknown
+    clock: null
+    calibration_status: unknown
+    coordinate_frame: null
+    field_metadata:
+      ang_vel:
+        quantity: angular_velocity
+        dimensions:
+        - 3
+        unit: null
+        semantic_status: pending
+      lin_acc:
+        quantity: acceleration
+        dimensions:
+        - 3
+        unit: null
+        semantic_status: pending
+      orientation:
+        quantity: orientation
+        dimensions: null
+        unit: null
+        semantic_status: pending
+        representation:
+          kind: unknown
+    side: left

@@ -46,7 +46,7 @@ Video_Integrity:
 现有 channels 源名与 Visual_Quality cameras 语义选择保持兼容。
 Visual_Quality 胸前评分档仍未支持，rgb/chest 不会变成 wrist。
 
-初始通用目录由 src/edc/channel_names.py 维护：RGB/深度相机、双臂关节与末端，
+通用目录由 src/edc/data/channel_registry.yaml 维护，原有 RGB/深度相机、双臂关节与末端，
 反馈和指令分别命名。自定义使用 team__ 前缀，例如 lab__tactile/left。
 同部位多设备使用实例名，例如 rgb/chest@front 和 rgb/chest@rear；
 请求 rgb/chest 不会自动挑其中一路。映射必须是精确源名，不能用通配符绑定。
@@ -60,6 +60,14 @@ Visual_Quality 胸前评分档仍未支持，rgb/chest 不会变成 wrist。
 | joint/head/state | 头部关节；倾角、伸缩等物理量在各字段单独登记 |
 | joint/lift/state | 升降关节；位置与速度、effort 分别登记物理量及单位 |
 | odometry/base | 基座里程计类别；具体 pose/twist 字段仍需读取映射 |
+| imu/main、imu/base、imu/head、imu/chest | IMU 逻辑通道；具体安装位置、单位和校准由配置声明 |
+| imu/wrist/{left,right,main} | 腕部 IMU；side 与已声明左右位置须一致 |
+
+IMU 沿用 `modality: imu`，字段为 `ang_vel`、`lin_acc` 和可选 `orientation`。
+分别登记每个字段的物理量、维度与单位，不能把一个通道级单位套到全部字段。
+多个同位置 IMU 可用 `imu/main@primary`、`imu/main@backup`，不自动选一路。
+数据侧通过 `source_bindings` 绑定真实 topic；待绑定写 `null`，运行明确提示缺失。
+完整入口见 [IMU 声明与配置](IMU_CONFIGURATION.md)。
 
 `representation.device_type: gripper` 是用户注册的设备证据。
 已登记为 dexterous_hand 的通道不能绑定 gripper 逻辑名；未知设备类型不会由名称自动补齐。
@@ -103,3 +111,7 @@ with edc.open_dataset(source, profile=robot_yaml) as dataset:
 ## 本库验收
 
 逻辑名／原名、SI 与显式时钟映射的契约测试见 tests/edc；版本和实测结果见 [STATUS](STATUS.md)。迁移前真实 X1 报告未随库分发。
+
+## 参数文件化目录
+
+当前标准词表 107 项／21 模态，支持 robot.channel_registry.ref 引用团队 YAML/JSON 扩展。完整清单见 [CHANNEL_INVENTORY](CHANNEL_INVENTORY.md)，参数文件、CLI、支持边界和迁移要求见 [CHANNEL_REGISTRY](CHANNEL_REGISTRY.md)。edc channels 查看词表；传入数据和 --profile 可列出实际绑定及缺口。

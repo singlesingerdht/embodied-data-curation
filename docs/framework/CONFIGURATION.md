@@ -34,6 +34,10 @@ episodes:
 - `capture` 保存本批次的单位、时间来源、clock、标定和变换。填写 `scope` 说明适用批次；`capture.channels` 的键使用源名或逻辑名，补充单位与时间字段；`capture.transforms` 和 `capture.calibration` 提供本批次完整声明。
 - `backend` 使用 `auto/official/compat` 选择读取实现；依赖缺失时不偷偷切换。数据格式支持不代替机器人或算法验收。
 
+IMU 的三层声明示例见 [IMU_CONFIGURATION](IMU_CONFIGURATION.md)，总入口为
+`configs/imu.yaml`。它通过数据侧 `source_bindings: {imu/main: null}` 明确保留待绑定状态；
+在填入实际源 topic/feature 前拒绝打开数据，不创建虚假传感器或自动使用里程计代替。
+
 ## 机器人端
 
 [完整 X1 Pro](../../configs/robots/x1_pro.yaml) 和 [独立单臂](../../configs/robots/single_arm.yaml) 为入口。型号 `model` 与工程设备代号 `instance_id` 分开；工程代号未确认则保持空。
@@ -65,6 +69,14 @@ channels:
 `robot_part` 关联关节、末端和腕相机；工具部件通过 `arm` 关联其机械臂。共享头部／胸前相机无须归入某条臂。未知字段保持未知，logical_name 不会补出单位、指令／反馈或标定。
 
 确认可带 `applicability: {dataset_ids: [batch_a], instance_id: cell_01_arm_03}`；运行核对适用数据集与设备，不符合即失败。批次专用时钟和标定放在 dataset.capture 中；不以“同一型号”证明可以复用。机器人配置不允许 `path/tasks/episodes/dataset/allowed_tasks`。
+
+## 姿态统一
+
+从 0.2.0a2 起，公共数据入口和算法入口的 `orientation` 自动统一为 N×4 XYZW
+单位四元数。源配置仍填写真实编码：RPY 需写明固定 XYZ 轴及 deg/rad，矩阵需写明
+布局，四元数需写明分量顺序；ROS 标准消息可提供 schema 证据。配置示例、源值审计
+及兼容迁移见 [姿态与手部通道](ORIENTATION_HAND_TACTILE.md)。`unit_policy: manual`
+不会关闭姿态统一。表示未知或数据非法时明确失败，不重采样、不改变坐标系或原时间。
 
 ## 算法端
 
@@ -127,3 +139,10 @@ stages:
 阶段结果含数据引用、run ID、记录、质量放行、所选轨迹和证据；只读 `context.upstream` 提供上游信息。变换另返回 output/params/source_mapping，自动校验后才获得可供复检的引用。
 
 `status` 表示阶段处理是否完成；`delivery_status=ready/suspended` 表示是否可交付。`outputs` 给出终端数据引用、放行轨迹和质量状态，`pending` 给出挂起原因。编辑／增强新版本清除原版本质量资格，必须复检；复核后用 `--resume` 重算推荐与放行，并只复用身份、参数、版本和证据均匹配的运行。
+
+## 中间层通道词表
+
+机器人配置支持 channel_registry: {ref: ../channel_registries/lab_example.yaml}，引用路径相对于机器人配置文件。配置解析／导出冻结完整词表，dataset.source_bindings 继续独立绑定实际源通道。标准目录由框架随包维护，团队扩展使用 team__ 命名，禁止覆盖标准名语义；重复键与版本冲突明确报错。详见 [通道配置](CHANNEL_REGISTRY.md) 和 [全部 topic 清单](CHANNEL_INVENTORY.md)。
+
+
+不同构型的 parts / robot_part、左右腕 IMU、自定义通道及 Odometry 六字段配置见 [ROBOT_TOPOLOGY_CHANNELS](ROBOT_TOPOLOGY_CHANNELS.md)。文件名、机器人 ID 与源 topic 分别配置，不靠名称推断硬件或同步关系。
