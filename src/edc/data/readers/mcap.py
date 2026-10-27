@@ -12,7 +12,7 @@ from edc.data.ir.metadata import (
     FORMAT_MCAP, MODALITY_IMAGE, MODALITY_IMU,
     MODALITY_JOINT_STATE, MODALITY_CMD, MODALITY_POSE,
 )
-from edc.data.ir.values import infer_fields, ros_values_to_dict
+from edc.data.ir.values import infer_fields, recorded_ros_fields, ros_values_to_dict
 
 try:
     from mcap.reader import make_reader
@@ -64,10 +64,11 @@ class McapReader(DataReader):
                     msg_type = schema.name if schema else ch.message_encoding
                     mod = classify_channel(ch.topic, msg_type, self.hints)
                     ros = ch.message_encoding in {"cdr", "ros1"} and _HAS_ROSBAGS
+                    numeric = mod in _NUMERIC_MODALITIES or recorded_ros_fields(msg_type) is not None
                     ti = TopicInfo(name=ch.topic, msg_type=msg_type, modality=mod,
-                        value_available=mod in _NUMERIC_MODALITIES and ros,
+                        value_available=numeric and ros,
                         image_available=mod == MODALITY_IMAGE and ros,
-                        fields=infer_fields(ch.topic, msg_type) if mod in _NUMERIC_MODALITIES else None,
+                        fields=infer_fields(ch.topic, msg_type) if numeric else None,
                         timestamps=[], source=self._path, time_source="container")
                     topics[ch.topic] = ti
                     raw_container[ch.topic], raw_header[ch.topic] = [], []

@@ -9,6 +9,14 @@ import numpy as np
 from typing import Any, Dict, List, Optional
 
 
+def recorded_ros_fields(msg_type: str = "") -> Optional[List[str]]:
+    """Known source fields whose physical meanings still require configuration."""
+    normalized = (msg_type or "").lower().replace("/msg/", "/")
+    if normalized == "kuavo_msgs/robothandposition":
+        return ["left_hand_position", "right_hand_position"]
+    return None
+
+
 def infer_fields(name: str, msg_type: str = "") -> Optional[List[str]]:
     """通道名/ROS 类型 → 能产出的物理量清单。
 
@@ -18,6 +26,9 @@ def infer_fields(name: str, msg_type: str = "") -> Optional[List[str]]:
     n = name.lower()
 
     # ── ROS msg_type 推断 ──
+    recorded = recorded_ros_fields(msg_type)
+    if recorded is not None:
+        return recorded
     if "jointstate" in mt:
         return ["position", "velocity", "effort"]
     if "imu" in mt:
@@ -74,6 +85,14 @@ def infer_fields(name: str, msg_type: str = "") -> Optional[List[str]]:
 def ros_values_to_dict(msg: Any, msg_type: str = "") -> Dict[str, Any]:
     """ROS 消息 → 规范字典 (参考 DF rosbag.py)。"""
     mt = (msg_type or "").lower()
+    recorded = recorded_ros_fields(msg_type)
+    if recorded is not None:
+        missing = [name for name in recorded if not hasattr(msg, name)]
+        if missing:
+            raise ValueError(f"{msg_type}: missing source fields: {', '.join(missing)}")
+        # No concatenation, normalization, inferred angle units, or missing-side fill.
+        return {name: list(getattr(msg, name)) for name in recorded}
+
     def xyz(v):
         return [float(v.x), float(v.y), float(v.z)] if all(hasattr(v, k) for k in "xyz") else list(v)
 

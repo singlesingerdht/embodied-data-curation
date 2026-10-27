@@ -161,6 +161,12 @@ def classify_channel(name: str, msg_type: str = "",
     if msg_type in {'nav_msgs/msg/Odometry', 'nav_msgs/Odometry'}:
         return 'odometry'
 
+    from .values import recorded_ros_fields
+    if recorded_ros_fields(msg_type) is not None:
+        # Raw hand arrays need configured semantics; topic words cannot make
+        # the two source arrays one joint/pose position field.
+        return MODALITY_OTHER
+
     lower = name.lower()
     parts = lower.split("/")
 

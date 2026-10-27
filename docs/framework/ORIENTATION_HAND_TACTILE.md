@@ -17,6 +17,31 @@
 构型部件由 `parts` 定义；同一机器人可以只有一只夹爪，也可以双手、多指或混合配置。
 源设备自定义 ROS 消息仍需要相应 reader/decoder，不能靠写一个逻辑名自动解码。
 
+### 乐聚原始手部消息读取
+
+`kuavo_msgs/robotHandPosition`（ROS2 类型名为
+`kuavo_msgs/msg/robotHandPosition`）按源消息分别暴露
+`left_hand_position`、`right_hand_position`，不生成额外的 `position`。
+ROS1 bag、ROS2 DB3／MCAP 与独立 ROS MCAP 共用这个字段解码规则。
+保留原数组类型、分量顺序和时间；缺少任一声明字段会明确失败，不补值或复制另一侧。
+
+```python
+import edc
+
+with edc.open_dataset('/path/to/recording.bag') as dataset:
+    with next(dataset.iter_episodes()).opened() as episode:
+        left = episode.read_signal('/control_robot_hand_position', 'left_hand_position')
+        right = episode.read_signal('/control_robot_hand_position', 'right_hand_position')
+```
+
+该消息默认 `modality: other`，物理量、单位和指令／反馈保持未知；
+`uint8` 或值域 0—100 都不能证明它是百分比或角度。
+数值检查可逐元素检查 NaN／Inf，物理算法仍需使用者确认语义、单位及其要求的条件。
+需要按左右部件选择时，在机器人配置中显式使用
+`select: {channel: /control_robot_hand_position, field: left_hand_position, indices: [...]}`
+绑定源字段与分量；右侧选择 `right_hand_position`，索引按实际设备配置填写。
+验证与边界见 [手部字段修复验收](../validation/robot_hand_position_20261027/README.md)。
+
 新入口是 `configs/hand_gripper_tactile.yaml`，引用机器人、数据集、算法三个子配置和质量阶段。
 模板包含左右灵巧手、夹爪及掌心/指尖触觉的可选声明；删除实际不存在的设备，再绑定真实源。
 12 个示例声明使用既有标准名和实例后缀，没有虚增标准词表数量。

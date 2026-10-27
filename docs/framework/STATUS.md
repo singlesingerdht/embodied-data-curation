@@ -7,6 +7,30 @@
 本次源码提交不分发真实原始数据、详细运行材料或待核查的 Dayan 插件；
 文中未随仓库分发的历史证据以“本地留存”标识。
 
+## 乐聚手部源字段读取修复（2026-10-27）
+
+- 修复 `kuavo_msgs/robotHandPosition` 解码：实际的
+  `left_hand_position` 与 `right_hand_position` 分别进入 Channel，不再从 topic
+  名推断不存在的 `position`。ROS1 bag、ROS2 DB3/MCAP 与独立 ROS MCAP 共用类型优先规则；
+  缺字段明确失败，保留数组类型、分量顺序和各自时间轴。
+- 实际乐聚 bag 中两侧各为 **666×6、uint8**，与 rosbags 直接解码逐元素一致；原始
+  header/container 时间、行映射和 bag SHA-256 `2b49e6fe9505eeb32635cfc21d1440ed4464a1cddcd1ae6001745b1668621126`
+  未变。不存在的 `/control_robot_hand_position.position` 读取被拒绝。
+- 同一默认配置下 `Numeric_Check` 从此前的 `processing_error`（缺 `position`）变为
+  `completed`，共 **11 个字段报告**，手部两字段均完成有限值检查；单位、物理量、指令／反馈
+  仍未确认，`physical_checks_applied=false`、`assessment_complete=false`，不宣称物理质量通过。
+  `/kuavo_arm_traj` 的空 velocity/effort 仍明确未评估。
+- 未修改算法目录；此前清单中的 **77 个算法相关 Python 文件**哈希一致，方法、评分和阈值不变。
+- 新增 10 个回归用例；仅含本次修复的提交快照源码 **698 passed / 7 skipped**，
+  仓库外当前 wheel 的手部专项 **10 passed**。此前本地完整工作区的 712 项通过结果
+  另含 14 项尚未随本次提交的工作流测试，不能混作本次提交的用例数量。
+  wheel 在仓库外对同一真实 bag 读出两字段并完成 Numeric_Check；干净基础安装仅
+  NumPy/PyYAML，9 项内置算法可发现，未强制安装 ROS、GPU 或模型依赖，`pip check` 通过。
+- 证据：[修复说明](../validation/robot_hand_position_20261027/README.md)、
+  [安装摘要](../validation/robot_hand_position_20261027/publication-package.json)。真实 summary 本机留存：
+  `/mnt/public/dht/dqs_development_results/robot_hand_position_fix_20261027/summary.json`。
+  这是读取适配修复，不代表该机器人其他自定义消息或物理条件已完成验收。
+
 ## 默认姿态统一与 GitHub 交付范围（0.2.0a2，2026-10-27）
 
 - 公共数据入口、配置入口、CLI 和算法输入的 orientation 自动统一为 N×4 XYZW

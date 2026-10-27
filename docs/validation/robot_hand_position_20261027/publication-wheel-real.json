@@ -1,0 +1,1 @@
+{"module": "/tmp/edc-hand-publication-nc0pyez4/installed/edc/__init__.py", "fields": ["left_hand_position", "right_hand_position"], "shape": [[666, 6], [666, 6]], "run": {"run_id": "20261027T130103Z-52f3b9ae41", "episodes": 1, "status_counts": {"completed": 1}, "status": "completed"}, "source_unchanged": true}

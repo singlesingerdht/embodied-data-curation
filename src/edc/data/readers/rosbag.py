@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from .base import DataReader, DependencyMissing
 from edc.data.ir.metadata import DataInfo, TopicInfo, classify_channel
-from edc.data.ir.values import infer_fields, ros_values_to_dict
+from edc.data.ir.values import infer_fields, recorded_ros_fields, ros_values_to_dict
 
 
 def _paths(path):
@@ -63,7 +63,8 @@ class RosBagReader(DataReader):
                     image = modality == 'image' and 'depth' not in name.lower() and connection.msgtype.endswith(('/Image', '/CompressedImage'))
                     topics[name] = TopicInfo(name=name, msg_type=connection.msgtype, modality=modality,
                         fields=infer_fields(name, connection.msgtype),
-                        value_available=modality in {'joint_state','cmd','imu','pose','odometry'},
+                        value_available=(modality in {'joint_state','cmd','imu','pose','odometry'}
+                                         or recorded_ros_fields(connection.msgtype) is not None),
                         image_available=image, image_compressed=connection.msgtype.endswith('/CompressedImage'),
                         source=self._path, timestamps=[], time_source='container')
                     acquired[name], sequences[name], recorded[name] = [], [], []
