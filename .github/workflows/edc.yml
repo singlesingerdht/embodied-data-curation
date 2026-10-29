@@ -22,7 +22,15 @@ jobs:
           /tmp/curation-base/bin/pip install dist/*.whl
           cd /tmp
           /tmp/curation-base/bin/edc algorithms > algorithms.json
-          /tmp/curation-base/bin/python -c "import json; items=json.load(open('algorithms.json')); assert len(items) == 66; assert sum('quality_cpu' in item.get('presets', []) for item in items) == 9; assert sum('quality_indicators' in item.get('presets', []) for item in items) == 57"
+          /tmp/curation-base/bin/python - <<'PY'
+          import json
+          items = json.load(open('algorithms.json'))
+          indicators = [item for item in items if 'quality_indicators' in item.get('presets', [])]
+          assert len(items) == 66
+          assert sum('quality_cpu' in item.get('presets', []) for item in items) == 9
+          assert len(indicators) == 57
+          assert all(item['data_requirements'] or item['required_inputs'] for item in indicators)
+          PY
           /tmp/curation-base/bin/edc demo fetch synthetic --output base-demo
           /tmp/curation-base/bin/edc run base-demo --algorithm Structure_Check --output base-results
           /tmp/curation-base/bin/pip check

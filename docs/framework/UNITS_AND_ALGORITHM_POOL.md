@@ -183,8 +183,9 @@ spec = AlgorithmSpec(
 供原始有限值等无单位操作使用；不能让实际物理方法绕过 SI 要求。
 可安装示例见 [configured_position.py](../../examples/plugins/algorithm/configured_position.py)。
 
-目前 data_requirements 支持固定 channel 或参数指定 channel_param、modality、field、SI unit、
-source_kind、calibration_status、time_sources、clock_required、min_samples 和 when 条件。
+目前 data_requirements 支持固定 channel 或参数指定 channel_param（字符串或字符串数组）、modality、field、SI unit、
+source_kind、calibration_status、time_sources、clock_required、min_samples、min_channels 和 when 条件。
+指标池的数组参数会逐通道检查并记录逻辑名到实际来源的绑定；`required_channels` 和 `field_map` 同样解析逻辑名。没有显式通道选择时，检查状态为 deferred，实际默认范围由指标自身预检确定并记入绑定；没有默认范围预检的插件会缺输入，不会把未检查的数据误报为已满足。
 clock_required 只检查单路时钟声明，跨路共同时钟/映射仍须算法专有预检，不能把多个非空 clock 当作同一时钟。
 复杂相机映射、坐标系、跨路关系和多种可选输入继续在插件 preflight(episode, params) 中明确校验，
 成功返回 ('runnable', '')，失败返回状态和原因。模型/GPU 仍延迟加载，不在预检中执行。

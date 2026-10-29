@@ -57,6 +57,8 @@ def dedup_inputs(episode, selected=None, info=None):
 def capabilities(episode):
     channels = list(episode.channels.values())
     caps = set()
+    if getattr(episode, 'path', None) is not None:
+        caps.add('dataset_file')
     if any(c.value_available for c in channels):
         caps.add("numeric")
     if any(c.value_available and c.modality == "pose" and "position" in c.fields for c in channels):
@@ -185,9 +187,13 @@ def _preflight(plugin, episode, params=None):
             episode = selected_inputs(episode, params, spec.id)
         except ValueError as exc:
             return 'missing_input', str(exc)
-    unmet = [r for r in evaluate_requirements(spec, episode, params) if r['status'] == 'missing_input']
+    requirements = evaluate_requirements(spec, episode, params)
+    custom = getattr(plugin, 'preflight', None)
+    unmet = [r for r in requirements if r['status'] == 'missing_input']
     if unmet:
         return 'missing_input', '; '.join(reason for row in unmet for reason in row['reasons'])
+    if any(r['status'] == 'deferred' for r in requirements) and not callable(custom):
+        return 'missing_input', 'Select channels explicitly or provide algorithm preflight for the default scope'
     if spec.id == 'Dedup_Check' and (params or {}).get('channel'):
         selected = params['channel']
         if selected not in {name for name, _ in dedup_inputs(episode, selected)}:

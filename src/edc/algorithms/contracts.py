@@ -102,7 +102,8 @@ def resolve_parameters(spec, supplied=None):
 def validate_requirements(requirements, schema):
     from edc.data.ir.units import si_unit
     allowed = {'id', 'channel', 'channel_param', 'modality', 'field', 'unit', 'source_kind',
-               'calibration_status', 'time_sources', 'clock_required', 'min_samples', 'when'}
+               'calibration_status', 'time_sources', 'clock_required', 'min_samples',
+               'min_channels', 'when'}
     ids = set()
     if not isinstance(requirements, (tuple, list)):
         raise ValueError('data_requirements must be an array')
@@ -124,6 +125,8 @@ def validate_requirements(requirements, schema):
             raise ValueError('Invalid data_requirements time_sources')
         if 'min_samples' in req and (type(req['min_samples']) is not int or req['min_samples'] < 1):
             raise ValueError('data_requirements min_samples must be positive integer')
+        if 'min_channels' in req and (type(req['min_channels']) is not int or req['min_channels'] < 1):
+            raise ValueError('data_requirements min_channels must be positive integer')
         if 'clock_required' in req and type(req['clock_required']) is not bool:
             raise ValueError('data_requirements clock_required must be boolean')
         if 'when' in req and not isinstance(req['when'], dict):
@@ -136,8 +139,12 @@ def validate_requirements(requirements, schema):
         if 'channel_param' in req:
             kinds = schema['properties'][req['channel_param']].get('type')
             kinds = kinds if isinstance(kinds, list) else [kinds]
-            if 'string' not in kinds or set(kinds) - {'string', 'null'}:
-                raise ValueError('data_requirements channel_param must reference a string parameter')
+            if not set(kinds) & {'string', 'array'} or set(kinds) - {'string', 'array', 'null'}:
+                raise ValueError('data_requirements channel_param must reference a string or string-array parameter')
+            if 'array' in kinds:
+                items = schema['properties'][req['channel_param']].get('items', {})
+                if items.get('type') != 'string':
+                    raise ValueError('data_requirements channel_param arrays must contain strings')
 
 
 def evaluate_requirements(spec, episode, params):
@@ -145,59 +152,82 @@ def evaluate_requirements(spec, episode, params):
     rows = []
     for requirement in spec.data_requirements:
         active = all(params.get(k) == v for k, v in requirement.get('when', {}).items())
-        name = requirement.get('channel') or params.get(requirement.get('channel_param'))
-        row = {'id': requirement['id'], 'requirement': copy.deepcopy(requirement),
-               'channel': name, 'status': 'not_required', 'reasons': []}
-        if not active:
+        raw = requirement.get('channel') or params.get(requirement.get('channel_param'))
+        names = list(raw) if isinstance(raw, (list, tuple)) else [raw]
+        # An omitted optional collection is resolved by the algorithm's own
+        # preflight (for the indicator pool this means all matching channels).
+        if isinstance(raw, (list, tuple)) and not raw:
+            names = [None]
+        for index, requested in enumerate(names):
+            row_id = requirement['id'] if not isinstance(raw, (list, tuple)) else f"{requirement['id']}[{index}]"
+            row = {'id': row_id, 'requirement': copy.deepcopy(requirement),
+                   'channel': requested, 'status': 'not_required', 'reasons': []}
+            if isinstance(raw, (list, tuple)):
+                row['channel_index'] = index
+            if not active:
+                rows.append(row)
+                continue
+            parameter = spec.parameter_schema.get('properties', {}).get(requirement.get('channel_param'), {})
+            kinds = parameter.get('type', [])
+            kinds = kinds if isinstance(kinds, list) else [kinds]
+            if requested is None and 'array' in kinds:
+                row['status'] = 'deferred'
+                row['reasons'].append('No explicit channel selection; algorithm preflight resolves its default scope')
+                rows.append(row)
+                continue
+            name = requested
+            if isinstance(name, str):
+                from edc.algorithms.channel_names import resolve_channel
+                try:
+                    name = resolve_channel(episode, name)
+                    row['channel'] = name
+                except ValueError:
+                    pass
+            c = episode.channels.get(name) if isinstance(name, str) else None
+            reasons = row['reasons']
+            if c is None:
+                reasons.append(f'{name or requirement.get("channel_param")}: required channel is unavailable')
+            else:
+                row['provided'] = {k: getattr(c, k, None) for k in ('modality', 'count', 'time_source', 'clock', 'source_kind')}
+                if len(names) < requirement.get('min_channels', 1):
+                    reasons.append(f'{requirement.get("channel_param")}: requires >= {requirement["min_channels"]} channels')
+                if requirement.get('modality') and c.modality != requirement['modality']:
+                    reasons.append(f'{name}: modality must be {requirement["modality"]}')
+                if requirement.get('modality') == 'rgb' and not c.image_available:
+                    reasons.append(f'{name}: readable RGB frames are required')
+                field = requirement.get('field')
+                field_map = params.get('field_map', {}) if isinstance(params, dict) else {}
+                mapped = field_map.get(name, field_map.get(requested, {})) if isinstance(field_map, dict) else {}
+                actual_field = mapped.get(field, field) if isinstance(mapped, dict) and field else field
+                if actual_field and (actual_field not in c.fields or not c.value_available):
+                    reasons.append(f'{name}.{actual_field}: required numeric field is unavailable')
+                elif actual_field:
+                    metadata = c.field_spec(actual_field)
+                    for key in ('source_kind', 'calibration_status'):
+                        if key in requirement and metadata.get(key) != requirement[key]:
+                            reasons.append(f'{name}.{actual_field}: {key} must be {requirement[key]}')
+                    if 'unit' in requirement:
+                        try:
+                            require_si_field(episode, name, actual_field, requirement['unit'])
+                        except UnitInputError as exc:
+                            reasons.append(str(exc))
+                if not actual_field:
+                    for key in ('source_kind', 'calibration_status'):
+                        if key in requirement and getattr(c, key, None) != requirement[key]:
+                            reasons.append(f'{name}: {key} must be {requirement[key]}')
+                if c.count < requirement.get('min_samples', 1):
+                    reasons.append(f'{name}: requires >= {requirement.get("min_samples", 1)} samples')
+                if 'time_sources' in requirement and (c.time_source not in requirement['time_sources']
+                        or c.timestamps is None or len(c.timestamps) != c.count):
+                    reasons.append(f'{name}: requires per-row timestamps from {requirement["time_sources"]}')
+                elif 'time_sources' in requirement:
+                    import numpy as np
+                    if not np.isfinite(c.timestamps).all():
+                        reasons.append(f'{name}: timestamps must be finite')
+                if requirement.get('clock_required') and not c.clock:
+                    reasons.append(f'{name}: explicit clock is required')
+            row['status'] = 'missing_input' if reasons else 'satisfied'
             rows.append(row)
-            continue
-        if isinstance(name, str):
-            from edc.algorithms.channel_names import resolve_channel
-            try:
-                name = resolve_channel(episode, name)
-                row['channel'] = name
-            except ValueError:
-                pass
-        c = episode.channels.get(name) if isinstance(name, str) else None
-        reasons = row['reasons']
-        if c is None:
-            reasons.append(f'{name or requirement.get("channel_param")}: required channel is unavailable')
-        else:
-            row['provided'] = {k: getattr(c, k, None) for k in ('modality', 'count', 'time_source', 'clock', 'source_kind')}
-            if requirement.get('modality') and c.modality != requirement['modality']:
-                reasons.append(f'{name}: modality must be {requirement["modality"]}')
-            if requirement.get('modality') == 'rgb' and not c.image_available:
-                reasons.append(f'{name}: readable RGB frames are required')
-            field = requirement.get('field')
-            if field and (field not in c.fields or not c.value_available):
-                reasons.append(f'{name}.{field}: required numeric field is unavailable')
-            elif field:
-                metadata = c.field_spec(field)
-                for key in ('source_kind', 'calibration_status'):
-                    if key in requirement and metadata.get(key) != requirement[key]:
-                        reasons.append(f'{name}.{field}: {key} must be {requirement[key]}')
-                if 'unit' in requirement:
-                    try:
-                        require_si_field(episode, name, field, requirement['unit'])
-                    except UnitInputError as exc:
-                        reasons.append(str(exc))
-            if not field:
-                for key in ('source_kind', 'calibration_status'):
-                    if key in requirement and getattr(c, key, None) != requirement[key]:
-                        reasons.append(f'{name}: {key} must be {requirement[key]}')
-            if c.count < requirement.get('min_samples', 1):
-                reasons.append(f'{name}: requires >= {requirement.get("min_samples", 1)} samples')
-            if 'time_sources' in requirement and (c.time_source not in requirement['time_sources']
-                    or c.timestamps is None or len(c.timestamps) != c.count):
-                reasons.append(f'{name}: requires per-row timestamps from {requirement["time_sources"]}')
-            elif 'time_sources' in requirement:
-                import numpy as np
-                if not np.isfinite(c.timestamps).all():
-                    reasons.append(f'{name}: timestamps must be finite')
-            if requirement.get('clock_required') and not c.clock:
-                reasons.append(f'{name}: explicit clock is required')
-        row['status'] = 'missing_input' if reasons else 'satisfied'
-        rows.append(row)
     return rows
 
 
@@ -210,8 +240,19 @@ def bind_parameters(spec, episode, supplied=None):
     for req in spec.data_requirements:
         key = req.get('channel_param')
         if key and effective.get(key) is not None:
-            source = resolve_channel(episode, effective[key])
-            effective[key] = source
-            if not any(row.get('parameter') == key for row in bindings):
-                bindings.append({'parameter': key, 'requested': requested[key], 'channel': source})
+            value = effective[key]
+            if isinstance(value, (list, tuple)):
+                sources = [resolve_channel(episode, name) for name in value]
+                if len(set(sources)) != len(sources):
+                    raise ValueError(f'Duplicate {key} selection after resolving logical names')
+                effective[key] = sources
+                if not any(row.get('parameter', '').startswith(key + '[') for row in bindings):
+                    for row in channel_parameter_bindings(episode, {'channels': list(requested[key])}):
+                        row['parameter'] = key + row['parameter'][len('channels'):]
+                        bindings.append(row)
+            else:
+                source = resolve_channel(episode, value)
+                effective[key] = source
+                if not any(row.get('parameter') == key for row in bindings):
+                    bindings.append({'parameter': key, 'requested': requested[key], 'channel': source})
     return effective, bindings

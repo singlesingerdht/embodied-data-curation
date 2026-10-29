@@ -6,6 +6,12 @@
 
 仓库还登记了 57 个按模态展开的质量指标，使用 `quality_indicators` 预设显式选择。它们与下面九项共享 Dataset → Episode → Channel、逻辑通道、SI、时间来源和 `dqs_record_v1` 契约，全部由本仓库实现或登记，不需要单独安装算法包。指标清单位于 [`inventory.json`](../../src/edc/algorithms/quality/algorithms/Indicator_Checks/inventory.json)；`implemented: false` 的项目会在推荐池中说明“当前版本未实现／缺少输入”，不会被执行为通过。
 
+指标池同时声明配置端输入契约：55 项通过 `data_requirements` 声明模态、字段、所需 SI 单位、语义角色、标定、时间来源、最少样本及最低通道数；M8/M9 分别通过 `required_inputs` 声明文件和 TF 资源。同步指标还需自有预检确认独立采集时间轴及共同时钟；声明覆盖不代表所有指标已实现或在当前数据上可用。
+
+**使用者端**在算法配置中填写 `channels`，可列出多个逻辑通道；不填时由指标预检按模态选择默认范围，需求检查显示 `deferred`，实际范围仍写入输入绑定。`required_channels` 和 `field_map` 也支持逻辑名，推荐与执行共享实际源绑定。**算法开发者端**使用同一契约，`channel_param` 可引用字符串或字符串数组参数；未提供默认范围预检的插件必须显式指定输入。图像、位姿和同步相关的可选运行依赖在推荐端列出，基础安装不强制安装它们。
+
+指标输出保留原方法的事件、明细和来源证据，`score/passed/verdict` 均为 `null`、`assessment_complete=false`；执行完成与数据达标分别报告。配置及执行回归见 [指标契约验收](../validation/indicator_contracts_20261029/README.md)。
+
 ```bash
 edc algorithms                         # 显示 9 个默认 CPU 方法和 57 个内部指标
 edc run DATASET --preset quality_cpu   # 只运行稳定的九项默认方法

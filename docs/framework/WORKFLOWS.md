@@ -4,7 +4,7 @@
 
 **使用者端**使用总入口引用数据集、机器人、算法和工作流四类配置，支持导出完整单文件。机器人可供不同任务复用。详见 [统一配置](CONFIGURATION.md)。
 
-**算法开发者端**用 `AlgorithmSpec` 和 `run(context, params)`；算法只读取框架传入的通道及 SI 视图。外部插件的 `channel_param` 与通用 channels 同样解析逻辑名，推荐、预检与执行共用绑定。具体最低输入由 `data_requirements` / `input_requirements` / 自有 preflight 声明。
+**算法开发者端**用 `AlgorithmSpec` 和 `run(context, params)`；算法只读取框架传入的通道及 SI 视图。外部插件的 `channel_param` 与通用 channels 同样解析逻辑名，支持字符串或多通道数组；推荐、预检与执行共用绑定。具体最低输入由 `data_requirements` / `input_requirements` / 自有 preflight 声明，数组输入会逐通道保留检查结果。
 
 **阶段交接**携带 `dqs_dataset_ref_v1`，其中有数据集 ID、版本、实际位置、读取后端、配置快照、源文件哈希、episode ID 与 selector。它只是对已有存储的引用，不是新的数据文件格式。`edc.open_dataset_reference()` 校验后可重新打开，包括由不同文件组成的派生集合。
 

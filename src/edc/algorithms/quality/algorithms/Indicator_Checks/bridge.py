@@ -40,7 +40,6 @@ class EpisodeBridge:
                 modality=modalities.get(family(c), 'aux'),
                 value_available=c.value_available, image_available=c.image_available,
                 image_compressed=False, timestamps=list(c.timestamps) if c.timestamps is not None else None,
-                time_source={'acquisition': 'header', 'container': 'record'}.get(c.time_source, ''),
                 source=c.source)
         self._info = DataInfo(self.path, episode.format, topics,
             duration=max(valid, default=self.base)-self.base, start_time=self.base,

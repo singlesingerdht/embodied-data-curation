@@ -4,7 +4,17 @@
 
 当前算法池为 **66 个仓库内登记项**：`quality_cpu` 默认预设 9 个 CPU 方法，`quality_indicators` 预设 57 个模态指标，其中 46 个已实现、11 个登记但因实现或输入条件暂不可执行。全部算法均由本仓库实现或登记；基础安装不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。单独安装的集成只属于开发者接口，不改变这组核心数量。
 
-本次基线回归：源码测试 **702 passed / 23 skipped**；从当前源码构建的 wheel 在独立环境中可导入，核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），未加载 Torch、LeRobot 或 SciPy。格式读取器仍通过 `formats` 可选组提供 HDF5、MCAP、视频等支持；这些是数据格式依赖，不是算法包依赖。
+本次基线回归：源码及源码外安装 wheel 全量均为 **735 passed / 23 skipped**；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV，`pip check` 通过。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+
+## 指标池配置与执行契约（2026-10-29）
+
+- 55 项指标通过 `data_requirements` 声明通道、字段、SI、语义、标定和时间条件；M8/M9 分别声明 `dataset_file/tf_chain`。声明覆盖包括暂不可执行项，不把登记、实现与当前可用混为一谈。
+- `channel_param` 支持字符串数组，逐路解析逻辑名并检查最低通道数；`required_channels` 和 `field_map` 共用实际来源绑定。可选数组未指定时显示 `deferred`，由指标预检处理并记录默认范围；没有默认范围预检的插件明确缺输入。不同 clock 不因各自非空而视为共同 clock。
+- 修复默认 `channels: null` 的绑定记录错误、自定义数组漏解析、桥接层不支持的构造参数和数值内容检查多传参数的问题。图像、位姿及同步的可选执行依赖纳入推荐条件；M3 拒绝相互冲突的选择范围，M8 不要求无关传感器。
+- 合成执行核验覆盖图像、IMU、位姿、同步、文件及话题完整性；J1/J4/J5 默认与显式选择同一双臂时原始检测输出一致，A5 实际读到 `90 deg → π/2 rad` 且指令/反馈不混用，源文件哈希不变。底层计算的 110 个 Python 文件相对 `6c8d085` 全部未变；方法、评分及阈值不变。
+- 指标输出继续是原方法证据：`score/passed/verdict=null`、`assessment_complete=false`，执行完成不自动成为质量放行。
+- 契约专项 **65 passed**；源码及安装 wheel 全量各 **735 passed / 23 skipped**，集合重叠、不相加。安装包全量在仓库外运行，可选测试依赖复用本机环境；基础依赖另以干净 venv 验证。wheel/sdist 构建通过。23 项跳过为 16 项官方 LeRobot 依赖、3 项研究桥、3 项 GPU 扩展和 1 项未分发真实注册证据；本轮未新增真实机器人全量、官方 LeRobot 或 GPU 验收。
+- 证据与例子：[指标契约验收](../validation/indicator_contracts_20261029/README.md)、[摘要](../validation/indicator_contracts_20261029/validation.json)。CI 增加安装包的 57 项输入声明覆盖检查。
 
 ## X1 Pro Reset 标定接入（2026-10-29）
 

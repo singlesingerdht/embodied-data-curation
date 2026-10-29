@@ -115,13 +115,20 @@ def channel_catalog(episode):
 def resolve_channel_parameters(episode, params):
     """Shared adapter hook for explicitly declared channel-reference parameters."""
     result = copy.deepcopy(params)
-    if 'channels' in result:
+    if result.get('channels') is not None:
         names = result['channels']
         if not isinstance(names, list) or not names:
             raise ValueError('channels must be a nonempty list')
         result['channels'] = [resolve_channel(episode, n) for n in names]
         if len(set(result['channels'])) != len(names):
             raise ValueError('Duplicate channel selection after resolving logical names')
+    if result.get('required_channels') is not None:
+        names = result['required_channels']
+        if not isinstance(names, list):
+            raise ValueError('required_channels must be a list')
+        result['required_channels'] = [resolve_channel(episode, n) for n in names]
+        if len(set(result['required_channels'])) != len(names):
+            raise ValueError('Duplicate required channel selection after resolving logical names')
     for key in ('channel', 'primary', 'camera_channel'):
         if result.get(key) is not None:
             result[key] = resolve_channel(episode, result[key])
@@ -141,6 +148,20 @@ def resolve_channel_parameters(episode, params):
                 raise ValueError(f'Duplicate camera_types binding: {source}')
             resolved[source] = kind
         result['camera_types'] = resolved
+    if result.get('field_map') is not None:
+        if not isinstance(result['field_map'], dict):
+            raise ValueError('field_map must map channel names to fields')
+        mapped = {}
+        for name, fields in result['field_map'].items():
+            if (not isinstance(fields, dict) or any(
+                    not isinstance(key, str) or not key or not isinstance(value, str) or not value
+                    for key, value in fields.items())):
+                raise ValueError('field_map entries must map target fields to source field names')
+            source = resolve_channel(episode, name)
+            if source in mapped:
+                raise ValueError(f'Duplicate field_map binding: {source}')
+            mapped[source] = fields
+        result['field_map'] = mapped
     if result.get('families') is not None:
         if not isinstance(result['families'], dict):
             raise ValueError('families must map channel names to source groups')
@@ -163,15 +184,17 @@ def channel_parameter_bindings(episode, params):
         rows.append({'parameter': path, 'requested': requested, 'channel': source,
             'logical_name': c.logical_name, 'source': c.source,
             'source_mapping': copy.deepcopy(c.source_mapping)})
-    for i, requested in enumerate(params.get('channels', [])):
+    for i, requested in enumerate(params.get('channels') or []):
         append(f'channels[{i}]', requested, resolved['channels'][i])
+    for i, requested in enumerate(params.get('required_channels') or []):
+        append(f'required_channels[{i}]', requested, resolved['required_channels'][i])
     for key in ('channel', 'primary', 'camera_channel'):
         if params.get(key) is not None:
             append(key, params[key], resolved[key])
     for side, binding in (params.get('poses') or {}).items():
         if isinstance(binding, dict) and 'channel' in binding:
             append(f'poses.{side}.channel', binding['channel'], resolved['poses'][side]['channel'])
-    for key in ('camera_types', 'families'):
+    for key in ('camera_types', 'families', 'field_map'):
         for requested in (params.get(key) or {}):
             append(f'{key}.{requested}', requested, resolve_channel(episode, requested))
     return rows

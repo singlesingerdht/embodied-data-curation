@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-29",
+  "scope": "synthetic configuration and execution contracts; no new real robot acceptance",
+  "python": "3.13.11",
+  "tests": {
+    "focused": {
+      "passed": 65,
+      "skipped": 0
+    },
+    "source": {
+      "passed": 735,
+      "skipped": 23
+    },
+    "installed_wheel": {
+      "passed": 735,
+      "skipped": 23,
+      "isolated_from_source": true,
+      "optional_dependencies": "reused from system-site-packages; wheel installed into separate venv"
+    }
+  },
+  "base_install": {
+    "core_algorithms": 66,
+    "indicators": 57,
+    "data_requirements": 55,
+    "required_inputs": {
+      "M8": [
+        "dataset_file"
+      ],
+      "M9": [
+        "tf_chain"
+      ]
+    },
+    "heavy_libraries_loaded": false,
+    "distributions": [
+      [
+        "PyYAML",
+        "6.0.3"
+      ],
+      [
+        "embodied-data-curation",
+        "0.2.0a2"
+      ],
+      [
+        "numpy",
+        "2.5.4"
+      ],
+      [
+        "pip",
+        "25.3"
+      ]
+    ],
+    "pip_check": "passed"
+  },
+  "method_integrity": {
+    "baseline_commit": "6c8d0859eb71c8157063c7232942f4294ac9797c",
+    "computational_python_files": 110,
+    "changed_computational_files": []
+  },
+  "artifacts": [
+    {
+      "filename": "embodied_data_curation-0.2.0a2-py3-none-any.whl",
+      "sha256": "f38e250394c380e77ce627a5c6275f0e782d1919f38dfbdf56e67c7f6034be43"
+    },
+    {
+      "filename": "embodied_data_curation-0.2.0a2.tar.gz",
+      "sha256": "2382033375369e155e3f4a4bd1a0dbc970b02e695635846ff178208bf0306315"
+    }
+  ],
+  "not_revalidated": [
+    "real robot full quality run",
+    "official LeRobot runtime",
+    "GPU/model extensions"
+  ],
+  "skipped": {
+    "official_LeRobot_optional_dependency": 16,
+    "research_bridges": 3,
+    "GPU_extensions": 3,
+    "real_registration_evidence_not_distributed": 1
+  }
+}

@@ -88,13 +88,13 @@ def execute(plugin, context, params):
                 samples = list(enumerate(values))
                 if plugin.row['modality'] == 'imu':
                     check = (engine._check_imu_bias(c.name, ti, iter(values)) if code == 'I6'
-                             else engine._check_imu(c.name, ti, samples, iter(values), []))
+                             else engine._check_imu(c.name, ti, samples, iter(values)))
                 elif plugin.row['modality'] == 'joint':
-                    check = engine._check_joint_state(c.name, ti, samples, iter(values), [])
+                    check = engine._check_joint_state(c.name, ti, samples, iter(values))
                 elif plugin.row['modality'] == 'cmd':
-                    check = engine._check_joint_cmd(c.name, ti, samples, iter(values), [])
+                    check = engine._check_joint_cmd(c.name, ti, samples, iter(values))
                 else:
-                    check = engine._check_pose(c.name, ti, samples, iter(values), [])
+                    check = engine._check_pose(c.name, ti, samples, iter(values))
             checks.append(check)
         engine._enrich_events(info, checks)
         raw = {'checks': [asdict(c) for c in checks]}

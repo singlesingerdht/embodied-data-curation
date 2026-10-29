@@ -80,6 +80,56 @@ def test_repository_owned_indicator_pool_has_no_external_algorithm_dependency(mo
     assert not any(ident.startswith('dayan__') for ident in registry.plugins)
 
 
+def test_indicator_pool_exposes_structured_input_contract(monkeypatch):
+    install(monkeypatch, [])
+    registry = algorithms()
+    indicators = [plugin for plugin in registry.plugins.values()
+                  if 'quality_indicators' in plugin.spec.presets]
+    assert len(indicators) == 57
+    assert all(plugin.spec.data_requirements or plugin.spec.required_inputs for plugin in indicators)
+    for plugin in indicators:
+        schema = plugin.spec.parameter_schema
+        assert schema['properties']['channels']['type'] == ['array', 'null']
+        for requirement in plugin.spec.data_requirements:
+            parameter = requirement.get('channel_param')
+            if parameter:
+                assert parameter in schema['properties']
+                kinds = schema['properties'][parameter].get('type', [])
+                kinds = kinds if isinstance(kinds, list) else [kinds]
+                assert 'array' in kinds
+        if plugin.spec.id == 'M8':
+            assert plugin.spec.required_inputs == ('dataset_file',)
+        if plugin.spec.id == 'M9':
+            assert plugin.spec.required_inputs == ('tf_chain',)
+
+
+def test_array_channel_requirements_expand_and_defer_default_scope():
+    from edc.algorithms.contracts import evaluate_requirements
+    from edc.data.ir.dataset import Channel
+    channels = {
+        'left': Channel('left', 'joint_space', ['position'], 3, 'source', unit='rad',
+                        time_source='acquisition', timestamps=[0., 1., 2.], source_kind='feedback',
+                        calibration_status='confirmed', value_available=True,
+                        representation={'quantity': 'joint_angle', 'semantic_status': 'confirmed'}),
+        'right': Channel('right', 'joint_space', ['position'], 3, 'source', unit='rad',
+                         time_source='acquisition', timestamps=[0., 1., 2.], source_kind='feedback',
+                         calibration_status='confirmed', value_available=True,
+                         representation={'quantity': 'joint_angle', 'semantic_status': 'confirmed'}),
+    }
+    spec = AlgorithmSpec('fixture__array', '1', 'array', 'fixture', 'array contract',
+        parameter_schema={'type': 'object', 'properties': {
+            'channels': {'type': ['array', 'null'], 'default': None, 'items': {'type': 'string'}}}},
+        data_requirements=({'id': 'positions', 'channel_param': 'channels',
+                            'modality': 'joint_space', 'field': 'position', 'unit': 'rad',
+                            'source_kind': 'feedback', 'min_channels': 2},))
+    episode = SimpleNamespace(channels=channels)
+    rows = evaluate_requirements(spec, episode, {'channels': ['left', 'right']})
+    assert [row['id'] for row in rows] == ['positions[0]', 'positions[1]']
+    assert all(row['status'] == 'satisfied' for row in rows)
+    deferred = evaluate_requirements(spec, episode, {'channels': None})
+    assert deferred[0]['status'] == 'deferred'
+
+
 def dataset_plugin(calls, fail=False):
     from edc.data.ir.units import UnitInputError, require_si_field
     class Plugin:
