@@ -24,18 +24,20 @@
 - **数据接入**：Dataset → Episode → Channel，保留任务、显式轨迹边界、源字段、selector 和时间来源。
 - **算法选择**：展示完整可运行、部分可运行及不可运行的原因；默认执行前两类。部分执行不等于完整达标。
 - **明确输入**：逻辑名定位信号；原值保留，已确认物理量进入 SI 执行视图。指令／反馈分别绑定。
-- **有限工作流**：质量 → 价值方法与子集 → 价值评估 → 可选增强 → 质量复检。编辑副本也必须复检。
+- **有限工作流**：默认只做一轮可运行的质量检查，CPU 与 GPU alignment 同属可选质量方法；价值评估按需选择，编辑／增强生成新版本后必须复检。
 - **可追溯结果**：独立评分、事件、分布及证据，不产生跨算法总分；缺输入、待复核和执行失败分别记录。
-- **插件开发**：算法声明条件并实现 `run(context, params)`；安装插件后发现，无需修改核心分发表。
+- **算法归属**：当前发布池中的算法全部由本仓库实现和登记，不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。`AlgorithmSpec`／`run(context, params)` 以及 `edc.algorithms`／`edc.readers` 仍保留为后续仓库模块或明确安装的集成模块的开发接口，不会自动改变本仓库的发布算法池。
 
 ## 工作流
 
 ```mermaid
 flowchart TD
     A[数据＋机器人＋算法配置] --> B[输入检查与算法推荐]
-    B --> Q[依次运行所选质量算法]
+    B --> Q[质量算法池：CPU 方法与可选 GPU alignment]
     Q --> G{所选范围是否达标}
-    G -->|达标| V[推荐价值方法及各自可用轨迹]
+    G -->|达标| D{是否选择价值评估}
+    D -->|否| O[输出结果、数据引用与证据]
+    D -->|是| V[推荐价值方法及各自可用轨迹]
     G -->|需处理且已配置编辑| E[编辑并生成新数据版本]
     E --> C[一致性与来源校验]
     C --> Q2[重新质量检查]
@@ -44,11 +46,11 @@ flowchart TD
     P --> B
     V --> S[确定各方法的数据子集]
     S --> R[运行价值评估]
-    R --> U{是否配置增强}
-    U -->|否| O[输出结果、数据引用与证据]
-    U -->|是| N[增强并生成新版本]
+    R --> U{是否选择编辑或增强}
+    U -->|否| O
+    U -->|是| N[编辑或增强并生成新版本]
     N --> C2[一致性与来源校验]
-    C2 --> Q3[增强数据质量复检]
+    C2 --> Q3[新版本重新运行所选质量算法]
     Q3 --> G2{是否达标}
     G2 -->|是| O
     G2 -->|否| P2[挂起并说明原因]
@@ -56,13 +58,14 @@ flowchart TD
 
 箭头中的返回通过有限的显式阶段及恢复执行落实，不自动循环修改数据。人工复核不覆盖原分数，不把未执行项改成通过。处理完成与最终放行分别保存在 `status` 和 `delivery_status`。
 
+图中 GPU alignment 表示未来实现位置，当前公共包不依赖外部 GPU 算法或模型。默认运行当前可运行的质量方法；不可运行项保留原因，已执行范围之外不声称通过。价值评估通过显式添加 value 阶段选择。
+
 ## 快速开始
 
 Python ≥ 3.10。基础依赖仅 NumPy／PyYAML，格式与图像检查依赖单独安装；本仓库仍是私有开发交付，公开发布与许可核查见 [发布清单](docs/RELEASE_CHECKLIST.md)。
 
 ```bash
 pip install -e '.[formats,test]'
-pip install -e examples/plugins/algorithm
 
 # 明确标注的合成接口例程，不是真实任务或估值效果验证
 python examples/curation/make_example.py --output /tmp/edc-demo
@@ -127,7 +130,7 @@ X1 Pro 的 **32 路 topic、23 个逻辑名**合并在 [x1_pro.yaml](configs/rob
 
 ## 价值、编辑与增强
 
-CPU 基础包不强制安装研究或 GPU 环境。真实价值方法逐项接入和验收；数据集盘点、图像亮度变换是 **SDK 接口示例**，自动生产算法池排除这些示例。
+CPU 基础包不强制安装研究或 GPU 环境。默认 `quality_cpu` 预设保留九项 CPU 方法，仓库内的 `quality_indicators` 预设登记按模态展开的指标并按输入条件推荐；未实现或缺输入项明确挂起。真实价值方法逐项接入和验收；数据集盘点、图像亮度变换是 **SDK 接口示例**，自动生产算法池排除这些示例。
 
 价值方法各自推荐可用轨迹，并对自己的子集运行；上游质量结果通过只读 `context.upstream` 提供。需求条件化估值、相对已有数据的互补价值和使用后实际收益属于待验证研究方向，不写成已有工程收益。
 
@@ -162,6 +165,6 @@ embodied-data-curation/
 └── .github/workflows/
 ```
 
-算法插件使用 `edc.algorithms`，读取器插件使用 `edc.readers`；外部 ID 使用 `team__algorithm`。声明 `AlgorithmSpec`，实现 `run(context, params)`，并验证单位、时间、左右与失败隔离；dataset 方法可声明逐轨迹条件并提供集合预检。[插件模板](examples/plugins/algorithm)、[开发指南](docs/framework/PLUGIN_GUIDE.md)。
+当前算法池全部来自本仓库。后续仓库模块或明确安装的集成可使用 `edc.algorithms` 和 `edc.readers`，以 `team__algorithm` 命名并声明 `AlgorithmSpec`、实现 `run(context, params)`；它们不属于基础安装依赖，也不会自动进入生产推荐池。dataset 方法可声明逐轨迹条件并提供集合预检。[扩展模板](examples/plugins/algorithm)、[开发指南](docs/framework/PLUGIN_GUIDE.md)。
 
 三人协作分为数据接入与配置体验、算法插件与输入输出、串行工作流与闭环验收三个模块，负责人、难度和交付物统一见根目录 [FRIEND_VALIDATION.md](FRIEND_VALIDATION.md)。每轮验证统一到同一个 `main` 提交，修改通过分支和 PR 合入；方法接入、许可和公开发布独立验收。

@@ -1,10 +1,28 @@
 # 当前验收状态
 
-日期：**2026-10-27**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-16**，其余 CPU 适配 **ir-adapter-14**。
+日期：**2026-10-29**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-16**，Action_Smoothness 适配 **ir-adapter-18**，Reset_Detection 适配 **ir-adapter-15**，其余 CPU 适配 **ir-adapter-14**。
+
+当前算法池为 **66 个仓库内登记项**：`quality_cpu` 默认预设 9 个 CPU 方法，`quality_indicators` 预设 57 个模态指标，其中 46 个已实现、11 个登记但因实现或输入条件暂不可执行。全部算法均由本仓库实现或登记；基础安装不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。单独安装的集成只属于开发者接口，不改变这组核心数量。
+
+本次基线回归：源码测试 **702 passed / 23 skipped**；从当前源码构建的 wheel 在独立环境中可导入，核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），未加载 Torch、LeRobot 或 SciPy。格式读取器仍通过 `formats` 可选组提供 HDF5、MCAP、视频等支持；这些是数据格式依赖，不是算法包依赖。
+
+## X1 Pro Reset 标定接入（2026-10-29）
+
+- 用户确认历史 `quanta_x1` 标定文件与当前 X1 Pro 为同一台机器人。X1 Pro 配置接入 `edc_reset_calibration_v2`，使用左右末端反馈的三维 `position` Home、`tolerance1` 和 `tolerance2`；源单位和执行单位均为 `m`，作者标识沿用所有 CPU 方法的 `Repository contributors`。
+- Reset v2 按每个坐标分量保留首帧／末帧误差和双阈值分数，兼容原有单一 `reference/tolerance` 配置。实际 MCAP 上已能解析 `pose/arm/left/feedback` 与 `pose/arm/right/feedback`，本次结果为 `NEEDS_REVIEW`，不是标定缺失；具体误差在运行记录中保留。
+- 历史左右 `joint_pos` Home 为 7 维，当前 MCAP 反馈为 6 维，未确认关节顺序映射，配置标为 `deferred` 并不执行。姿态、夹爪、底盘、升降和头部历史项也逐项记录为延期，原因是当前字段、单位或标定对应关系尚未确认；没有因同机确认而虚构通道映射。
+- Numeric_Check 方法、评分和阈值未修改；其作者仍为 `Repository contributors`，`numeric_review` 仍需配置确认人对当前阈值和物理字段完成正式确认。作者标识与其他内置 CPU 方法一致。
+
+## Action_Smoothness jerk 输入修正（2026-10-29）
+
+- 修正动作平滑度算法：Savitzky-Golay 滤波后，在平滑位置轨迹上计算三阶 jerk；原始位置与平滑位置的高频残差不再参与 jerk，避免测量噪声按 `1 / dt^3` 放大。
+- 输出记录新增 `jerk_signal=filtered_position`、滤波参数、速度分布和时间轴重采样证据；动态帧不再因形态学填充进入静止 jerk，滤波边界增加过渡保护带；适配版本升为 `ir-adapter-18`。旧版本结果不改写，重新运行才使用新口径。
+- 对同一真实 X1 Pro MCAP 的 `/right_arm/end_pose` 复算：jerk RMS 从旧口径 `365.34 m/s³`，先降为滤波位置口径约 `98.36 m/s³`，再经均匀时间网格、动态帧排除和边界保护后为 `50.89 m/s³`，最大静止 jerk 为 `454.84 m/s³`。采集时间间隔中位数为 `3.992 ms`；容器时间存在 `0.038–11.403 ms` 抖动，不能用于证明同样的 jerk 结果。该数值仍受 11 点滤波窗口和静止分段影响，不能单独解释为真实机械振动。
+- 相关回归 **28 passed, 1 skipped**（`test_cpu_refinements.py`）。仓库全量测试未作为本次验收结论：当前环境缺少 `xxhash`/`lark`，且工作区已有未提交的插件和配置改动导致若干无关失败。
 
 本文件按阶段保留历史验收。0.2.0a2 的公共姿态读取契约以
 [姿态自动统一与迁移说明](ORIENTATION_HAND_TACTILE.md)为准。
-本次源码提交不分发真实原始数据、详细运行材料或待核查的 Dayan 插件；
+本次源码提交不分发真实原始数据或详细运行材料；
 文中未随仓库分发的历史证据以“本地留存”标识。
 
 ## 乐聚手部源字段读取修复（2026-10-27）
@@ -31,6 +49,15 @@
   `/mnt/public/dht/dqs_development_results/robot_hand_position_fix_20261027/summary.json`。
   这是读取适配修复，不代表该机器人其他自定义消息或物理条件已完成验收。
 
+## 可选质量方法与变换复检（本地工作区，2026-10-27）
+
+- 默认工作流只运行 quality；价值评估由使用者显式配置。CPU 与 GPU projection alignment 的接入位置均为 quality，设备、模型和输入条件决定可用性。真实 alignment 尚未迁入公共包，本轮没有运行真实 GPU 推理或真实价值模型。
+- 默认选择可运行方法并保留不可用原因；显式要求的方法未完成、运行失败或部分输入未评估不能视为通过。报告流程按实际配置展示，不再固定显示必经 value。
+- 编辑和增强的每个输出分支必须先接质量复检；缺失复检、复检父版本或绕过复检继续变换在创建输出前拒绝。新版本不能沿用旧版质量放行，复检失败不发布。旧配置需显式补充复检阶段，迁移边界见 [工作流](WORKFLOWS.md)。
+- 新增 14 项契约测试，覆盖可选 GPU 缺失／可用／关闭／显式要求／执行失败、可选价值、变换分支、复检失败及价值后编辑。GPU 情况使用契约替身，仅证明编排行为。
+- 源码全量 **686 passed / 23 skipped**；仓库外安装 wheel 全量 **686 passed / 23 skipped**。wheel／sdist 从隔离暂存的受版本管理文件构建；干净基础安装只有框架、NumPy、PyYAML 与 pip，核心算法池为 66 项（默认 CPU 9 项），未导入 Torch，pip check 通过。跳过项未算作通过。
+- 证据：[摘要](../validation/workflow-selection-20261027/summary.json)、[源码回归](../validation/workflow-selection-20261027/source-tests.log)、[安装包回归](../validation/workflow-selection-20261027/wheel-tests.log)。本轮变更尚未提交或推送 GitHub；下方历史交付记录保持原状。
+
 ## 默认姿态统一与 GitHub 交付范围（0.2.0a2，2026-10-27）
 
 - 公共数据入口、配置入口、CLI 和算法输入的 orientation 自动统一为 N×4 XYZW
@@ -46,13 +73,13 @@
   全量 **672 passed / 23 skipped**；官方 LeRobot 环境专项 **135 passed / 3 skipped**。
   集合重叠，不相加。全量跳过为 16 项官方可选依赖、3 项研究桥、3 项 GPU 扩展
   和 1 项未分发真实注册证据；官方依赖另在专项环境验证。
-- wheel / sdist 构建通过；全新基础环境仅 pip、NumPy、PyYAML 和本包，9 项内置算法
-  可发现，RPY 默认读取实际得到 XYZW，pip check 通过且未安装或导入 Torch。
+- wheel / sdist 构建通过；全新基础环境仅 pip、NumPy、PyYAML 和本包，66 项核心算法
+  可发现（默认 CPU 9 项、内部指标 57 项），RPY 默认读取实际得到 XYZW，pip check 通过且未安装或导入 Torch。
 - 真实 MCAP 的独立 odometry 配置读出 **2,414×4** XYZW；源文件 SHA-256、
   原数组、原元数据及时间戳保持不变，与原姿态的旋转矩阵最大差为 **1.31e-18 以下**。
   不将此结果扩展为真实 IMU、灵巧手或触觉的物理验收。
 - 本次提交包括上述功能及此前已验收的 IMU、odom、通道词表、手/夹爪/触觉模板和
-  数值补项；原始数据、详细真实运行材料及许可未确认的独立 Dayan 插件留在本地。
+  数值补项；原始数据和详细真实运行材料留在本地。
   GitHub 仓库保持私有；代码上传不代表公开分发许可已完成。
 
 可分发验证摘要及复现命令见 [本轮验收](../validation/canonical_orientation_20261027/README.md)。
@@ -82,11 +109,11 @@
 
 真实 MCAP 是本轮中间版本的输入与双臂绑定验证（记录 ir-adapter-13），不是最终全部功能或整机质量通过。最终子集／复核路径另由上述安装包测试验收。真实价值、编辑、增强效果与许可仍逐项待验收；接口示例不证明收益。CI 已调整到 EDC 配置与完整示例，远端实测状态以 Actions 为准。
 
-## 独立 Dayan 插件的分发边界
+## 仓库内质量指标池
 
-此前在本地审查的 plugins/dayan 是单独接入预览，上游许可证尚未确认。
-该插件、上游源码和对应真实运行材料不包含在本次 GitHub 提交或安装包中。
-下面的数值补项为框架自有实现，不代表已上传全部 Dayan 方法。
+质量指标已经并入 `src/edc/algorithms/quality/indicator_core`，由本仓库直接登记和执行，不依赖单独的指标发行包。
+原有 9 项 CPU 方法保持 `quality_cpu` 默认预设；相机、IMU、激光、关节、命令、位姿和跨模态指标使用 `quality_indicators` 预设单独选择。
+清单中的 `implemented: false` 只表示当前版本缺少该指标的实现或输入适配，推荐池会明确返回缺输入／未实现原因，不会伪装为通过。
 
 ## 初次迁库基线（0.1.0a3）
 
@@ -138,7 +165,6 @@ CPU 对照仅排除 `process_time_ms`、`adapter_elapsed_s` 和输出工件根�
 
 ```bash
 pip install -e '.[formats,test]'
-pip install -e examples/plugins/algorithm
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q -rs
 python -m build
 python scripts/verify_migration.py --source /path/to/original-repository --output /tmp/migration.json
@@ -159,15 +185,15 @@ python scripts/compare_cpu_methods.py --source /path/to/original-repository --ou
 - 基础 wheel 仅安装 NumPy / PyYAML，9 项内置算法发现、结构检查和 pip check 通过；仓库外完整合成工作流六阶段完成，编辑及增强均经过质量复检，恢复时六阶段全部复用。60 个内置方法文件与基线逐字节一致。源码分发排除示例读取器的构建目录；文档和报告同步分项完成度策略。
 - 详见 [validation.json](evidence/github_review_20261026/validation.json)、[源码回归](evidence/github_review_20261026/source-tests.log)、[官方专项](evidence/github_review_20261026/official-tests.log)、[安装包回归](evidence/github_review_20261026/wheel-tests.log)及[工作流验证](evidence/github_review_20261026/workflow.json)。均为合成回归，不冒充真实机器人新增验收；真实机器人限位、阈值与校准信息仍由实际规格确认，本轮未猜填配置。
 
-## Dayan 对照数值缺口：独立指令限位与冻结候选（2026-10-26）
+## 数值检查补项：独立指令限位与冻结候选（2026-10-26）
 
-- 在现有 Numeric_Check 中补 A5 角位置指令限位，以及 I7 / J7 / A7 的 IMU、关节反馈、动作指令数值冻结候选。沿用 9 个内置算法，不安装重复 Dayan 方法；新检测为仓库自有实现。具体参数、合成例子和未覆盖范围见 [补齐说明](NUMERIC_GAPS_20261026.md)。
+- 在现有 Numeric_Check 中补 A5 角位置指令限位，以及 I7 / J7 / A7 的 IMU、关节反馈、动作指令数值冻结候选。沿用原方法并将新增指标登记在仓库指标池；具体参数、合成例子和未覆盖范围见 [补齐说明](NUMERIC_GAPS_20261026.md)。
 - 指令限位独立配置为 command_limits.limits，逐分量闭区间检查，源值通过既有 SI 视图换算；不借用反馈限位。新越界结论进入筛选 exclude，原 score / passed / verdict 及检测器子项保留。未配置、维度不符、短输入、未知单位或陈旧确认保持未完成，不冒充 keep。
 - 数值冻结保留 Episode 内逐分量区间、原文件、selector、源分量和时间证据。普通恒值仅观察，运动后恒值进入复核，不能据此确认采集故障。末尾区间不遗漏；全幅差阈值避免累计漂移被判整段冻结，近恒值窗口可能重叠且不作为独立样本相加。正常动作保持可经复核排除误报。
 - 时间跨度只使用当前通道有限、严格递增且逐行对应的 acquisition / container 记录时间；未知、播放、合成、重复或回退时间只报告源行区间。LeRobot 图像 / 视频读取入口、转换与源时间映射未修改。新结果与完整事件 CSV 由现有 catalog / _runs 发现，HTML 展示源分量、行区间、时间跨度与分项状态。
 - Numeric 适配器升级 ir-adapter-16；筛选策略为 episode_filter_v3 / workflow_gate_v3。新增阈值纳入确认摘要，旧确认需审阅新增项后重新签署；未代替机主确认真实配置。旧直接 assess 入口仍仅执行原检测器；补项通过注册算法 run(context, params) 执行。历史输出不改写。
 - 新增 **43 个合成回归用例**。源码全量 **542 passed / 21 skipped**；仓库外安装 wheel 的全量 **542 passed / 21 skipped**（新安装目标目录，复用已有可选依赖环境）；全新基础 venv 安装 wheel 专项 **92 passed / 2 skipped**。官方 LeRobot 源码专项 **93 passed**。这些集合重叠，分别记录，不能相加。全量 21 项跳过仍为 14 项官方依赖、3 项研究桥、3 项 GPU 扩展、1 项真实注册证据；基础专项另跳过 scipy。
-- wheel / sdist 构建通过，基础运行依赖仅 NumPy / PyYAML；9 项算法发现和 pip check 通过，未安装或导入 Torch。基础测试额外安装 pytest 及其依赖。没有修改原始数据或真实机器人配置。验证与源码摘要见 validation.json（本地留存：evidence/numeric_gaps_20261026/validation.json），包信息见 package.json（本地留存：evidence/numeric_gaps_20261026/package.json）。本轮仅覆盖上述两类缺口，不代表 Dayan 全部指标迁入或真实机器人效果验收完成。
+- wheel / sdist 构建通过，基础运行依赖仅 NumPy / PyYAML；9 项默认 CPU 方法和仓库指标池可发现，pip check 通过。基础测试额外安装 pytest 及其依赖。没有修改原始数据或真实机器人配置。验证与源码摘要见 validation.json（本地留存：evidence/numeric_gaps_20261026/validation.json），包信息见 package.json（本地留存：evidence/numeric_gaps_20261026/package.json）。本轮仅覆盖上述两类缺口，指标池中仍有部分项目待实现或待输入确认。
 
 ## 新增数值项的真实 topic 与输出核验（2026-10-27）
 

@@ -1,0 +1,10 @@
+robot: luoshi
+formats: [hdf5, dataset]
+note: 洛斯机器人；hdf5 嵌套 group；折叠式数据集（每集一文件夹）
+topics:
+  "/action/*": {modality: cmd}
+  "/observation/state/cameras/*": {modality: pose}
+  "/observation/state/*": {modality: joint_state}
+  "/action/arm/position": {expected_freq: 30.0}
+  "/observation/state/arm/position": {expected_freq: 30.0}
+required_channels: []

@@ -1,0 +1,13 @@
+robot: fourier
+formats: [parquet, dataset]
+note: 傅里叶人形机器人；折叠式数据集（多集聚合）；大图列 BROTLI 慢 → 采样/并行特化
+topics:
+  "/observation/images/camera_top": {modality: image}
+  "/observation/images/camera_top_depth": {modality: image}
+sampling:            # 执行策略特化（顶层段；原 filters.content.sampling 已迁移）
+  image_layer2: false  # 大图列像素解码昂贵，层2 采样关闭（层1 压缩域检测保留）
+  sampling_head_count: 2  # 大图列采样帧数收紧（每端 2 帧）
+  sampling_mid_count: 2
+  sampling_tail_count: 2
+executor:            # 执行器参数（原 filters.pipeline.content_parallel 已迁移）
+  episode_min_units: 2  # 每集大文件，2 集即触发内容并行

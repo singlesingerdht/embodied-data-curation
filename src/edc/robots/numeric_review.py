@@ -1,4 +1,4 @@
-"""SI suggestions and an author confirmation tied to the actual numeric configuration."""
+"""SI suggestions and a configuration confirmation tied to Numeric_Check."""
 import copy
 from datetime import datetime, timezone
 import hashlib
@@ -35,7 +35,7 @@ def numeric_field_status(episode, channel, field, review):
         if channel.modality == 'joint_space' and spec['source_kind'] not in {'command', 'feedback'}:
             reasons.append(f'{channel.name}.{field}: declare command or feedback')
         if review['status'] != 'confirmed':
-            reasons.append('Numeric_Check: author confirmation of the current configuration and thresholds is pending/stale')
+            reasons.append('Numeric_Check: configuration confirmation for the current fields and thresholds is pending/stale')
     return {'channel': channel.name, 'field': field, 'source_unit': spec.get('source_unit', spec['unit']),
             'execution_unit': spec['unit'], 'required_unit': target[1] if target else None,
             'physical_checks_available': bool(target) and not reasons, 'reasons': reasons,
@@ -46,7 +46,7 @@ def numeric_settings(profile=None, params=None):
     from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds
     configured = (profile or {}).get('numeric_check', {})
     params = params or {}
-    # Topic scope does not change any numerical threshold or author attestation.
+    # Topic scope does not change any numerical threshold or configuration confirmation.
     params = {k: v for k, v in params.items() if k not in {'channels', 'arms'}}
     for value in (configured, params):
         if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
@@ -93,11 +93,11 @@ def numeric_review(profile=None, params=None):
             'confirmed_by': approval.get('confirmed_by') if confirmed else None,
             'configuration_sha256': digest, 'unit_system': 'SI',
             'unit_suggestions': dict(SI_UNITS), 'settings': settings,
-            'required_action': None if confirmed else '请作者确认字段单位、指令/反馈与数值阈值；修改配置后需重新确认。'}
+            'required_action': None if confirmed else '请配置确认人确认字段单位、指令/反馈与数值阈值；修改配置后需重新确认。'}
 
 
 def confirm_numeric_profile(profile, reviewer, params=None):
-    """Explicit author attestation; never infer or rewrite source units/calibration."""
+    """Explicit configuration-owner confirmation; never infer or rewrite source units/calibration."""
     from edc.robots.profiles import load_profile
     from edc.data.ir.modalities import normalize_modality
     profile = load_profile(profile)

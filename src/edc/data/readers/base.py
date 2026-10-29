@@ -1,6 +1,6 @@
 """DataReader 基类: 统一入口 + 工厂 + require 取数层。
 
-参考: dayan-rough-datachecking src/datafilter/data/readers/base.py
+统一数据读取接口的内部实现。
 """
 import os
 import sys

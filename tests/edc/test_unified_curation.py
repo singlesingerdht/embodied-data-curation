@@ -144,6 +144,80 @@ def test_default_pool_runs_partial_and_excludes_sdk_examples(tmp_path):
     assert result['delivery_status'] == 'suspended'
 
 
+@pytest.mark.parametrize('mode', ['no_gpu', 'available', 'disabled', 'required', 'failed'])
+def test_cpu_and_optional_gpu_share_quality_pool(tmp_path, monkeypatch, mode):
+    # Contract doubles exercise orchestration, never real CUDA/model inference.
+    cfg = fixture(tmp_path)
+    template = Path(__file__).resolve().parents[2] / 'configs/workflows/curation.yaml'
+    cfg['workflow'] = yaml.safe_load(template.read_text())
+    assert [s['kind'] for s in cfg['workflow']['stages']] == ['quality']
+    calls = []
+
+    def checked(context, params):
+        calls.append(('cpu', context.episode.id))
+        return {'verdict': 'ACCEPTABLE'}
+
+    def aligned(context, params):
+        calls.append(('gpu', context.episode.id))
+        if mode == 'failed':
+            raise RuntimeError('Simulated GPU execution failure')
+        return {'verdict': 'ACCEPTABLE'}
+
+    def valued(context, params):
+        calls.append(('value', context.episode.id))
+        return {'raw_value': 0.5}
+
+    plugins = [
+        SimpleNamespace(spec=AlgorithmSpec('test__cpu', '1', 'CPU fixture', 'test', 'Contract fixture'), run=checked),
+        SimpleNamespace(spec=AlgorithmSpec('test__alignment', '1', 'GPU fixture', 'test',
+            'Contract fixture', category='quality', device='cuda'), run=aligned),
+        SimpleNamespace(spec=AlgorithmSpec('test__value', '1', 'Value fixture', 'test',
+            'Contract fixture', category='value'), run=valued)]
+    if mode in {'available', 'disabled', 'failed'}:
+        plugins[1].preflight = lambda ep, params: ('runnable', '')
+    else:
+        plugins[1].preflight = lambda ep, params: ('missing_dependency', 'CUDA unavailable (contract fixture)')
+    import edc.algorithms.registry as registry_module
+    monkeypatch.setattr(registry_module, 'entry_points', lambda group: [
+        SimpleNamespace(name=p.spec.id, load=lambda p=p: p) for p in plugins
+    ] if group == 'edc.algorithms' else [])
+    cfg['algorithms']['methods'] = {ident: {'enabled': False}
+        for ident in algorithms().plugins if ident not in {p.spec.id for p in plugins}}
+    if mode == 'disabled':
+        cfg['algorithms']['methods']['test__alignment'] = {'enabled': False}
+    if mode == 'required':
+        cfg['workflow']['stages'][0].update(
+            algorithms=['test__cpu', 'test__alignment'], selection_policy='explicit')
+    output = tmp_path / 'quality_only'
+    result = run_workflow(cfg, output)
+    assert [s['kind'] for s in result['stages']] == ['quality']
+    assert len([c for c in calls if c[0] == 'cpu']) == 2
+    assert not any(c[0] == 'value' for c in calls)
+    gpu_rows = records(output, 'test__alignment')
+    assert len([c for c in calls if c[0] == 'gpu']) == (2 if mode in {'available', 'failed'} else 0)
+    if mode in {'no_gpu', 'disabled'}:
+        assert not gpu_rows
+    else:
+        status = {'available': 'completed', 'required': 'missing_dependency', 'failed': 'processing_error'}[mode]
+        assert len(gpu_rows) == 2 and all(r['status'] == status for r in gpu_rows)
+    for ep in result['stages'][0]['recommendations']['episodes']:
+        info = next(r for r in ep['algorithms'] if r['algorithm']['id'] == 'test__alignment')
+        assert info['environment_requirements']['device'] == 'cuda'
+        if mode in {'no_gpu', 'required'}:
+            assert info['availability'] == 'unavailable' and info['reason']
+    assert result['delivery_status'] == ('suspended' if mode in {'required', 'failed'} else 'ready')
+    report_path = next((output / '_workflows').glob('*/report.html'))
+    flow = report_path.read_text().split('<div class="flow">', 1)[1].split('</div>', 1)[0]
+    assert '质量评估' in flow and '价值评估' not in flow
+    # Adding a value stage is an explicit opt-in; it still respects the gate.
+    cfg['workflow']['stages'].append({'id': 'value', 'kind': 'value', 'input': 'quality',
+        'algorithms': ['test__value'], 'selection_policy': 'explicit'})
+    calls.clear()
+    result = run_workflow(cfg, tmp_path / 'with_value')
+    expected = 0 if mode in {'required', 'failed'} else 2
+    assert len([c for c in calls if c[0] == 'value']) == expected
+
+
 def test_dataset_method_own_subset_and_channel_reference_roundtrip(tmp_path, monkeypatch):
     cfg = fixture(tmp_path)
     seen = []

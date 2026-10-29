@@ -1,4 +1,4 @@
-"""Explicit, editable defaults; values are suggestions until the author reviews them."""
+"""Explicit, editable defaults; values are suggestions until the Numeric configuration is confirmed."""
 import copy
 import math
 

@@ -1,7 +1,5 @@
 """折叠式数据集目录适配器: 多 episode 目录聚合。
 
-参考: dayan-rough-datachecking src/datafilter/data/readers/dataset.py (精简)
-
 数据集根 = 目录含多个 episode 子目录 (每个子目录是 episode 格式)
 聚合策略: 每集独立 EpisodeReader 打开, 全局索引偏移 + 每通道独立时间轴拼接。
 单集损坏跳过并记入 extra["corrupted_episodes"]。

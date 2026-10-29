@@ -72,7 +72,7 @@ Numeric_Check 仍可专门检查原始 NaN/Inf，但不套物理阈值，也不�
 
 例如源关节位置 [0,90,180] 与 unit: deg 一起保留；算法读取到 [0,pi/2,pi]，
 执行元数据为 rad。阈值始终用 SI，不因源数据以 deg 表示而重缩放。
-Numeric_Check 的作者确认仍为必需步骤，可确认可换算的源单位，不自动批准配置。
+Numeric_Check 的配置确认仍为必需步骤，可确认可换算的源单位，不自动批准配置；算法作者标识与其他内置 CPU 算法一致。
 Reset_Detection 中明确声明单位的 reference/tolerance 同时换算为 SI；manual 下也须自行准备 SI 标定值。
 原始文件、单位声明、clock/time_source 与样本顺序保持不变；读取器已为秒的时间轴不再次缩放，
 秒制不代表采集同步。

@@ -115,5 +115,14 @@ def validate_workflow(config):
             lineage[ident] = (True, valued)
         else:
             lineage[ident] = (quality, True)
+    # A new version cannot be terminal or feed another operation before recheck.
+    # Checking only terminal lineage would miss an abandoned transform branch.
+    for stage in stages:
+        if stage['kind'] not in {'editing', 'augmentation'}:
+            continue
+        consumers = [child for child in stages if child['input'] == stage['id']]
+        if not consumers or any(child['kind'] != 'quality' for child in consumers):
+            raise ValueError(f"Transform stage {stage['id']} requires a quality recheck "
+                             "as its next stage on every output branch")
     return {'schema_version': 'edc_workflow_validation_v1', 'valid': True, 'config': cfg,
             'discovery_errors': registry.discovery_errors}

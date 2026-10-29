@@ -90,7 +90,7 @@ def findings(item):
         result.extend(str(x) for x in (values if isinstance(values, list) else [values]))
     if item.get('reason'):
         explanations = {
-            'Physical thresholds not applied: author confirmation, source unit or calibration pending':
+            'Physical thresholds not applied: Numeric configuration confirmation, source unit or calibration pending':
                 '已读取字段未发现 NaN/Inf；单位、标定或参数尚未确认，未执行物理阈值检查。',
             'Nonfinite numeric values': '字段含 NaN 或 Inf，请查看逐字段计数和异常位置。',
             'Empty numeric field': '数值字段为空，本字段未完成评估。',
@@ -297,7 +297,7 @@ def numeric_panel(records, root):
             if len(examples) > 8 or item.get('nonfinite_indices_truncated'):
                 positions += '；更多位置见原始记录及完整 CSV'
             review = item.get('configuration_review') or {}
-            state = '已确认并执行' if item.get('physical_checks_applied') else '待作者确认' if review.get('status') != 'confirmed' else '单位、标定或算法适用范围未满足'
+            state = '已确认并执行' if item.get('physical_checks_applied') else '待配置确认' if review.get('status') != 'confirmed' else '单位、标定或算法适用范围未满足'
             if item.get('physical_check_blockers'):
                 state += '：' + '；'.join(item['physical_check_blockers'])
             label = str(item.get('input_channel', '未记录')) + ' · ' + str(item.get('input_field', '未记录'))
@@ -396,7 +396,7 @@ def media_panel(root, ref):
 
 def architecture_panel():
     stages = [('原始数据', 'Dataset 来源只读；HDF5、MP4、MCAP、Parquet 等'),
-              ('读取与配置', '格式读取器 + 机器人配置；单位、通道、时钟与作者确认'),
+              ('读取与配置', '格式读取器 + 机器人配置；单位、通道、时钟与 Numeric 配置确认'),
               ('统一接口', 'Dataset → Episode → Channel；稳定 ID、源路径、selector'),
               ('能力检查与算法', '满足输入再执行；缺输入、缺标定、执行失败分别记录'),
               ('结果与证据', 'catalog → _runs；逐字段结果、事件、位置与原始证据')]

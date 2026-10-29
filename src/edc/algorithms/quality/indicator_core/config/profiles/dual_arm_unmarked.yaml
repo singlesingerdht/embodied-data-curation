@@ -1,0 +1,11 @@
+robot: dual_arm_unmarked
+formats: [mcap]
+note: 双臂未标记；mcap protobuf（Locomotion/foxglove）；同步问题重点样本
+topics:
+  "*/controller/robot/state": {modality: joint_state, expected_freq: 100.0}
+  "*/controller/joint/servo": {modality: cmd, expected_freq: 50.0}
+  "*/controller/gripper/servo": {modality: cmd, expected_freq: 50.0}
+  "*/sensor/camera/color": {modality: image}
+required_channels:
+- /left_arm/manip_t/controller/robot/state
+- /right_arm/manip_t/controller/robot/state

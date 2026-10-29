@@ -183,6 +183,61 @@ def test_static_pose_has_evaluable_segment_and_existing_score():
     assert report['assessment_complete'] and report['score'] == 100
 
 
+def test_smoothness_jerk_uses_filtered_position_not_high_frequency_residual():
+    pytest.importorskip('scipy')
+    from edc.algorithms.quality.algorithms.Action_Smoothness.action_evaluator import ActionEvaluator
+
+    ts = np.arange(800, dtype=float) * 0.01
+    positions = np.zeros((len(ts), 3), dtype=float)
+    positions[:, 0] = np.r_[np.linspace(0.0, 0.1, 400), np.full(400, 0.1)]
+    positions[:, 1] = 0.0001 * np.sin(2 * np.pi * 15.0 * ts)
+    positions[:, 2] = 0.0001 * np.cos(2 * np.pi * 17.0 * ts)
+
+    result = ActionEvaluator().evaluate_arrays(positions, ts)
+
+    assert result['assessment_complete']
+    assert result['score'] < 15.0
+
+
+def test_smoothness_jerk_records_uniform_time_grid_for_irregular_timestamps():
+    pytest.importorskip('scipy')
+    from edc.algorithms.quality.algorithms.Action_Smoothness.action_evaluator import ActionEvaluator
+
+    # One recorder gap is deliberately longer than the nominal 100 Hz period.
+    # The signal is defined against the recorded time, so a valid derivative
+    # must not interpret that gap as a high-frequency jerk impulse.
+    timestamps = np.arange(800, dtype=float) * 0.01
+    timestamps[400:] += 0.009
+    positions = np.zeros((len(timestamps), 3), dtype=float)
+    positions[:, 0] = 0.02 * np.sin(2 * np.pi * 0.05 * timestamps)
+
+    result = ActionEvaluator().evaluate_arrays(positions, timestamps)
+    details = result['details']
+
+    assert result['assessment_complete']
+    assert details['time_axis']['resampled_uniformly'] is True
+    assert details['time_axis']['nominal_dt_seconds'] == pytest.approx(0.01)
+    assert details['time_axis']['interval_max_seconds'] == pytest.approx(0.019)
+    assert details['speed']['unit'] == 'm/s'
+    assert details['speed']['max'] < 0.01
+    assert details['max_jerk_magnitude'] < 1.0
+
+
+def test_smoothness_stationary_mask_does_not_fill_short_motion_bursts():
+    pytest.importorskip('scipy')
+    from edc.algorithms.quality.algorithms.Action_Smoothness.action_evaluator import ActionEvaluator
+
+    timestamps = np.arange(400, dtype=float) * 0.01
+    positions = np.zeros((len(timestamps), 3), dtype=float)
+    burst = np.r_[np.linspace(0.0, 0.05, 5, endpoint=False), np.linspace(0.05, 0.0, 5)]
+    positions[180:190, 0] = burst
+
+    _, stationary_mask, _, _, _ = ActionEvaluator().calculate_jitter_stationary_with_timestamps(
+        positions, timestamps)
+
+    assert not stationary_mask[180:190].any()
+
+
 def test_missing_stationary_evidence_does_not_hide_observed_freeze_failure():
     pytest.importorskip('scipy')
     from edc.algorithms.quality.algorithms.Action_Smoothness.scoring import build_action_smoothness_module

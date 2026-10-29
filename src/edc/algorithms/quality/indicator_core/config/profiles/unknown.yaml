@@ -1,0 +1,8 @@
+robot: unknown
+formats: [bag, mcap]
+note: 未识别机器人通用 profile（启发式 + 通配 hints 兜底）
+topics:
+  "*/imu": {modality: imu}
+  "*/color/image_raw/compressed": {modality: image}
+  "*/aligned_depth_to_color/image_raw/compressed": {modality: image}
+required_channels: []

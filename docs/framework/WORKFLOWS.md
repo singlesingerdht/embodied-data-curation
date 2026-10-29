@@ -26,9 +26,13 @@ edc config run complete.yaml --output /tmp/curation-results --resume
 
 ## 有限顺序与子集
 
-- 质量 → 价值；编辑形成新版本后必须重新质量检查才能估值。
+- 默认模板只运行一轮可运行的质量方法，可在质量报告处结束；价值评估由使用者显式添加，且只接收质量放行的版本与轨迹。
+- CPU 质量方法与 GPU `Projection_Alignment` 属于同一个 `quality` 算法池；`device` 是资源要求，不是额外阶段。默认 `recommended` 选择已安装、启用且预检可运行的方法；`enabled: false` 可关闭任一方法。有 GPU 也仍需满足模型、标定、输入和时钟等条件。当前公共包尚未迁入真实 alignment 插件，此处定义其接入位置。
+- 可选方法因缺 GPU／依赖／输入不可运行时，推荐记录原因并继续其他方法；不会生成该方法的通过结论。需要强制验收某方法时使用显式算法列表及 `selection_policy: explicit`，未完成会阻塞放行。已经开始执行的方法报错或只完成部分输入，也不能被忽略为通过。
+- 编辑形成新版本后必须重新质量检查才能估值；编辑也可按需放在价值评估之后。
 - 增强必须接在该版本的价值阶段之后；增强输出再做质量复检。默认不重复估值，若需要须显式追加 value。
 - 编辑／增强每阶段只能选一个插件且必须写 `select`。通过有限阶段描述编辑与重检，不自动反复尝试修复。
+- 配置校验要求每个编辑／增强阶段的所有直接后继都是 quality；缺复检、复检错误版本或绕过复检继续变换均在执行前拒绝。旧配置若终止于变换，需补充 `input: <变换阶段 ID>` 的质量阶段；历史结果不改写。
 - `select: {all: true}` 或 `select: {episodes: [episode_0]}` 明确选集合；ID 必须存在。
 - 可增加 `where`：`[{algorithm: team__method, path: result.reports.0.metric, op: gte, value: 1}]`。只读取**直接输入阶段**的单一已完成结果，不搜索其它历史 run；无法找到唯一字段时不选入。
 - value 只接收质量 keep 的子集，再按各方法筛轨迹；augmentation 只接收对该样本适用且选定的价值方法完成后的子集。dataset 方法对自己的集合调用一次，显式 method_select 后重新检查集合最低条件。每方法的输出引用保存在 method_output_references，下阶段数据引用只含成功完成的轨迹并集；未满足条件的轨迹及原因仍保留，没有 segment 调度。
@@ -39,7 +43,7 @@ edc config run complete.yaml --output /tmp/curation-results --resume
 
 ## 放行与人工复核
 
-放行记录使用 `workflow_gate_v2`，保存在每次 `_workflows/<id>/workflow.json` 的阶段快照中。单次运行的 `selection.json` 使用 `episode_filter_v2`，与工作流共用完成度和放行判断。数值检查除算法返回的完成状态外，还须核验逐项覆盖；未配置的限位、缺少的联合输入或不足的样本不能算作已通过。原始评分不因此改写。
+放行记录使用 `workflow_gate_v3`，保存在每次 `_workflows/<id>/workflow.json` 的阶段快照中。单次运行的 `selection.json` 使用 `episode_filter_v2`，与工作流共用完成度和放行判断。数值检查除算法返回的完成状态外，还须核验逐项覆盖；未配置的限位、缺少的联合输入或不足的样本不能算作已通过。原始评分不因此改写。
 
 | decision | 含义 |
 |---|---|

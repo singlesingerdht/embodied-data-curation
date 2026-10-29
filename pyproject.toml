@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "embodied-data-curation"
 version = "0.2.0a2"
-description = "Embodied Data Curation Framework: CPU inspection and auditable plugin workflows"
+description = "Embodied Data Curation Framework: repository-owned inspection algorithms and auditable workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24", "PyYAML>=6"]
@@ -28,3 +28,5 @@ namespaces = true
 "edc.data" = ["channel_registry.yaml"]
 "edc.algorithms.quality.config" = ["profiles/*.yaml"]
 "edc.algorithms.quality.algorithms.Reset_Detection" = ["configs/*.yaml", "configs/robots/*/*.yaml"]
+"edc.algorithms.quality.algorithms.Indicator_Checks" = ["inventory.json"]
+"edc.algorithms.quality.indicator_core" = ["config/*.yaml", "config/profiles/*.yaml"]

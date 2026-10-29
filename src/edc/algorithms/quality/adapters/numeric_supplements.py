@@ -1,4 +1,4 @@
-"""Repository-owned numeric supplements; no upstream Dayan code or rescoring.
+"""Repository-owned numeric supplements; no duplicate scoring path.
 
 Rows are zero-based within one Episode; intervals are [start, stop). Constant
 content is observable, but cannot by itself prove an acquisition failure.

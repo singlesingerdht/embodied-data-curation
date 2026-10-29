@@ -4,6 +4,14 @@
 
 所有 CPU 方法通过机器人配置解析 `arms: all`；头部、胸前、升降等共享输入按所选方法保留。单臂不要求不存在的另一侧；声明双臂而缺一侧不能完整通过。显式 channels 可缩小范围，报告与 gate 会保留范围及缺失状态。
 
+仓库还登记了 57 个按模态展开的质量指标，使用 `quality_indicators` 预设显式选择。它们与下面九项共享 Dataset → Episode → Channel、逻辑通道、SI、时间来源和 `dqs_record_v1` 契约，全部由本仓库实现或登记，不需要单独安装算法包。指标清单位于 [`inventory.json`](../../src/edc/algorithms/quality/algorithms/Indicator_Checks/inventory.json)；`implemented: false` 的项目会在推荐池中说明“当前版本未实现／缺少输入”，不会被执行为通过。
+
+```bash
+edc algorithms                         # 显示 9 个默认 CPU 方法和 57 个内部指标
+edc run DATASET --preset quality_cpu   # 只运行稳定的九项默认方法
+edc run DATASET --preset quality_indicators  # 运行已满足输入条件的内部指标
+```
+
 | ID | 最低输入／默认范围 | 输出与边界 |
 |---|---|---|
 | Structure_Check | 所选臂关联通道与共享目录；相机要求来自 robot.camera_requirements | 结构评分、缺失通道、相机配置证据；不验证单位或采集同步 |
@@ -13,7 +21,7 @@
 | Sync_Check | 至少两条独立 acquisition 轴和共同 clock／明确映射；可为单臂＋头相机 | 时间差、覆盖和稳定性；primary 可选头相机；不能用同一合成行时间证明采集同步 |
 | Root_Cause | 所选通道的可比较时间轴、共同 clock、可选 families 分组 | 时间异常来源、关联证据与归因限制，不是硬件故障的确定诊断 |
 | Dedup_Check | 所选采样通道的原始记录时间／显式原时间字段，可选序列号 | 重复位置与数量、原评分。只做时间／序列重复；静止画面、图像复制与非相邻内容重复不属于该项 |
-| Reset_Detection | 所选臂 joint feedback、逐通道 Home、源单位与正 tolerance | 各路复位差异与判定；Home、单位或容差未知时需标定，不自动补默认姿态 |
+| Reset_Detection | 所选臂的显式 Home 标定通道；当前 X1 Pro 使用左右末端 feedback.position 的三维 `m` 标定，也兼容 joint feedback 的单一 `reference/tolerance` | 按坐标分量输出首／末帧误差和双阈值分数；未确认的 Home、单位、维度或关节顺序保持 `needs_calibration`，不自动补姿态 |
 | Video_Integrity | 所选腕 RGB＋配置要求的头部／胸前 RGB，frames 或 video | 画面异常、原视频容器证据与复核线索分别记录。auto 尊重存储；frames 不生成 MP4，容器子项不适用；video 物化需要实际时间或显式 FPS |
 
 ## X1 Pro 的实际映射

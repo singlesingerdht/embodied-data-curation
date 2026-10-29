@@ -119,6 +119,46 @@ def test_reference_roundtrip_preserves_subset_and_detects_stale_content(demo):
     with pytest.raises(ValueError,match='stale'):open_dataset_reference(ref)
 
 
+@pytest.mark.parametrize('kind', ['editing', 'augmentation'])
+@pytest.mark.parametrize('change', ['terminal', 'wrong_branch', 'next_edit'])
+def test_each_transformed_version_requires_its_own_recheck(demo, tmp_path, kind, change):
+    cfg = load(demo)
+    index = next(i for i, s in enumerate(cfg['stages']) if s['kind'] == kind)
+    cfg['stages'] = cfg['stages'][:index + 2]
+    transform, recheck = cfg['stages'][-2:]
+    if change == 'terminal':
+        cfg['stages'].pop()
+    elif change == 'wrong_branch':
+        # Rechecking the parent does not validate the transformed version.
+        recheck['input'] = transform['input']
+    else:
+        # One valid recheck cannot hide a second branch that edits unchecked data.
+        cfg['stages'].extend([
+            {'id': 'second_edit', 'kind': 'editing', 'input': transform['id'],
+             'algorithms': ['team_example__image_edit'], 'select': {'all': True}},
+            {'id': 'second_recheck', 'kind': 'quality', 'input': 'second_edit',
+             'algorithms': ['Structure_Check']}])
+    output = tmp_path / 'invalid_workflow'
+    with pytest.raises(ValueError, match='requires a quality recheck'):
+        run_workflow(cfg, output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('kind', ['editing', 'augmentation'])
+def test_recheck_failure_cannot_inherit_parent_quality(demo, tmp_path, kind):
+    cfg = load(demo)
+    index = next(i for i, s in enumerate(cfg['stages']) if s['kind'] == kind)
+    cfg['stages'] = cfg['stages'][:index + 2]
+    # The synthetic source has no reset-check prerequisites.
+    cfg['stages'][-1]['algorithms'] = ['Reset_Detection']
+    result = run_workflow(cfg, tmp_path / 'failed_recheck')
+    assert result['stages'][index]['status'] == 'completed'
+    assert all(g['decision'] == 'keep' for g in result['stages'][0]['gate'].values())
+    assert all(g['decision'] == 'unassessed' for g in result['stages'][-1]['gate'].values())
+    assert result['delivery_status'] == 'suspended'
+    assert not result['outputs'][0]['published']
+
+
 def test_full_chain_recheck_and_resume(demo,tmp_path):
     output=tmp_path/'results'
     before=dataset_reference(open_dataset(demo.parent/'source'))
@@ -153,6 +193,22 @@ def test_full_chain_recheck_and_resume(demo,tmp_path):
     assert all(s['reused'] for s in fourth['stages'][:4])
     assert not fourth['stages'][4]['reused']
     assert len(fourth['stages'][-1]['selected_episodes'])==2
+
+
+def test_optional_edit_after_value_creates_version_requiring_fresh_quality(demo, tmp_path):
+    cfg = load(demo)
+    quality, edit, recheck, value = cfg['stages'][:4]
+    value['input'] = quality['id']
+    edit['input'] = value['id']
+    cfg['stages'] = [quality, value, edit, recheck]
+    result = run_workflow(cfg, tmp_path / 'edit_after_value')
+    assert result['delivery_status'] == 'ready'
+    assert [s['kind'] for s in result['stages']] == ['quality', 'value', 'editing', 'quality']
+    original_ids = set(result['stages'][0]['gate'])
+    rechecked_ids = set(result['stages'][-1]['gate'])
+    assert rechecked_ids and not original_ids.intersection(rechecked_ids)
+    assert set(result['outputs'][0]['accepted_episodes']) == rechecked_ids
+    assert result['stages'][-1]['run_id'] != result['stages'][0]['run_id']
 
 
 def test_transforms_reject_escaping_or_false_provenance(demo,tmp_path):
@@ -252,7 +308,8 @@ def test_value_failure_blocks_augmentation(demo,tmp_path,test_registry,monkeypat
     monkeypatch.setattr(test_registry,'run',fail)
     cfg=load(demo)
     cfg['stages']=[cfg['stages'][0],
-        {'id':'value','kind':'value','input':'quality','algorithms':['test__value']},cfg['stages'][4]]
+        {'id':'value','kind':'value','input':'quality','algorithms':['test__value']},
+        cfg['stages'][4], cfg['stages'][5]]
     r=run_workflow(cfg,tmp_path/'results')
     assert r['stages'][1]['processing']=={'processing_error':1}
     assert r['stages'][1]['status']=='processing_error'

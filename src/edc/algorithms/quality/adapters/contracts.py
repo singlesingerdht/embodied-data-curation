@@ -3,7 +3,7 @@ import copy
 
 INPUT_DESCRIPTIONS = {
     'Structure_Check': ('源文件与通道清单；相机配置一致性子项需要 camera_requirements 和 sensor_id/modality 映射。',),
-    'Numeric_Check': ('数值字段可做 NaN/Inf 检查；物理检查还需明确物理量、可转换到 SI 的单位、标定及作者确认。',
+    'Numeric_Check': ('数值字段可做 NaN/Inf 检查；物理检查还需明确物理量、可转换到 SI 的单位、标定及 Numeric 配置确认。',
                       '动作位置指令需要独立 command_limits.limits；数值冻结只报告同 Episode 逐分量恒值区间，运动后恒值需复核。'),
     'Dedup_Check': ('至少一条非合成原始时间序列；单位未知仍可比较相等，不能据此评估采集间隔或同步。',
                     '有效序列号为可选输入；不检查图像或轨迹内容，不自动删除记录。'),
@@ -36,7 +36,7 @@ def cpu_parameters(ident):
         properties['side'] = {'type': 'string', 'enum': ['left', 'right'],
                               'description': '显式绑定的侧别校验；统一配置使用 arms 选择机械臂并逐臂绑定，禁止另一侧回退'}
     if ident == 'Numeric_Check':
-        properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后作者确认失效'}
+        properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后 Numeric 配置确认失效'}
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:
         properties['target_clock'] = {'type': 'string',
             'description': '执行时使用的共同clock；仅应用配置中明确的仿射映射，不重采样、不修改原时间或时间来源'}

@@ -1,6 +1,5 @@
 """MP4 格式适配器: 单个 MP4 文件 → 1 个 image 通道。
 
-参考: dayan-rough-datachecking src/datafilter/data/readers/mp4.py
 """
 import json
 import subprocess

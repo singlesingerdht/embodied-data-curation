@@ -1,0 +1,35 @@
+robot: leju
+formats:
+- bag
+- mp4
+note: 乐聚 KUAVO；23 topics 固定，3 相机 30Hz；V-R002/003
+topics:
+  "/cam_h/color/image_raw/compressed": {modality: image, expected_freq: 30.0}
+  "/cam_h/depth/image_raw/compressedDepth": {modality: image, expected_freq: 30.0}
+  "/cam_l/color/image_raw/compressed": {modality: image, expected_freq: 30.0}
+  "/cam_l/depth/image_rect_raw/compressedDepth": {modality: image, expected_freq: 30.0}
+  "/cam_r/color/image_raw/compressed": {modality: image, expected_freq: 30.0}
+  "/cam_r/depth/image_rect_raw/compressedDepth": {modality: image, expected_freq: 30.0}
+  "/dexhand/state": {modality: joint_state}
+  "/sensors_data_raw": {modality: joint_state}
+  "/joint_cmd": {modality: cmd}
+  "/kuavo_arm_traj": {modality: cmd}
+  "/control_robot_hand_position": {modality: cmd}
+required_channels: []
+filters:
+  timing:
+    jitter:
+      config:
+        jitter_cv_low: 0.25  # CV > 此值 -> warning(稳定档上限, 默认0.3 收紧)
+  sync:
+    coverage:
+      config:
+        coverage_low: 0.85  # 覆盖率 < 此值 -> error(下限, 默认0.8 收紧)
+    stability:
+      config:
+        stability_stable_threshold_ms: 12.0  # 稳定性判定：Δ(t) 抖动 ≤12ms 视为稳定（相机 ±10ms 抖动为常态）
+        stability_jump_threshold_ms: 30.0  # 时钟跳变阈值（ms），跳变电平保持才计入
+  content:
+    bias:
+      config:
+        imu_bias_gyro_max: 0.08  # 静止段 gyro 均值 > 此值(rad/s) -> 偏置(默认0.05 放宽)

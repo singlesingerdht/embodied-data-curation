@@ -16,7 +16,6 @@
 
 ```bash
 pip install -e '.[formats,test]'
-pip install -e examples/plugins/algorithm
 python examples/curation/make_example.py --output /tmp/edc-demo
 edc config check /tmp/edc-demo/curation.yaml
 edc config recommend /tmp/edc-demo/curation.yaml
@@ -33,9 +32,9 @@ Dataset → Episode → Channel preserves explicit boundaries, original values, 
 
 `arms: all` selects arm parts explicitly declared by the robot. A neutral single arm uses `main`; dual arms use `left/right`. Missing declared arms remain missing. Algorithms preserve independent results without cross-arm or cross-method average scores.
 
-Workflow: recommend → serial quality → gate → value recommendations and method-specific subsets → value → optional augmentation → consistency validation → quality recheck. Explicit editing also returns through validation and quality recheck. Missing input/review suspends downstream delivery; finite stages and resume implement the return paths.
+The default workflow runs one round of runnable quality methods and can finish at its quality report. The base distribution contains repository-owned CPU methods and modality indicators; it has no external algorithm or model dependency. Value assessment is opt-in after the quality gate. Every editing or augmentation output creates a new version and must pass consistency validation and a quality recheck before delivery. Missing selected inputs, partial assessment, and execution failures cannot count as passing. Future GPU and value implementations require separate integration and acceptance.
 
-Plugins declare `AlgorithmSpec` and `run(context, params)`, discovered through `edc.algorithms` and `edc.readers`. Production auto-selection excludes SDK examples. Real value/edit/augmentation methods require separate acceptance.
+All algorithms in the shipped pool are implemented and registered in this repository; the base distribution does not require an external algorithm package, model, private wheel, or GPU runtime. `AlgorithmSpec`/`run(context, params)` and the `edc.algorithms`/`edc.readers` entry-point groups remain development interfaces for adding future repository modules or explicitly installed integrations. They do not add algorithms to the shipped pool automatically. Production auto-selection excludes SDK examples, and real value/edit/augmentation methods require separate acceptance.
 
 ## Repository
 
@@ -43,6 +42,6 @@ Plugins declare `AlgorithmSpec` and `run(context, params)`, discovered through `
 
 CPU methods: Structure_Check, Numeric_Check, Action_Smoothness, Check_Timestamp, Sync_Check, Root_Cause, Dedup_Check, Reset_Detection, Video_Integrity.
 
-The three-person validation plan covers data configuration, algorithm plugins, and workflow acceptance. Each round uses the same `main` commit; see [roles and deliverables](FRIEND_VALIDATION.md).
+The core pool currently contains 66 repository-owned algorithms: 9 default CPU methods and 57 modality indicators (46 implemented, 11 registered with missing implementation or input coverage). The three-person validation plan covers data configuration, algorithm inputs and workflow acceptance. Each round uses the same `main` commit; see [roles and deliverables](FRIEND_VALIDATION.md).
 
-This repository is a private development delivery. Licensing and redistribution of code, algorithms, models and data must be verified before publication; see the [release checklist](docs/RELEASE_CHECKLIST.md). The persisted record protocol remains `dqs_record_v1` (DQS: Data Quality Service); the public interface is EDC.
+This repository is a private development delivery. Licensing and redistribution of code, algorithms, models and data must be verified before publication; see the [release checklist](docs/RELEASE_CHECKLIST.md). The persisted record protocol remains `dqs_record_v1` (DQS: Data Quality Service); the public interface is EDC. The default `quality_cpu` preset contains the original nine CPU methods, while the repository-owned `quality_indicators` preset exposes the modality indicator pool.

@@ -46,7 +46,7 @@ with tarfile.open(sdist) as archive:
                      'configs/odometry.yaml', 'tests/edc/test_canonical_orientation.py',
                      'docs/framework/ORIENTATION_HAND_TACTILE.md']:
         assert any(n.endswith('/'+required) for n in names), required
-    assert not any('/plugins/dayan/' in n or '/configs/validation/' in n or
+    assert not any('dayan' in n.lower() or '/configs/validation/' in n or
                    '/docs/validation/x1_pro_b_' in n for n in names)
     archive.extractall(work/'sdist', filter='data')
 source = next((work/'sdist').iterdir())
@@ -72,10 +72,15 @@ with edc.open_dataset(path, profile=profile) as ds, next(ds.iter_episodes()).ope
     assert ep.orientation_evidence()['fields'][0]['normalization_applied']
     np.testing.assert_array_equal(ep.inspect_recorded_signal('attitude', 'orientation'), [[0, 0, 90]])
 assert len(edc.load_channel_registry()['channels']) == 107
-assert len(algorithms().plugins) == 9
+registry = algorithms()
+assert len(registry.plugins) == 66
+assert sum('quality_cpu' in p.spec.presets for p in registry.plugins.values()) == 9
+assert sum('quality_indicators' in p.spec.presets for p in registry.plugins.values()) == 57
+assert not any(i.startswith('dayan__') for i in registry.plugins)
 packages = sorted(d.metadata['Name'] for d in m.distributions())
 assert not any(n.lower().startswith(('torch', 'nvidia', 'lerobot', 'scipy')) for n in packages)
-print(json.dumps({'version': edc.__version__, 'standard_channels': 107, 'algorithms': 9,
+print(json.dumps({'version': edc.__version__, 'standard_channels': 107, 'algorithms': 66,
+    'quality_cpu': 9, 'quality_indicators': 57,
     'packages': packages, 'quaternion': q.tolist(), 'torch_imported': 'torch' in sys.modules}))
 '''
 call([base, '-c', check], 'base-check.json')

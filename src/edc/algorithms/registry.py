@@ -96,8 +96,8 @@ class Registry:
 
 
 def algorithms():
-    from edc.algorithms.quality.adapters.cpu import builtins
+    from edc.algorithms.quality.adapters.cpu import builtins, indicator_builtins
     registry = Registry("edc.algorithms")
-    for plugin in builtins():
+    for plugin in builtins() + indicator_builtins():
         registry.register(plugin)
     return registry.discover()

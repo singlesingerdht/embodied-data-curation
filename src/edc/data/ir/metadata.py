@@ -1,6 +1,5 @@
 """IR 核心契约: Message / TopicInfo / DataInfo + 格式探测 + 模态分类 + 时间归一化。
 
-参考: dayan-rough-datachecking src/datafilter/data/ir.py (main 分支)
 设计原则: 能力位解耦 (value_available / image_available / image_compressed)
 """
 import os

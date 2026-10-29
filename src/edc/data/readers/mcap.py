@@ -1,6 +1,5 @@
 """mcap 格式适配器: .mcap 文件。
 
-参考: dayan-rough-datachecking src/datafilter/data/readers/mcap.py (main 分支)
 依赖: mcap；Protobuf 通过可选 protobuf 依赖动态解码内嵌 descriptor。
 """
 from pathlib import Path

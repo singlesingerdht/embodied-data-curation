@@ -1,0 +1,462 @@
+{
+  "schema_version": "edc_quality_indicator_inventory_v1",
+  "implementation": "repository_owned",
+  "indicators": [
+    {
+      "code": "C1",
+      "name": "掉帧/缺帧",
+      "modality": "camera",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C2",
+      "name": "抖动/帧率不稳",
+      "modality": "camera",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C3",
+      "name": "乱序",
+      "modality": "camera",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C4",
+      "name": "重复消息/帧",
+      "modality": "camera",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C5",
+      "name": "黑屏/白屏/花屏/遮挡",
+      "modality": "camera",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "C6",
+      "name": "分辨率/编码/色彩空间突变",
+      "modality": "camera",
+      "group": "content",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C7",
+      "name": "缺少/不匹配 camera_info",
+      "modality": "camera",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C8",
+      "name": "相机时钟异常",
+      "modality": "camera",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "C9",
+      "name": "图像质量退化（模糊/马赛克）",
+      "modality": "camera",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "C10",
+      "name": "图像内容冻结",
+      "modality": "camera",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "I1",
+      "name": "掉帧/缺帧",
+      "modality": "imu",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "I2",
+      "name": "抖动/帧率不稳",
+      "modality": "imu",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "I3",
+      "name": "乱序",
+      "modality": "imu",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "I4",
+      "name": "重复消息",
+      "modality": "imu",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "I5",
+      "name": "NaN/Inf/爆表",
+      "modality": "imu",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "I6",
+      "name": "偏置/噪声异常",
+      "modality": "imu",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "I7",
+      "name": "IMU 数据冻结",
+      "modality": "imu",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "L1",
+      "name": "掉帧/缺帧（少圈）",
+      "modality": "lidar",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "L2",
+      "name": "抖动/帧率不稳",
+      "modality": "lidar",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "L3",
+      "name": "乱序",
+      "modality": "lidar",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "L4",
+      "name": "重复消息",
+      "modality": "lidar",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "L5",
+      "name": "点云为空/稀疏",
+      "modality": "lidar",
+      "group": "content",
+      "stage": "deep",
+      "implemented": false
+    },
+    {
+      "code": "L6",
+      "name": "圈结构异常",
+      "modality": "lidar",
+      "group": "content",
+      "stage": "deep",
+      "implemented": false
+    },
+    {
+      "code": "L7",
+      "name": "环境噪声异常",
+      "modality": "lidar",
+      "group": "content",
+      "stage": "deep",
+      "implemented": false
+    },
+    {
+      "code": "L8",
+      "name": "激光数据冻结",
+      "modality": "lidar",
+      "group": "content",
+      "stage": "deep",
+      "implemented": false
+    },
+    {
+      "code": "J1",
+      "name": "掉帧/缺帧",
+      "modality": "joint",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "J2",
+      "name": "抖动/帧率不稳",
+      "modality": "joint",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "J3",
+      "name": "乱序",
+      "modality": "joint",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "J4",
+      "name": "重复消息",
+      "modality": "joint",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "J5",
+      "name": "NaN/Inf/越界/跳变",
+      "modality": "joint",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "J6",
+      "name": "单位/坐标约定错误",
+      "modality": "joint",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "J7",
+      "name": "关节数据冻结",
+      "modality": "joint",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "A1",
+      "name": "掉帧/缺帧",
+      "modality": "cmd",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "A2",
+      "name": "抖动/帧率不稳",
+      "modality": "cmd",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "A3",
+      "name": "乱序",
+      "modality": "cmd",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "A4",
+      "name": "重复消息",
+      "modality": "cmd",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "A5",
+      "name": "幅值越界/指令阶跃过强",
+      "modality": "cmd",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "A6",
+      "name": "单位/模式切换未记录",
+      "modality": "cmd",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "A7",
+      "name": "控制命令冻结",
+      "modality": "cmd",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "P1",
+      "name": "掉帧/缺帧",
+      "modality": "pose",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "P2",
+      "name": "抖动/帧率不稳",
+      "modality": "pose",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "P3",
+      "name": "乱序",
+      "modality": "pose",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "P4",
+      "name": "重复消息",
+      "modality": "pose",
+      "group": "dedup",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "P5",
+      "name": "NaN/Inf/越界/抖动/复位",
+      "modality": "pose",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "P6",
+      "name": "单位/坐标约定错误",
+      "modality": "pose",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "P7",
+      "name": "位姿数据冻结",
+      "modality": "pose",
+      "group": "content",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "M1",
+      "name": "多模态对不齐",
+      "modality": "multimodal",
+      "group": "sync",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M2",
+      "name": "晚启动/早停止",
+      "modality": "multimodal",
+      "group": "sync",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M3",
+      "name": "话题缺失",
+      "modality": "multimodal",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M4",
+      "name": "控制命令与观测错位",
+      "modality": "multimodal",
+      "group": "sync",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "M5",
+      "name": "延迟异常",
+      "modality": "multimodal",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M6",
+      "name": "时间戳漂移/时钟跳变",
+      "modality": "multimodal",
+      "group": "sync",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M7",
+      "name": "字段缺失/类型/单位变化",
+      "modality": "multimodal",
+      "group": "structure",
+      "stage": "deep",
+      "implemented": true
+    },
+    {
+      "code": "M8",
+      "name": "文件损坏",
+      "modality": "multimodal",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M9",
+      "name": "TF/外参链缺失",
+      "modality": "multimodal",
+      "group": "structure",
+      "stage": "fast",
+      "implemented": false
+    },
+    {
+      "code": "M10",
+      "name": "episode 一致性问题",
+      "modality": "multimodal",
+      "group": "sync",
+      "stage": "fast",
+      "implemented": true
+    },
+    {
+      "code": "M11",
+      "name": "通道时钟异常",
+      "modality": "multimodal",
+      "group": "timing",
+      "stage": "fast",
+      "implemented": true
+    }
+  ]
+}

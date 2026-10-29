@@ -1,8 +1,23 @@
-# Dayan 数值检查缺口补齐：A5 / I7 / J7 / A7
+# 数值检查补齐：A5 / I7 / J7 / A7
 
-本轮在现有 `Numeric_Check` 中补两类检查，不新增重复算法 ID。实现为仓库自有逻辑，未复制私有 Dayan 源码。对照依据仍是此前审计的 Dayan 提交 `a81267d291d2be033da257ab830625be7c136a74`；这不是一次远端最新版本审计，也不表示 Dayan 全部指标均已迁入。
+Numeric_Check 的算法作者标识为 **`Repository contributors`**，与其余内置 CPU 方法一致。下表中的数值是当前配置中的可编辑建议阈值，不是已经由 X1 Pro 机主签署的硬件规格；当前 `numeric_review.status` 仍为 `pending`。
 
-| Dayan 对照项 | 本轮增加 | 判断边界 |
+| 配置组 | 当前阈值 | 单位／实际含义 |
+|---|---:|---|
+| `joint.vel_threshold` | `1.0` | 相邻关节位置差，`rad per adjacent sample`，没有除以时间，不是真实速度 |
+| `joint.velocity_peak` | `20.0` | 单次相邻位置差峰值，同样不是 `rad/s` |
+| `joint.reset_ratio` | `0.6` | 超过相邻位置差阈值的区间比例，超过 60% 报告频繁跳变 |
+| `joint.limits` | `null` | 未登记机械限位，因此不做关节范围判定 |
+| `imu.gyro_max` / `acc_max` | `10.0` / `196.2` | 角速度 `rad/s`；加速度 `m/s²`（约 20g） |
+| `imu.gyro_bias_max` / `acc_bias_max` | `0.05` / `0.5` | 角速度偏置 `rad/s`；加速度偏置 `m/s²` |
+| `imu.min_static_frames` | `50` | 偏置候选区段的最少样本数 |
+| `cmd.jerk_threshold` | `10.0` | 指令位置二阶样本差，`rad per sample-index squared`，不是真实 jerk |
+| `pose_freeze.min_run` / `lookback` | `3` / `10` | 冻结候选最少连续样本；回看样本数 |
+| `pose_freeze.vel_threshold` / `freeze_eps` | `0.01` / `1e-6` | 冻结前位置变化阈值 `m per sample`；逐帧变化判定阈值 `m` |
+
+本轮在现有 `Numeric_Check` 中补两类检查，不新增重复算法 ID。逻辑属于本仓库实现，方法、评分和阈值按现有配置口径执行。这里的“配置确认”是对字段、单位和阈值的内容确认，不是算法作者身份；算法作者统一为 `Repository contributors`。
+
+| 检查项 | 本轮增加 | 判断边界 |
 |---|---|---|
 | A5 动作指令限位 | 按显式 command 字段、SI 弧度、逐分量闭区间检查 | 独立配置；不借用反馈 joint.limits；只支持已声明的角位置指令 |
 | J7 / A7 数值冻结 | 反馈位置和指令位置分别检测恒值区间 | 运动后恒值为复核候选，普通恒值仅观察；不证明采集故障 |
@@ -51,7 +66,7 @@ edc robot confirm-numeric --profile robot.yaml --reviewer "实际确认人" --ou
 edc run /path/to/data --profile robot.confirmed.yaml --algorithm Numeric_Check --output /path/to/new-results
 ```
 
-本轮未替机主确认或修改任何真实机器人限位。新增阈值也纳入配置摘要，升级前的确认记录会变成 `stale`；需要作者审阅新增项后重新确认，不能复用旧摘要绕过。
+本轮未替机主确认或修改任何真实机器人限位。新增阈值也纳入配置摘要，升级前的确认记录会变成 `stale`；需要配置确认人审阅新增项后重新确认，不能复用旧摘要绕过。
 
 ## 时间、证据和筛选
 
@@ -71,6 +86,6 @@ Numeric 适配器版本为 `ir-adapter-16`，筛选策略为 `episode_filter_v3`
 
 ## 剩余边界
 
-本轮没有覆盖跨独立 feature 的 IMU 配对、字段/模式一致性、结构完整性扩展、依赖双时钟的检测，以及 Dayan 上游未实现项。C6 原编码突变不在本轮；恒值检测也不代替已有时间戳重复检测。发布许可及真实样例验收沿用各自清单，不因合成测试通过标为完成。
+本轮没有覆盖跨独立 feature 的 IMU 配对、字段/模式一致性、结构完整性扩展和依赖双时钟的检测。C6 原编码突变不在本轮；恒值检测也不代替已有时间戳重复检测。真实样例验收沿用各自清单，不因合成测试通过标为完成。
 
 验证日志与安装包信息见 本轮证据（本地留存：evidence/numeric_gaps_20261026/validation.json），当前验收汇总见 [STATUS](STATUS.md)。

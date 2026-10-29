@@ -31,7 +31,8 @@ def test_import_failure_visible_and_cpu_execution_continues(tmp_path, monkeypatc
     install(monkeypatch, [point('bad_import', error=ImportError('optional backend absent')),
                           point('bad_init', error=RuntimeError('optional initialization failed'))])
     registry = algorithms()
-    assert len(registry.plugins) == 9
+    assert len(registry.plugins) == 66
+    assert sum('quality_cpu' in p.spec.presets for p in registry.plugins.values()) == 9
     assert [r['status'] for r in registry.discovery_errors] == ['missing_dependency', 'processing_error']
     with open_dataset(generate(tmp_path/'demo')) as dataset:
         pool = recommend(dataset)
@@ -61,9 +62,22 @@ def test_diagnostics_cli_preserves_default_list(monkeypatch, capsys):
     install(monkeypatch, [point('optional', error=ImportError('absent'))])
     assert main(['algorithms']) == 0
     captured = capsys.readouterr()
-    assert len(json.loads(captured.out)) == 9 and '--diagnostics' in captured.err
+    listed = json.loads(captured.out)
+    assert len(listed) == 66 and sum('quality_cpu' in p.get('presets', []) for p in listed) == 9
+    assert '--diagnostics' in captured.err
     assert main(['algorithms', '--diagnostics']) == 0
     assert json.loads(capsys.readouterr().out)['discovery_errors'][0]['entry_point'] == 'optional'
+
+
+def test_repository_owned_indicator_pool_has_no_external_algorithm_dependency(monkeypatch):
+    install(monkeypatch, [])
+    registry = algorithms()
+    indicators = {ident: plugin for ident, plugin in registry.plugins.items()
+                  if 'quality_indicators' in plugin.spec.presets}
+    assert len(indicators) == 57
+    assert {'C1', 'J1', 'M3'} <= indicators.keys()
+    assert all(plugin.spec.author == 'EDC contributors' for plugin in indicators.values())
+    assert not any(ident.startswith('dayan__') for ident in registry.plugins)
 
 
 def dataset_plugin(calls, fail=False):

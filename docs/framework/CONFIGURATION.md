@@ -104,6 +104,10 @@ methods:
 
 ## 工作流端及交接
 
+默认 `configs/workflows/curation.yaml` 只有 quality 阶段，运行当前已安装且启用的可运行质量方法；不要求安装价值插件。CPU 方法和 GPU `Projection_Alignment` 都属于 quality，GPU 只影响预检可用性。真实 alignment 插件尚待接入验收；未执行不表示通过。
+
+用户选择价值评估后再加入 value 阶段。以下为显式选择编辑、价值和增强的完整示意，插件 ID 需替换为已安装方法。编辑也可配置在 value 后，但每个编辑／增强新版本的下一阶段都必须是 quality；缺少复检会在配置校验时拒绝。
+
 ```yaml
 id: curation
 stages:
@@ -119,6 +123,7 @@ stages:
     kind: value
     input: recheck
     algorithms: [my_team__value]
+    selection_policy: explicit
     method_select: {my_team__value: [episode_001]}
   - id: augment
     kind: augmentation
