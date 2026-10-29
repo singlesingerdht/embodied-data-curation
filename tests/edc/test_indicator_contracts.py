@@ -247,3 +247,30 @@ def test_completeness_required_channels_cannot_conflict_with_selected_scope(tmp_
         result = row(recommend(dataset, params=params), 'M3')
     assert result['status'] == 'missing_input'
     assert 'included in selected channels' in result['reason']
+
+
+@pytest.mark.parametrize('change', [
+    {'source_kind': 'unknown'}, {'source_kind': 'command'},
+    {'time_source': 'synthetic'}, {'timestamps': [0., float('nan'), 2.]},
+])
+def test_default_scope_enforces_same_contract_as_explicit_scope(change):
+    channel = Channel('pose', 'pose', ['position'], 3, 'fixture', unit='m', value_available=True,
+        source_kind='feedback', calibration_status='confirmed', time_source='acquisition',
+        timestamps=[0., 1., 2.],
+        representation={'quantity': 'position', 'semantic_status': 'confirmed'})
+    for key, value in change.items():
+        setattr(channel, key, value)
+    episode = SimpleNamespace(channels={'pose': channel}, profile={})
+    plugin = algorithms().plugins['P5']
+    assert preflight(plugin, episode)[0] == 'missing_input'
+    assert preflight(plugin, episode, {'channels': ['pose']})[0] == 'missing_input'
+
+
+@pytest.mark.parametrize('params', [{}, {'channels': ['camera']}])
+def test_camera_timing_needs_timestamps_but_not_decoded_pixels(params):
+    channel = Channel('camera', 'rgb', [], 3, 'fixture', image_available=False,
+                      time_source='acquisition', timestamps=[0., 1., 2.])
+    episode = SimpleNamespace(channels={'camera': channel}, profile={})
+    registry = algorithms()
+    assert preflight(registry.plugins['C1'], episode, params)[0] == 'runnable'
+    assert preflight(registry.plugins['C5'], episode, params)[0] == 'missing_input'

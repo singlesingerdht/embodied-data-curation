@@ -103,7 +103,7 @@ def validate_requirements(requirements, schema):
     from edc.data.ir.units import si_unit
     allowed = {'id', 'channel', 'channel_param', 'modality', 'field', 'unit', 'source_kind',
                'calibration_status', 'time_sources', 'clock_required', 'min_samples',
-               'min_channels', 'when'}
+               'min_channels', 'frames_required', 'when'}
     ids = set()
     if not isinstance(requirements, (tuple, list)):
         raise ValueError('data_requirements must be an array')
@@ -129,6 +129,8 @@ def validate_requirements(requirements, schema):
             raise ValueError('data_requirements min_channels must be positive integer')
         if 'clock_required' in req and type(req['clock_required']) is not bool:
             raise ValueError('data_requirements clock_required must be boolean')
+        if 'frames_required' in req and type(req['frames_required']) is not bool:
+            raise ValueError('data_requirements frames_required must be boolean')
         if 'when' in req and not isinstance(req['when'], dict):
             raise ValueError('data_requirements when must be an object')
         references = list(req.get('when', {})) + ([req['channel_param']] if 'channel_param' in req else [])
@@ -193,7 +195,7 @@ def evaluate_requirements(spec, episode, params):
                     reasons.append(f'{requirement.get("channel_param")}: requires >= {requirement["min_channels"]} channels')
                 if requirement.get('modality') and c.modality != requirement['modality']:
                     reasons.append(f'{name}: modality must be {requirement["modality"]}')
-                if requirement.get('modality') == 'rgb' and not c.image_available:
+                if requirement.get('frames_required', requirement.get('modality') == 'rgb') and not c.image_available:
                     reasons.append(f'{name}: readable RGB frames are required')
                 field = requirement.get('field')
                 field_map = params.get('field_map', {}) if isinstance(params, dict) else {}

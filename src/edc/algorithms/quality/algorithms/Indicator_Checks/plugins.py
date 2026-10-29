@@ -44,6 +44,8 @@ def input_requirements(row):
     base = {'id': f'{code}_channels', 'channel_param': channel_param}
     if modality in canonical:
         base['modality'] = canonical[modality]
+    if modality == 'camera':
+        base['frames_required'] = group == 'content'
     if modality in {'joint', 'cmd'}:
         base['source_kind'] = 'command' if modality == 'cmd' else 'feedback'
     if group in {'timing', 'dedup', 'content', 'sync'}:
@@ -157,6 +159,16 @@ class IndicatorPlugin:
         if code == 'M3' and params.get('channels') is not None:
             if set(params['required_channels']) - {c.name for c in channels}:
                 return 'missing_input', 'required_channels must be included in selected channels'
+        # The shared contract cannot expand a deferred modality scope itself.
+        # Once selected here, apply exactly the same gates as an explicit list.
+        if params.get('channels') is None and channels:
+            from edc.algorithms.contracts import evaluate_requirements
+            checks = evaluate_requirements(self.spec, episode,
+                                           {**params, 'channels': [c.name for c in channels]})
+            reasons = [reason for check in checks if check['status'] == 'missing_input'
+                       for reason in check['reasons']]
+            if reasons:
+                return 'missing_input', '; '.join(reasons)
         timed = self.row['group'] in {'timing', 'dedup', 'sync'} or self.row['group'] == 'content'
         if timed:
             from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason

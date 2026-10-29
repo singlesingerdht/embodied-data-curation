@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "date": "2026-10-29",
+  "date": "2026-10-30",
   "scope": "synthetic configuration and execution contracts; no new real robot acceptance",
   "python": "3.13.11",
   "tests": {
     "focused": {
-      "passed": 65,
+      "passed": 71,
       "skipped": 0
     },
     "source": {
-      "passed": 735,
+      "passed": 741,
       "skipped": 23
     },
     "installed_wheel": {
-      "passed": 735,
+      "passed": 741,
       "skipped": 23,
       "isolated_from_source": true,
       "optional_dependencies": "reused from system-site-packages; wheel installed into separate venv"
@@ -60,11 +60,11 @@
   "artifacts": [
     {
       "filename": "embodied_data_curation-0.2.0a2-py3-none-any.whl",
-      "sha256": "f38e250394c380e77ce627a5c6275f0e782d1919f38dfbdf56e67c7f6034be43"
+      "sha256": "fa400cf175fcc444455285e42c454fb3f6c5b42f5c4a48ca5255897ea3300f15"
     },
     {
       "filename": "embodied_data_curation-0.2.0a2.tar.gz",
-      "sha256": "2382033375369e155e3f4a4bd1a0dbc970b02e695635846ff178208bf0306315"
+      "sha256": "b71ac00365b83af0161e0d46aa364e65593a9cded641f30d4f7187049e6cdc02"
     }
   ],
   "not_revalidated": [
@@ -77,5 +77,11 @@
     "research_bridges": 3,
     "GPU_extensions": 3,
     "real_registration_evidence_not_distributed": 1
-  }
+  },
+  "started_date": "2026-10-29",
+  "additional_contract_checks": [
+    "default_and_explicit_scope_apply_identical_requirements",
+    "camera_timing_without_decoded_frames",
+    "image_content_requires_readable_frames"
+  ]
 }

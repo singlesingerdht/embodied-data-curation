@@ -1,24 +1,24 @@
 ........................................................................ [  9%]
 ........................................................................ [ 18%]
 ........................................................................ [ 28%]
-.........................s.........s...s.......sssssssss..sss........... [ 37%]
-.......................s.s.s....s....................................... [ 47%]
+...............................s.........s...s.......sssssssss..sss..... [ 37%]
+.............................s.s.s....s................................. [ 47%]
 ........................................................................ [ 56%]
-........................................ss.............................. [ 66%]
-.............................................................s.......... [ 75%]
-........................................................................ [ 85%]
-..............................................................s......... [ 94%]
-......................................                                   [100%]
+..............................................ss........................ [ 65%]
+...................................................................s.... [ 75%]
+........................................................................ [ 84%]
+....................................................................s... [ 94%]
+............................................                             [100%]
 =========================== short test summary info ============================
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_ir_integration.py:72: Legacy value bridge stays in research repository
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_ir_integration.py:266: Legacy value bridge stays in research repository
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_ir_integration.py:311: Legacy value bridge stays in research repository
-SKIPPED [12] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_lerobot_official.py:51: could not import 'lerobot': No module named 'lerobot'
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_logical_channel_names.py:187: Real robot registration evidence remains in the research repository
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_logical_channel_names.py:236: GPU extension is outside CPU distribution
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_logical_channel_names.py:263: could not import 'lerobot': No module named 'lerobot'
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_media_reuse.py:72: GPU extension is outside CPU distribution
-SKIPPED [2] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_orientation_channels.py:246: could not import 'lerobot': No module named 'lerobot'
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_recommendations.py:98: GPU extension is outside CPU distribution
-SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source/tests/edc/test_video_native_inputs.py:182: could not import 'lerobot': No module named 'lerobot'
-735 passed, 23 skipped in 131.08s (0:02:11)
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_ir_integration.py:72: Legacy value bridge stays in research repository
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_ir_integration.py:266: Legacy value bridge stays in research repository
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_ir_integration.py:311: Legacy value bridge stays in research repository
+SKIPPED [12] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_lerobot_official.py:51: could not import 'lerobot': No module named 'lerobot'
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_logical_channel_names.py:187: Real robot registration evidence remains in the research repository
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_logical_channel_names.py:236: GPU extension is outside CPU distribution
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_logical_channel_names.py:263: could not import 'lerobot': No module named 'lerobot'
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_media_reuse.py:72: GPU extension is outside CPU distribution
+SKIPPED [2] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_orientation_channels.py:246: could not import 'lerobot': No module named 'lerobot'
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_recommendations.py:98: GPU extension is outside CPU distribution
+SKIPPED [1] edc-indicator-contracts-20261029-l6c2muus/source-final/tests/edc/test_video_native_inputs.py:182: could not import 'lerobot': No module named 'lerobot'
+741 passed, 23 skipped in 135.06s (0:02:15)
