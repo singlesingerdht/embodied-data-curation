@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-30",
+  "baseline_commit": "deadd18c5a4923737ad89dc0569c32d8cb1b7689",
+  "tests": {
+    "source": {
+      "passed": 764,
+      "skipped": 23
+    },
+    "installed_wheel": {
+      "passed": 764,
+      "skipped": 23,
+      "outside_source": true,
+      "optional_dependencies": "reused from system-site-packages"
+    },
+    "timeline_focused": {
+      "passed": 23
+    }
+  },
+  "base_install": {
+    "core_algorithms": 66,
+    "heavy_libraries_loaded": [],
+    "distributions": [
+      [
+        "PyYAML",
+        "6.0.3"
+      ],
+      [
+        "embodied-data-curation",
+        "0.2.0a2"
+      ],
+      [
+        "numpy",
+        "2.5.4"
+      ],
+      [
+        "pip",
+        "25.3"
+      ]
+    ],
+    "pip_check": "passed",
+    "environment": "clean venv with host ROS PYTHONPATH removed"
+  },
+  "wheel_integrity": {
+    "python_files": 206,
+    "wheel_sha256": "4a437f1b990f3b2b819d2655cabe03a055c7b6b7cd50888f5496f05acca56a36"
+  },
+  "computational_files": {
+    "tracked_count": 113,
+    "changed": [
+      "src/edc/algorithms/quality/algorithms/Action_Smoothness/action_evaluator.py",
+      "src/edc/algorithms/quality/algorithms/Action_Smoothness/run_check.py",
+      "src/edc/algorithms/quality/algorithms/Action_Smoothness/scoring.py"
+    ],
+    "scope": "Restore original residual jerk and expose its threshold; other methods unchanged"
+  },
+  "artifacts": [
+    {
+      "filename": "embodied_data_curation-0.2.0a2-py3-none-any.whl",
+      "sha256": "4a437f1b990f3b2b819d2655cabe03a055c7b6b7cd50888f5496f05acca56a36"
+    },
+    {
+      "filename": "embodied_data_curation-0.2.0a2.tar.gz",
+      "sha256": "8bbd7f24e6d4c1d9355ae30a34ffea5e03ee194a2e9db08dfdfa0940aaa51fc8"
+    }
+  ],
+  "method_version": "smoothness_stationary_residual_explicit_dt_v8",
+  "adapter_version": "ir-adapter-19",
+  "real_result_summary": "real-summary.json",
+  "model_or_gpu_acceptance": false,
+  "python": "3.13.11",
+  "real_validation": "installed wheel; matches source values exactly"
+}

@@ -193,7 +193,10 @@ def test_all_cpu_adapters_execute_without_gpu(tmp_path):
         for name in ('pose', 'joint_pos'):
             ep.channels[name].time_evidence = {'timeline_scope': 'independent_channel',
                                               'independent_acquisition_timeline': True}
-        ctx=SimpleNamespace(episode=ep)
+        from edc.execution.runner import Context
+        artifacts = tmp_path / 'artifacts'
+        artifacts.mkdir()
+        ctx=Context(dataset=None, episode=ep, workdir=artifacts)
         for p in builtins():
             if p.spec.id == 'Check_Timestamp':
                 source = tmp_path / 'reference.bag'

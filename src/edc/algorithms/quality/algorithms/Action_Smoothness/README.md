@@ -1,60 +1,57 @@
-# C 动作平滑度 (action_smoothness)
+# 动作平滑度（Action_Smoothness）
 
-基于机械臂末端位姿的平滑后轨迹 jerk 检测 + SLAM 冻结检测, 与相机无关。
+检测末端位置反馈的静止段残差 jerk，并保留独立的 SLAM 冻结子项。位置经执行层换算为 **m**，逐点时间为 **s**，jerk 为 **m/s³**。不清洗、补值或修改源数据。
 
-jerk 先在 Savitzky-Golay 平滑后的位置轨迹上计算，再按静止段掩码统计。原始位置与平滑位置的高频残差不参与 jerk，避免把测量噪声按三阶微分放大。静止掩码只保留足够长的低速连续段，动态帧及滤波过渡边界不会进入静止评分。若源时间轴不完全等间隔，先以时间间隔中位数重采样到均匀网格，再求导；原始时间轴和重采样参数写入结果证据。
+## 使用者：算法端配置
 
-## 用法
-
-公共工作流使用 `arms: all`，按机器人声明的单臂／双臂分别绑定和执行；具体配置见[统一配置](../../../../../../docs/framework/CONFIGURATION.md)。下述是单文件方法入口。
-
-```bash
-python -m edc.algorithms.quality.algorithms.Action_Smoothness.run_check <pose_file> [--side left|right] [--weights '{}']
+```yaml
+defaults:
+  arms: all
+methods:
+  Action_Smoothness:
+    params:
+      timeline:
+        mode: reference_channel
+        reference_channel: rgb/head
+        time_source: acquisition
+        resample: linear
+        clock_policy: require_common_or_explicit_mapping
+      expected_rate_hz: 30
+      window_length: 11
+      vel_threshold_factor: 0.1
+      jerk_threshold_m_s3: 15
 ```
 
-- `--side`: 仅对 `.json` 双臂生效, 选 left/right (默认 right); `.txt` 不需要
+`arms: all` 按机器人声明分别检查全部机械臂。只检查右臂时，添加 `arms: [right]` 和 `params.channel: pose/arm/right/feedback`；也可用源 topic。参考通道只提供时间，不解码图像，不进入机械臂位置输入选区。
 
-## 输入格式
+**机器人／数据集端**负责确认单位、反馈语义、acquisition 来源及 clock；算法参数只引用这些声明。不能因为两路时间值接近或选择了头部相机，就填入共同 clock。明确的时钟映射使用 `transforms.clocks`，配置与适用范围见 [变换接口](../../../../../../docs/framework/TRANSFORMS.md)。
 
-**单位约定 (重要)**: `timestamp` 统一为**秒 (s)**, 位置 `x/y/z` 为**米 (m)** → jerk 单位 `m/s³`。
-jerk 阈值 15 即按此标定 (历史数据若为毫秒, 需先 `/1000` 转秒)。
+## 时间轴规则
 
-- **`.txt`** — 8 列空格分隔, **第一列为秒**:
-  ```
-  timestamp(s)  x y z  qx qy qz qw
-  ```
-- **`.json`** — 含 `fps` 与 `data` 列表, timestamp 由 `帧索引 / fps` 生成 (秒):
-  ```json
-  {"fps": 20.0, "data": [
-    {"follow_left_position": [x,y,z], "follow_left_rotation": [qx,qy,qz],
-     "follow_right_position":[x,y,z], "follow_right_rotation":[qx,qy,qz]}
-  ]}
-  ```
-  - 单臂: 用 `follow_position` / `follow_rotation`
-  - 双臂: 用 `follow_left_position` / `follow_right_position` (配同名 `_rotation`)
+| 模式 | 算法实际输入 | 边界 |
+|---|---|---|
+| `reference_channel` | 源位置线性插值到指定通道的真实 acquisition 时间点 | 两路必须有共同 clock 或直接显式映射；仅取重叠范围，逐行记录来源，不外推 |
+| `native`（缺省） | 位置自身已有的 acquisition/container 时间 | 不重采样；不能据此证明跨通道同步 |
 
-## 检测项 (2 原子)
+使用自身时间轴时明确写 `timeline: {mode: native, time_source: acquisition}`。`expected_rate_hz` **只表示参数标定频率，不生成均匀时间**。默认 30 Hz；实测中位频率偏差超过 `rate_tolerance_ratio`（默认 0.2）时，只保留诊断 jerk，顶层为 `NEEDS_REVIEW`、`score: null`、`assessment_complete: false`。变更这个声明前需有相应参数标定依据。
 
-| 原子 | 阈值 | direction | 说明 |
-|---|---|---|---|
-| 轨迹抖动 | T_min=15 (熔断), T_max=5 (P80 基线) | inverse | jerk≥15→熔断, ≤5→满分 |
-| SLAM 冻结 | ≥1s 位姿不变 且 冻结前有运动(>5mm/s) | binary | 检测到冻结→score=0→熔断 |
+缺共同 clock／映射时不执行跨轴插值和 jerk，直接待复核。无效或非递增时间、无重叠、映射超适用范围、样本少于滤波窗口同样不产生质量通过结论。未知单位、错误通道和配置冲突在输入预检阻塞。
 
-- 任一原子 score=0 → 模块熔断 (total=0, DO_NOT_USE)。
-- 双臂: 任一臂不通过 → is_bad。
-- SLAM 冻结判定用位姿帧间差 (`diff<1e-6`) + 帧数/fps, 与 timestamp 绝对值无关。
+## 计算方法
 
-## 输出示例
+1. 在选定评估时间轴上对 XYZ 应用 Savitzky-Golay（默认 11 点、三阶多项式）。
+2. 用平滑位置与逐点实际时间计算速度，门限为全局峰值的 `0.1` 倍；完全静止时保留 `1e-6 m/s` 零峰值保护。
+3. 按原方法进行低速段膨胀及腐蚀／膨胀。膨胀可能纳入边界运动帧，报告分别保留原低速帧、额外纳入帧及其 jerk 证据。
+4. 对 **原位置减平滑位置** 的残差计算三阶导；每一阶传入完整逐点时间，不用平均／中位间隔替代。
+5. 统计静止掩码内 jerk 幅值 RMS，使用原 inverse 评分公式。默认 5 m/s³ 为满分基线，15 m/s³ 为熔断线；显式阈值进入同一公式，不另建评分方法。
+6. 在同一评估输入上执行原 SLAM 冻结检查；冻结前运动及持续时间条件保持原实现。无可评估静止段不视为满分。
 
-```json
-{
-  "module": "action_smoothness", "score": 100.0, "grade": "S", "passed": true,
-  "verdict": "ACCEPTABLE", "reasons": [],
-  "sub_indicators": [
-    {"name": "轨迹抖动", "score": 100.0, "passed": true, "raw_value": "Jerk=2.40, P80基线=5.0, 阈值=15.0"},
-    {"name": "SLAM 冻结", "score": 100.0, "passed": true, "raw_value": "freezes=0 | 无"}
-  ],
-  "num_poses": 201,
-  "raw": {"jerk": {"score": 2.403, "is_bad": false}, "slam_freeze": {"has_freeze": false, "freeze_count": 0}}
-}
-```
+11 点窗口在 250 Hz 与 30 Hz 上覆盖的时间不同，不能直接用同一标定阈值解释两种输入。参考模式保留实际相机抖动和间隔，不暗中再均匀化。
+
+## 输出与证据
+
+`dqs_record_v1` 分开保存执行状态和质量判断。`raw.jerk` 保留原始 RMS、峰值、静止帧与分段信息；`raw.slam_freeze` 保留冻结证据。频率不匹配时，候选评分仅在 `diagnostic_result` 内留存，不参与放行。
+
+每个实例的 `timeline.json` 随 catalog 发现，保存：源／参考通道、原始秒制时间、clock 状态与映射参数、参考保留／排除行、目标时间、插值左右源行和权重、时间范围、参数标定频率、实测间隔及窗口时长。clock 映射与重采样分别记录；使用已声明 clock 不代表本方法验证了硬件同步。
+
+开发者可调用 `run_check.assess_arrays` 在已准备好的 SI 数组上复核计算；它是底层方法接口，不负责机器人配置、clock 或标定频率放行。正式运行与推荐均经过 EDC 适配器。

@@ -28,10 +28,25 @@ from edc.algorithms.quality.shared.attribution import format_report
 def _report(module):
     report = format_report(module)
     report['assessment_complete'] = module['assessment_complete']
-    report['method_version'] = 'smoothness_filtered_position_jerk_v7'
+    report['method_version'] = 'smoothness_stationary_residual_explicit_dt_v8'
     if not module['assessment_complete'] and report['verdict'] != 'DO_NOT_USE':
         report.update(score=None, passed=None, grade='N/A', verdict='OBSERVATION')
         report['reasons'].append('仅完成有输入的子项；静止抖动或冻结检查缺少样本，整体未完整评估')
+    return report
+
+
+def assess_arrays(positions, timestamps, *, weights=None, window_length=11,
+                  vel_threshold_factor=.1, jerk_threshold_m_s3=15):
+    """Run the unchanged residual-jerk method on an explicitly prepared SI input."""
+    evaluator = ActionEvaluator(window_length=window_length,
+        vel_threshold_factor=vel_threshold_factor, threshold=jerk_threshold_m_s3)
+    jerk = evaluator.evaluate_arrays(positions, timestamps)
+    jerk['details']['threshold'] = evaluator.threshold
+    slam = (evaluator.detect_slam_freeze_arrays(positions, timestamps) if len(positions) >= 5
+            else {'has_freeze': False, 'freeze_count': 0, 'max_freeze_length': 0})
+    slam['assessment_complete'] = len(positions) >= 5
+    report = _report(build_action_smoothness_module(jerk, slam, weights))
+    report['raw'] = {'jerk': jerk, 'slam_freeze': slam}
     return report
 
 
@@ -119,7 +134,8 @@ def assess_from_ir(info, reader, side: str = "right", weights: dict = None) -> d
         timestamps = np.array(ti.timestamps)
 
     if not np.isfinite(timestamps).all() or np.any(np.diff(timestamps) <= 0):
-        return {"score": None, "verdict": "NEEDS_REVIEW", "reasons": ["时间轴非有限或非严格递增"], "method_version": "smoothness_filtered_position_jerk_v7"}
+        return {"score": None, "verdict": "NEEDS_REVIEW", "assessment_complete": False,
+                "reasons": ["时间轴非有限或非严格递增"], "method_version": "smoothness_stationary_residual_explicit_dt_v8"}
     jerk_result, _ = measure_time(evaluator.evaluate_arrays)(positions, timestamps)
     jerk_result["details"]["threshold"] = evaluator.threshold
 

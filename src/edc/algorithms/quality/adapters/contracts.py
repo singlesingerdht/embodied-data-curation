@@ -11,7 +11,7 @@ INPUT_DESCRIPTIONS = {
                         '跨通道对齐评分另需独立时间轴、共同 clock、有效时间以及相机参考。'),
     'Sync_Check': ('至少两条独立原始采集时间轴、有效秒制时间和共同 clock；公共行时间或合成时间不可替代。',),
     'Root_Cause': ('至少两条可比较的独立记录时间轴及共同 clock；公共行时间不能用于跨通道归因。',),
-    'Action_Smoothness': ('所选机械臂各自的末端 position，可换算为 m，并有逐行有效记录时间；不默认补帧率。',),
+    'Action_Smoothness': ('末端反馈 position 换算为 m；native 使用自身时间，reference_channel 使用指定通道真实 acquisition 时间并要求共同 clock 或显式映射。频率仅作标定检查，不生成时间。',),
     'Reset_Detection': ('关节 position；已确认的复位 reference、单位与正 tolerance，且与实际输入量纲一致。',),
     'Video_Integrity': ('可解码 RGB 或原视频；默认auto按读取器声明选择图像或视频入口；frames无需编码；video物化另需显式 FPS 或有效时间轴。',
                         '采样间隔和空间缩小比例单独记录；派生视频结果不能证明原编码或采集同步。'),
@@ -35,6 +35,26 @@ def cpu_parameters(ident):
         properties['channel'] = {'type': 'string', 'description': '精确绑定实际末端 position topic；与 channels 二选一，不自动改为同侧另一通道'}
         properties['side'] = {'type': 'string', 'enum': ['left', 'right'],
                               'description': '显式绑定的侧别校验；统一配置使用 arms 选择机械臂并逐臂绑定，禁止另一侧回退'}
+        properties.update(
+            timeline={'type': 'object', 'additionalProperties': False, 'default': {'mode': 'native'},
+                'properties': {
+                    'mode': {'type': 'string', 'enum': ['native', 'reference_channel'], 'default': 'native'},
+                    'reference_channel': {'type': 'string', 'description': '参考通道的源 topic 或逻辑名；使用真实时间点'},
+                    'time_source': {'type': 'string', 'enum': ['acquisition', 'container']},
+                    'resample': {'type': 'string', 'enum': ['linear'], 'default': 'linear'},
+                    'clock_policy': {'type': 'string', 'enum': ['require_common_or_explicit_mapping'],
+                                     'default': 'require_common_or_explicit_mapping'}},
+                'description': '算法输入时间轴；参考模式仅接受 acquisition，不外推。缺共同 clock 或映射时 NEEDS_REVIEW'},
+            expected_rate_hz={'type': 'number', 'exclusiveMinimum': 0, 'default': 30,
+                'description': '滤波与阈值的标定频率，只检查真实时间轴，不生成均匀时间'},
+            rate_tolerance_ratio={'type': 'number', 'minimum': 0, 'maximum': 1, 'default': .2,
+                'description': '实测中位频率相对标定频率的允许偏差，超出只保留诊断值并待复核'},
+            window_length={'type': 'integer', 'minimum': 5, 'default': 11,
+                'description': 'Savitzky-Golay 窗口帧数，必须为奇数；三阶多项式保持不变'},
+            vel_threshold_factor={'type': 'number', 'exclusiveMinimum': 0, 'default': .1,
+                'description': '静止分段速度门限与全局峰值之比'},
+            jerk_threshold_m_s3={'type': 'number', 'exclusiveMinimum': 5, 'default': 15,
+                'description': 'SI 残差 jerk 阈值；大于保留的 5 m/s³ 满分基线'})
     if ident == 'Numeric_Check':
         properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后 Numeric 配置确认失效'}
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:

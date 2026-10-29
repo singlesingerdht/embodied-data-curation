@@ -19,13 +19,18 @@ class ActionEvaluator:
                  window_length: int = 11, 
                  polyorder: int = 3, 
                  threshold: float = 15.0,
-                 vel_threshold_factor: float = 0.1,
-                 min_segment_frames: int = 20):
+                 vel_threshold_factor: Optional[float] = 0.1,
+                 min_segment_frames: int = 20,
+                 vel_threshold_m_s: Optional[float] = None):
         self.window_length = window_length
         self.polyorder = polyorder
         self.threshold = threshold
         self.vel_threshold_factor = vel_threshold_factor
         self.min_segment_frames = min_segment_frames
+        # None selects the legacy relative-to-peak mode. Supplying a value
+        # selects an explicit absolute threshold for callers that need it.
+        self.vel_threshold_m_s = vel_threshold_m_s
+        self._last_segmentation_stats = {}
 
     def evaluate(self, poses: List[PosePoint]):
         if not poses:
@@ -36,48 +41,59 @@ class ActionEvaluator:
 
     def evaluate_arrays(self, positions: np.ndarray, timestamps: np.ndarray):
         """直接评估 numpy 数组 (N×3 位置 + N 时间戳)。"""
+        positions = np.asarray(positions, dtype=float)
+        timestamps = np.asarray(timestamps, dtype=float)
         n = positions.shape[0]
         if n <= 3:
             return {"score": 0.0, "is_bad": False, "details": {"message": "insufficient data points"}}
 
         jitter_score, stationary_mask, smooth_positions, stationary_jerk, motion_jerk_mean = self.calculate_jitter_stationary_with_timestamps(
             positions, timestamps, self.window_length, self.polyorder,
-            self.vel_threshold_factor, self.min_segment_frames
+            self.vel_threshold_factor, self.min_segment_frames,
+            self.vel_threshold_m_s
         )
-
-        smooth_velocity = np.column_stack([
-            np.gradient(smooth_positions[:, axis], timestamps, edge_order=1)
-            for axis in range(3)
-        ])
-        speed = np.linalg.norm(smooth_velocity, axis=1)
-        max_speed_index = int(np.argmax(speed)) if len(speed) else 0
 
         score = float(jitter_score)
         is_bad = bool(score > self.threshold)
 
+        dt_values = np.diff(timestamps - timestamps[0]) if n > 1 else np.array([], dtype=float)
         details = {
             "n_frames": int(n),
             "stationary_frames": int(np.sum(stationary_mask)),
             "max_jerk_magnitude": float(np.max(stationary_jerk)) if len(stationary_jerk) > 0 else 0.0,
             "mean_jerk_magnitude": float(np.mean(stationary_jerk)) if len(stationary_jerk) > 0 else 0.0,
             "motion_jerk_mean": float(motion_jerk_mean),
-            "jerk_signal": "filtered_position",
+            "jerk_signal": "filtered_residual",
             "filter": {"name": "savgol", "window_length": self.window_length,
                         "polyorder": self.polyorder},
-            "time_axis": self._time_axis_details(timestamps),
-            "speed": {
-                "unit": "m/s",
-                "p50": float(np.percentile(speed, 50)),
-                "p95": float(np.percentile(speed, 95)),
-                "p99": float(np.percentile(speed, 99)),
-                "max": float(speed[max_speed_index]),
-                "max_index": max_speed_index,
-                "max_time_seconds_from_start": float(timestamps[max_speed_index] - timestamps[0]),
-            },
             "stationary_jerk_evaluated": bool(np.any(stationary_mask)),
-            "stationary_segmentation": {'vel_threshold_factor': self.vel_threshold_factor,
-                                         'min_segment_frames': self.min_segment_frames,
-                                         'transition_guard_frames': max(1, int(self.window_length) // 2)},
+            "stationary_segmentation": {
+                'threshold_mode': 'absolute_m_s' if self.vel_threshold_m_s is not None else 'relative_peak',
+                'velocity_peak_m_s': self._last_segmentation_stats.get('velocity_peak_m_s'),
+                'velocity_threshold_m_s': self._last_segmentation_stats.get(
+                    'velocity_threshold_m_s',
+                    float(self.vel_threshold_m_s) if self.vel_threshold_m_s is not None else None),
+                'vel_threshold_factor': self.vel_threshold_factor,
+                'min_segment_frames': self.min_segment_frames,
+                'compatibility_dilation': True,
+                'raw_stationary_frames': self._last_segmentation_stats.get('raw_stationary_frames'),
+                'compatibility_included_frames': self._last_segmentation_stats.get(
+                    'compatibility_included_frames'),
+                'gap_dilation_frames': self._last_segmentation_stats.get('gap_dilation_frames'),
+                'morphology_kernel_frames': self._last_segmentation_stats.get('morphology_kernel_frames'),
+            },
+            "raw_stationary_jerk_rms_m_s3": self._last_segmentation_stats.get(
+                'raw_stationary_jerk_rms_m_s3'),
+            "raw_stationary_max_jerk_m_s3": self._last_segmentation_stats.get(
+                'raw_stationary_max_jerk_m_s3'),
+            "compatibility_included_jerk_rms_m_s3": self._last_segmentation_stats.get(
+                'compatibility_included_jerk_rms_m_s3'),
+            "time_axis": {
+                "derivative_basis": "per_sample_timestamp",
+                "dt_min_s": float(np.min(dt_values)) if n > 1 else None,
+                "dt_median_s": float(np.median(dt_values)) if n > 1 else None,
+                "dt_max_s": float(np.max(dt_values)) if n > 1 else None,
+            },
         }
         evaluated = details['stationary_jerk_evaluated']
         return {"score": score, "is_bad": is_bad, "details": details,
@@ -87,13 +103,15 @@ class ActionEvaluator:
 
     def calculate_jitter_stationary_with_timestamps(self, positions: np.ndarray, timestamps: np.ndarray, 
                                                   window_length: int = 11, polyorder: int = 3,
-                                                  vel_threshold_factor: float = 0.2,
-                                                  min_segment_frames: int = 10) -> tuple:
+                                                  vel_threshold_factor: Optional[float] = 0.1,
+                                                  min_segment_frames: int = 10,
+                                                  vel_threshold_m_s: Optional[float] = None) -> tuple:
         """
         计算专门用于静止期的抖动分数，使用实际时间戳。
-        使用基于速度的掩码识别低运动段，应用腐蚀去除短片段，
-        对平滑后的位置计算 jerk，并用静止掩码提取静止段评分。
+        使用基于速度的掩码识别低运动段，保留历史边界膨胀兼容行为，
+        并在原始位置与 Savitzky-Golay 平滑位置的残差上按逐点时间戳计算 jerk。
         """
+        positions = np.asarray(positions, dtype=float)
         if len(positions.shape) != 2 or positions.shape[1] != 3:
             raise ValueError("Positions must be a 2D array of shape (N, 3)")
         
@@ -102,33 +120,17 @@ class ActionEvaluator:
         
         n = positions.shape[0]
         
-        # 如果时间戳数量不匹配，扩展为统一的时间间隔
+        # 物理导数不能用隐含的样本序号或全局平均 dt 代替真实时间轴。
         if len(timestamps) != n:
             raise ValueError(f"Timestamp count ({len(timestamps)}) does not match position count ({n})")
-
         timestamps = np.asarray(timestamps, dtype=float)
-        if not np.isfinite(timestamps).all():
-            raise ValueError("Timestamps must be finite")
-        dt_values = np.diff(timestamps)
-        if np.any(dt_values <= 0):
-            raise ValueError("Timestamps must be strictly increasing")
-
-        # Savitzky-Golay assumes a uniform sample grid.  The recorded time
-        # axis is retained for velocity segmentation, while the derivative
-        # signal is evaluated on a uniform grid using the robust median period.
-        nominal_dt = float(np.median(dt_values))
-        uniform_count = max(4, int(np.floor((timestamps[-1] - timestamps[0]) / nominal_dt)) + 1)
-        uniform_timestamps = timestamps[0] + np.arange(uniform_count, dtype=float) * nominal_dt
-        if uniform_timestamps[-1] < timestamps[-1]:
-            uniform_timestamps = np.append(uniform_timestamps, uniform_timestamps[-1] + nominal_dt)
-        resampled_positions = np.column_stack([
-            np.interp(uniform_timestamps, timestamps, positions[:, axis])
-            for axis in range(3)
-        ])
+        if not np.isfinite(timestamps).all() or np.any(np.diff(timestamps) <= 0):
+            raise ValueError("Timestamps must be finite and strictly increasing")
+        time_axis = timestamps - timestamps[0]
         
         # 应用Savitzky-Golay平滑滤波器到整个轨迹
-        if window_length > resampled_positions.shape[0]:
-            window_length = min(resampled_positions.shape[0], 11)
+        if window_length > positions.shape[0]:
+            window_length = min(positions.shape[0], 11)
             if window_length % 2 == 0:
                 window_length -= 1
         
@@ -137,97 +139,97 @@ class ActionEvaluator:
             if polyorder < 0:
                 polyorder = 2
         
-        smooth_uniform_positions = np.zeros_like(resampled_positions)
+        smooth_positions = np.zeros_like(positions)
         for i in range(3):  # 分别对每个轴应用平滑
-            smooth_uniform_positions[:, i] = savgol_filter(
-                resampled_positions[:, i], window_length, polyorder)
-
-        # Return the filtered signal on the original row mapping.  This keeps
-        # the stationary mask and evidence aligned to source samples.
-        smooth_positions = np.column_stack([
-            np.interp(timestamps, uniform_timestamps, smooth_uniform_positions[:, axis])
-            for axis in range(3)
-        ])
+            smooth_positions[:, i] = savgol_filter(positions[:, i], window_length, polyorder)
         
-        # 计算用于静止检测的速度幅值 (使用平滑后位置, DF 方案: 防高频噪声干扰)
-        if len(timestamps) > 1:
-            smooth_velocities = np.zeros_like(smooth_positions)
-            for i in range(3):
-                smooth_velocities[:, i] = np.gradient(
-                    smooth_positions[:, i], timestamps, edge_order=1)
-        else:
-            smooth_velocities = np.zeros_like(smooth_positions)
+        # 速度同样使用每一对相邻样本的实际时间间隔。
+        smooth_velocities = np.gradient(smooth_positions, time_axis, axis=0, edge_order=2)
 
         velocity_magnitudes = np.linalg.norm(smooth_velocities, axis=1)
         
-        # 确定速度阈值
-        max_vel = np.max(velocity_magnitudes)
-        if max_vel == 0:
-            # 如果最大速度为0，设置一个很小的阈值以避免阈值为0
-            vel_threshold = 1e-6
+        # Default to the legacy relative threshold. An explicit absolute
+        # threshold remains available for callers that need fixed semantics.
+        max_vel = float(np.max(velocity_magnitudes))
+        if vel_threshold_m_s is not None:
+            if vel_threshold_m_s <= 0:
+                raise ValueError("vel_threshold_m_s must be positive when provided")
+            vel_threshold = float(vel_threshold_m_s)
         else:
-            vel_threshold = vel_threshold_factor * max_vel
+            if vel_threshold_factor is None or vel_threshold_factor <= 0:
+                raise ValueError("vel_threshold_factor must be positive in relative threshold mode")
+            # A perfectly still trajectory has peak velocity zero. Preserve
+            # the historical epsilon so that it remains evaluable.
+            vel_threshold = (1e-6 if max_vel == 0.0
+                             else float(vel_threshold_factor) * max_vel)
         
         # 创建低速（静止）段的掩码
         stationary_mask = velocity_magnitudes < vel_threshold
+        raw_stationary_mask = stationary_mask.copy()
         
         # 计算最小段长度，确保不超过掩码长度
         calculated_min_frames = max(int(0.01 * len(positions)), min_segment_frames)
         if calculated_min_frames > len(stationary_mask):
             calculated_min_frames = len(stationary_mask)
         
-        # 只保留足够长的低速连续段。不要先膨胀再恢复，否则一个短于
-        # min_segment_frames 的真实运动片段会被重新填回静止掩码，并把
-        # 运动边界的高 jerk 错算为静止抖动。
+        # 保留历史兼容行为：先填补短边界间隙，再用腐蚀/膨胀保留长段。
+        # 这会把滤波窗口附近的少量运动帧纳入静止证据，报告中显式记录。
+        gap = max(2, calculated_min_frames // 2)
+        if gap > 1 and len(stationary_mask) > gap:
+            stationary_mask = binary_dilation(
+                stationary_mask, structure=np.ones(gap, dtype=bool))
+
         if calculated_min_frames <= len(stationary_mask) and calculated_min_frames > 0:
-            # 确保结构元素大小为奇数
             if calculated_min_frames % 2 == 0:
                 calculated_min_frames -= 1
                 if calculated_min_frames <= 0:
                     calculated_min_frames = 1
-            
-            # 创建腐蚀结构元素
             structure = np.ones(calculated_min_frames, dtype=bool)
             eroded_mask = binary_erosion(stationary_mask, structure=structure)
-            # 恢复长静止段的原始覆盖，但保留所有原始动态帧为 false。
             final_mask = stationary_mask & binary_dilation(eroded_mask, structure=structure)
         else:
-            # 如果最小帧要求太大，使用原始掩码
             final_mask = stationary_mask
 
-        # 平滑窗口跨越静止/运动边界时，边界附近的位置导数仍含有运动
-        # 过渡。将半个滤波窗口作为证据保护带，避免把边界瞬态计入静止 jerk。
-        transition_guard = max(1, int(window_length) // 2)
-        if transition_guard and np.any(~stationary_mask):
-            guard_structure = np.ones(2 * transition_guard + 1, dtype=bool)
-            guarded_motion = binary_dilation(~stationary_mask, structure=guard_structure)
-            final_mask = final_mask & ~guarded_motion
+        self._last_segmentation_stats = {
+            'velocity_peak_m_s': max_vel,
+            'velocity_threshold_m_s': float(vel_threshold),
+            'threshold_mode': 'absolute_m_s' if vel_threshold_m_s is not None else 'relative_peak',
+            'gap_dilation_frames': int(gap),
+            'morphology_kernel_frames': int(calculated_min_frames),
+            'compatibility_dilation': True,
+            'raw_stationary_frames': int(np.sum(raw_stationary_mask)),
+            'compatibility_included_frames': int(np.sum(final_mask & ~raw_stationary_mask)),
+        }
         
         # 检查是否有任何有效的静止段
         if not np.any(final_mask):
-            # Keep the filtered signal for diagnostics; evaluate_arrays marks
-            # the result unassessed so zero cannot become a perfect grade.
-            return 0.0, final_mask, smooth_positions, np.array([0.0]), 0.0
+            # Keep the historical numerical return for callers; evaluate_arrays
+            # explicitly marks it unassessed so zero cannot become a perfect grade.
+            return 0.0, final_mask, np.zeros_like(positions), np.array([0.0]), 0.0
         
-        # 在均匀时间轴的平滑位置上计算 jerk（三阶导数）。
-        # 直接连续除以平均 dt 会把不规则采样误差带入三阶导；对极短
-        # 容器间隔尤其敏感。这里保留源行映射，只在导数阶段使用均匀网格。
-        smooth_velocity = np.gradient(
-            smooth_uniform_positions, nominal_dt, axis=0, edge_order=2)
-        smooth_acceleration = np.gradient(
-            smooth_velocity, nominal_dt, axis=0, edge_order=2)
-        uniform_jerk = np.gradient(
-            smooth_acceleration, nominal_dt, axis=0, edge_order=2)
-        smooth_jerk = np.column_stack([
-            np.interp(timestamps, uniform_timestamps, uniform_jerk[:, axis])
-            for axis in range(3)
-        ])
-        
-        # 计算每个时间点的jerk幅值
-        jerk_magnitude = np.linalg.norm(smooth_jerk, axis=1)
+        # 在滤波残差上计算三阶导数。每一阶都传入完整时间轴，
+        # 因此不使用中位 dt、平均 dt 或样本序号近似时间。
+        residuals = positions - smooth_positions
+        residual_velocity = np.gradient(residuals, time_axis, axis=0, edge_order=2)
+        residual_acceleration = np.gradient(
+            residual_velocity, time_axis, axis=0, edge_order=2)
+        residual_jerk = np.gradient(
+            residual_acceleration, time_axis, axis=0, edge_order=2)
+        jerk_magnitude = np.linalg.norm(residual_jerk, axis=1)
         
         # 仅考虑静止期间的jerk值
         stationary_jerk = jerk_magnitude[final_mask]
+        raw_stationary_jerk = jerk_magnitude[raw_stationary_mask]
+        compatibility_included_jerk = jerk_magnitude[final_mask & ~raw_stationary_mask]
+        self._last_segmentation_stats.update({
+            'raw_stationary_jerk_rms_m_s3': float(np.sqrt(np.mean(raw_stationary_jerk ** 2)))
+                if len(raw_stationary_jerk) else None,
+            'raw_stationary_max_jerk_m_s3': float(np.max(raw_stationary_jerk))
+                if len(raw_stationary_jerk) else None,
+            'compatibility_included_jerk_rms_m_s3': float(
+                np.sqrt(np.mean(compatibility_included_jerk ** 2)))
+                if len(compatibility_included_jerk) else None,
+        })
         
         # 运动段jerk (jerk_min基线: 正常运动中的自然抖动)
         motion_mask = ~final_mask
@@ -242,35 +244,6 @@ class ActionEvaluator:
         jitter_score = np.sqrt(np.mean(stationary_jerk**2))
         
         return jitter_score, final_mask, smooth_positions, stationary_jerk, motion_jerk_mean
-
-    @staticmethod
-    def _time_axis_details(timestamps: np.ndarray) -> Dict[str, Any]:
-        """Describe the recorded timeline and derivative grid used by jerk."""
-        values = np.asarray(timestamps, dtype=float)
-        if values.size < 2 or not np.isfinite(values).all():
-            return {
-                "source": "provided_timestamps",
-                "resampled_uniformly": False,
-                "nominal_dt_seconds": None,
-            }
-        intervals = np.diff(values)
-        nominal = float(np.median(intervals)) if np.all(intervals > 0) else None
-        uniform_count = None
-        if nominal is not None:
-            uniform_count = max(4, int(np.floor((values[-1] - values[0]) / nominal)) + 1)
-            if values[0] + (uniform_count - 1) * nominal < values[-1]:
-                uniform_count += 1
-        return {
-            "source": "provided_timestamps",
-            "resampled_uniformly": nominal is not None,
-            "derivative_method": "median_dt_uniform_resample_then_filtered_position_gradient",
-            "nominal_dt_seconds": nominal,
-            "interval_min_seconds": float(np.min(intervals)),
-            "interval_median_seconds": float(np.median(intervals)),
-            "interval_mean_seconds": float(np.mean(intervals)),
-            "interval_max_seconds": float(np.max(intervals)),
-            "resampled_frames": uniform_count,
-        }
 
     def calculate_dynamic_threshold(self, scores: List[float], k: float = 3.0, floor_threshold: float = 15.0) -> Dict[str, Any]:
         """

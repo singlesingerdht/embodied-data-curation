@@ -55,7 +55,7 @@ def records(output, ident):
     (('left', 'right'), ['left'], ['left']), (('left', 'right'), ['right'], ['right'])])
 def test_topology_controls_actual_execution(tmp_path, arms, selection, expected):
     cfg = fixture(tmp_path, arms)
-    cfg['algorithms']['methods']['Action_Smoothness'] = {'arms': selection}
+    cfg['algorithms']['methods']['Action_Smoothness'] = {'arms': selection, 'params': {'expected_rate_hz': 100}}
     out = tmp_path / 'out'
     result = run_workflow(cfg, out)
     rows = records(out, 'Action_Smoothness')

@@ -102,6 +102,25 @@ methods:
 
 `target_clock` 是**时间算法参数**；`primary` 只是参考通道。选择 `rgb/head` 不等于把所有通道改成头部时钟。只有数据侧明确了源 clock 和可验证映射后，`target_clock` 才可使用；原始采集时间和频率保留，不重采样。映射格式及已有测试见 [时间与单位](READING_UNITS_AND_TIME.md)、[变换接口](TRANSFORMS.md)。
 
+动作平滑度另有**算法输入时间轴**参数，不复用 `target_clock` 来隐式重采样：
+
+```yaml
+Action_Smoothness:
+  params:
+    timeline:
+      mode: reference_channel
+      reference_channel: rgb/head
+      time_source: acquisition
+      resample: linear
+      clock_policy: require_common_or_explicit_mapping
+    expected_rate_hz: 30
+    window_length: 11
+    vel_threshold_factor: 0.1
+    jerk_threshold_m_s3: 15
+```
+
+这是 `methods` 下的单项配置，默认逐臂执行。原始位置换算为 m 后，映射到参考时钟并线性插值到真实参考时间点；只用重叠范围、不外推、不生成均匀 30 Hz。缺共同 clock 或显式映射时返回 `NEEDS_REVIEW`。`timeline: {mode: native}` 保留自身时间；频率与 30 Hz 标定不符时只保留诊断结果，不能据此给质量通过／不通过结论。`expected_rate_hz`、`rate_tolerance_ratio` 是标定检查声明，调整前需相应标定依据。源数据与配置不会被执行过程修改。完整参数、原残差 jerk 方法及行映射证据见[动作平滑度](../../src/edc/algorithms/quality/algorithms/Action_Smoothness/README.md)。
+
 ## 工作流端及交接
 
 默认 `configs/workflows/curation.yaml` 只有 quality 阶段，运行当前已安装且启用的可运行质量方法；不要求安装价值插件。CPU 方法和 GPU `Projection_Alignment` 都属于 quality，GPU 只影响预检可用性。真实 alignment 插件尚待接入验收；未执行不表示通过。

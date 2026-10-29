@@ -1,0 +1,372 @@
+{
+  "schema_version": "edc_smoothness_timeline_validation_v1",
+  "source": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+  "source_hashes": {
+    "mcap": "95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2",
+    "robot": "88145b839eebc40ff07ce3e56cf2f11dc219771c91f06651aa814356ed979eb0"
+  },
+  "runs": {
+    "formal_reference": {
+      "experimental_assumed_clock": false,
+      "status_counts": {
+        "completed": 1
+      },
+      "verdict": "NEEDS_REVIEW",
+      "score": null,
+      "assessment_complete": false,
+      "jerk_rms_m_s3": null,
+      "jerk_details": null,
+      "timeline": {
+        "mode": "reference_channel",
+        "source_channel": "/right_arm/end_pose",
+        "reference_channel": "/camera_head_front/color/image_raw/compressed",
+        "source_frames": 12070,
+        "expected_rate_hz": 30,
+        "rate_tolerance_ratio": 0.2,
+        "source_time_source": "acquisition",
+        "source_clock": null,
+        "clock_policy": "require_common_or_explicit_mapping",
+        "clock_status": "unconfirmed",
+        "issues": [
+          "共同 clock 或显式映射未确认：Explicit clocks required"
+        ],
+        "resample": "linear",
+        "proves_acquisition_sync": false,
+        "extrapolation": false,
+        "reference": {
+          "file": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+          "source_mapping": {},
+          "time_evidence": {
+            "container_field": "log_time",
+            "acquisition_field": "header.stamp",
+            "raw_timestamp_unit": "ns",
+            "algorithm_timestamp_unit": "s",
+            "source_row_mapping": "identity; no sorting, dropping, or resampling",
+            "header_available": true,
+            "header_count": 1435,
+            "missing_header_count": 0,
+            "zero_header_count": 0,
+            "missing_header_rows": [],
+            "zero_header_rows": [],
+            "backward_intervals": 0,
+            "equal_intervals": 0,
+            "header_clock_confirmed": false,
+            "unavailable_reason": null,
+            "requested_time_source": "acquisition",
+            "selected_time_source": "acquisition",
+            "clock": null,
+            "establishes_acquisition_sync": false
+          }
+        },
+        "source_time_range_s": [
+          1776694770.2021863,
+          1776694818.4780364
+        ],
+        "reference_clock": null,
+        "reference_time_source": "acquisition",
+        "reference_frames": 1435,
+        "reference_time_range_s": [
+          1776694770.1163363,
+          1776694818.3854911
+        ],
+        "source": {
+          "file": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+          "selector": {},
+          "source_mapping": {},
+          "time_evidence": {
+            "container_field": "log_time",
+            "acquisition_field": "header.stamp",
+            "raw_timestamp_unit": "ns",
+            "algorithm_timestamp_unit": "s",
+            "source_row_mapping": "identity; no sorting, dropping, or resampling",
+            "header_available": true,
+            "header_count": 12070,
+            "missing_header_count": 0,
+            "zero_header_count": 0,
+            "missing_header_rows": [],
+            "zero_header_rows": [],
+            "backward_intervals": 0,
+            "equal_intervals": 0,
+            "header_clock_confirmed": false,
+            "unavailable_reason": null,
+            "requested_time_source": "acquisition",
+            "selected_time_source": "acquisition",
+            "clock": null,
+            "establishes_acquisition_sync": false
+          },
+          "field": "position",
+          "execution_unit": "m",
+          "time_unit": "s"
+        },
+        "evidence": "timeline.json"
+      },
+      "output": "/root/edc-smoothness-wheel-20261030/formal_reference"
+    },
+    "native_diagnostic": {
+      "experimental_assumed_clock": false,
+      "status_counts": {
+        "completed": 1
+      },
+      "verdict": "NEEDS_REVIEW",
+      "score": null,
+      "assessment_complete": false,
+      "jerk_rms_m_s3": 371.79261238172774,
+      "jerk_details": {
+        "n_frames": 12070,
+        "stationary_frames": 11460,
+        "max_jerk_magnitude": 5814.0794065626205,
+        "mean_jerk_magnitude": 191.1686534761408,
+        "motion_jerk_mean": 1755.0879264336997,
+        "jerk_signal": "filtered_residual",
+        "filter": {
+          "name": "savgol",
+          "window_length": 11,
+          "polyorder": 3
+        },
+        "stationary_jerk_evaluated": true,
+        "stationary_segmentation": {
+          "threshold_mode": "relative_peak",
+          "velocity_peak_m_s": 0.6642143135407031,
+          "velocity_threshold_m_s": 0.06642143135407032,
+          "vel_threshold_factor": 0.1,
+          "min_segment_frames": 20,
+          "compatibility_dilation": true,
+          "raw_stationary_frames": 10902,
+          "compatibility_included_frames": 563,
+          "gap_dilation_frames": 60,
+          "morphology_kernel_frames": 119
+        },
+        "raw_stationary_jerk_rms_m_s3": 296.87142157149253,
+        "raw_stationary_max_jerk_m_s3": 2198.7246723136172,
+        "compatibility_included_jerk_rms_m_s3": 1053.0013671903623,
+        "time_axis": {
+          "derivative_basis": "per_sample_timestamp",
+          "dt_min_s": 0.0030977725982666016,
+          "dt_median_s": 0.0039920806884765625,
+          "dt_max_s": 0.004847049713134766
+        },
+        "threshold": 15
+      },
+      "timeline": {
+        "mode": "native",
+        "source_channel": "/right_arm/end_pose",
+        "reference_channel": null,
+        "source_frames": 12070,
+        "expected_rate_hz": 30,
+        "rate_tolerance_ratio": 0.2,
+        "source_time_source": "acquisition",
+        "source_clock": null,
+        "clock_policy": "require_common_or_explicit_mapping",
+        "clock_status": "not_required_single_channel",
+        "issues": [
+          "实际中位频率 250.496 Hz 与标定 30 Hz 不匹配；诊断 jerk 不用于该阈值的质量结论，请选择参考时间轴或提供已标定参数"
+        ],
+        "resample": null,
+        "proves_acquisition_sync": false,
+        "extrapolation": false,
+        "source_time_range_s": [
+          1776694770.2021863,
+          1776694818.4780364
+        ],
+        "evaluated_frames": 12070,
+        "time_range_s": [
+          1776694770.2021863,
+          1776694818.4780364
+        ],
+        "observed_median_rate_hz": 250.49593884376492,
+        "calibration_rate_compatible": false,
+        "dt_min_s": 0.0030977725982666016,
+        "dt_median_s": 0.0039920806884765625,
+        "dt_max_s": 0.004847049713134766,
+        "window_duration_median_s": 0.04000115394592285,
+        "source": {
+          "file": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+          "selector": {},
+          "source_mapping": {},
+          "time_evidence": {
+            "container_field": "log_time",
+            "acquisition_field": "header.stamp",
+            "raw_timestamp_unit": "ns",
+            "algorithm_timestamp_unit": "s",
+            "source_row_mapping": "identity; no sorting, dropping, or resampling",
+            "header_available": true,
+            "header_count": 12070,
+            "missing_header_count": 0,
+            "zero_header_count": 0,
+            "missing_header_rows": [],
+            "zero_header_rows": [],
+            "backward_intervals": 0,
+            "equal_intervals": 0,
+            "header_clock_confirmed": false,
+            "unavailable_reason": null,
+            "requested_time_source": "acquisition",
+            "selected_time_source": "acquisition",
+            "clock": null,
+            "establishes_acquisition_sync": false
+          },
+          "field": "position",
+          "execution_unit": "m",
+          "time_unit": "s"
+        },
+        "evidence": "timeline.json"
+      },
+      "output": "/root/edc-smoothness-wheel-20261030/native_diagnostic"
+    },
+    "experimental_reference": {
+      "experimental_assumed_clock": true,
+      "status_counts": {
+        "completed": 1
+      },
+      "verdict": "ACCEPTABLE",
+      "score": 100.0,
+      "assessment_complete": true,
+      "jerk_rms_m_s3": 3.743689227697341,
+      "jerk_details": {
+        "n_frames": 1432,
+        "stationary_frames": 1305,
+        "max_jerk_magnitude": 53.00818148637145,
+        "mean_jerk_magnitude": 1.4164414080737853,
+        "motion_jerk_mean": 22.66309731175815,
+        "jerk_signal": "filtered_residual",
+        "filter": {
+          "name": "savgol",
+          "window_length": 11,
+          "polyorder": 3
+        },
+        "stationary_jerk_evaluated": true,
+        "stationary_segmentation": {
+          "threshold_mode": "relative_peak",
+          "velocity_peak_m_s": 0.41340329692171596,
+          "velocity_threshold_m_s": 0.0413403296921716,
+          "vel_threshold_factor": 0.1,
+          "min_segment_frames": 20,
+          "compatibility_dilation": true,
+          "raw_stationary_frames": 1238,
+          "compatibility_included_frames": 70,
+          "gap_dilation_frames": 10,
+          "morphology_kernel_frames": 19
+        },
+        "raw_stationary_jerk_rms_m_s3": 2.0895002247942838,
+        "raw_stationary_max_jerk_m_s3": 24.8896329554445,
+        "compatibility_included_jerk_rms_m_s3": 13.604124732509556,
+        "time_axis": {
+          "derivative_basis": "per_sample_timestamp",
+          "dt_min_s": 0.03081202507019043,
+          "dt_median_s": 0.03204989433288574,
+          "dt_max_s": 0.03674507141113281
+        },
+        "threshold": 15
+      },
+      "timeline": {
+        "mode": "reference_channel",
+        "source_channel": "/right_arm/end_pose",
+        "reference_channel": "/camera_head_front/color/image_raw/compressed",
+        "source_frames": 12070,
+        "expected_rate_hz": 30,
+        "rate_tolerance_ratio": 0.2,
+        "source_time_source": "acquisition",
+        "source_clock": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+        "clock_policy": "require_common_or_explicit_mapping",
+        "clock_status": "common_clock",
+        "issues": [],
+        "resample": "linear",
+        "proves_acquisition_sync": false,
+        "extrapolation": false,
+        "reference": {
+          "file": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+          "source_mapping": {},
+          "time_evidence": {
+            "container_field": "log_time",
+            "acquisition_field": "header.stamp",
+            "raw_timestamp_unit": "ns",
+            "algorithm_timestamp_unit": "s",
+            "source_row_mapping": "identity; no sorting, dropping, or resampling",
+            "header_available": true,
+            "header_count": 1435,
+            "missing_header_count": 0,
+            "zero_header_count": 0,
+            "missing_header_rows": [],
+            "zero_header_rows": [],
+            "backward_intervals": 0,
+            "equal_intervals": 0,
+            "header_clock_confirmed": false,
+            "unavailable_reason": null,
+            "requested_time_source": "acquisition",
+            "selected_time_source": "acquisition",
+            "clock": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+            "establishes_acquisition_sync": false
+          }
+        },
+        "source_time_range_s": [
+          1776694770.2021863,
+          1776694818.4780364
+        ],
+        "reference_clock": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+        "reference_time_source": "acquisition",
+        "reference_frames": 1435,
+        "reference_time_range_s": [
+          1776694770.1163363,
+          1776694818.3854911
+        ],
+        "clock_transform": {
+          "operation": "clock",
+          "source": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+          "target": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+          "time_source": "acquisition"
+        },
+        "evaluated_frames": 1432,
+        "time_range_s": [
+          1776694770.220328,
+          1776694818.3854911
+        ],
+        "observed_median_rate_hz": 31.201350919086195,
+        "calibration_rate_compatible": true,
+        "dt_min_s": 0.03081202507019043,
+        "dt_median_s": 0.03204989433288574,
+        "dt_max_s": 0.03674507141113281,
+        "window_duration_median_s": 0.33601701259613037,
+        "source": {
+          "file": "/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap",
+          "selector": {},
+          "source_mapping": {},
+          "time_evidence": {
+            "container_field": "log_time",
+            "acquisition_field": "header.stamp",
+            "raw_timestamp_unit": "ns",
+            "algorithm_timestamp_unit": "s",
+            "source_row_mapping": "identity; no sorting, dropping, or resampling",
+            "header_available": true,
+            "header_count": 12070,
+            "missing_header_count": 0,
+            "zero_header_count": 0,
+            "missing_header_rows": [],
+            "zero_header_rows": [],
+            "backward_intervals": 0,
+            "equal_intervals": 0,
+            "header_clock_confirmed": false,
+            "unavailable_reason": null,
+            "requested_time_source": "acquisition",
+            "selected_time_source": "acquisition",
+            "clock": "EXPERIMENT_ONLY_UNCONFIRMED_COMMON_CLOCK",
+            "establishes_acquisition_sync": false
+          },
+          "field": "position",
+          "execution_unit": "m",
+          "time_unit": "s"
+        },
+        "evidence": "timeline.json"
+      },
+      "output": "/root/edc-smoothness-wheel-20261030/experimental_reference"
+    },
+    "uniform_30hz_diagnostic": {
+      "experimental_resampling": true,
+      "proves_acquisition_sync": false,
+      "frames": 1449,
+      "jerk_rms_m_s3": 4.08963411729934,
+      "notice": "Uniform synthetic grid for comparison only; not reference_channel mode"
+    }
+  },
+  "source_hashes_unchanged": true,
+  "validated_with": "installed wheel outside source; optional dependencies reused from system-site-packages",
+  "formal_common_clock_confirmed": false
+}

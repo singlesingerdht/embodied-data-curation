@@ -134,6 +134,13 @@ def selected_pose(episode, params=None):
 
 def selected_inputs(episode, params, ident):
     from .selection import select_episode
+    reference = None
+    if ident == 'Action_Smoothness':
+        from .action import validate_options
+        validate_options(params)
+        requested = (params.get('timeline') or {}).get('reference_channel')
+        if requested:
+            reference = episode.channels[requested]
     if ident == 'Action_Smoothness' and params.get('channel'):
         if 'channels' in params:
             raise ValueError('Use channel or channels, not both')
@@ -150,6 +157,9 @@ def selected_inputs(episode, params, ident):
         if 'side' in params and c.side != params['side']:
             raise ValueError('Explicit action topic conflicts with requested side; no fallback is allowed')
         view._explicit_pose_channel = c.name
+    if ident == 'Action_Smoothness':
+        # The pose scope stays exact; the reference contributes timestamps only.
+        view._smoothness_reference_channel = reference
     if ident == 'Dedup_Check' and params.get('channel') and 'channels' in params:
         raise ValueError('Use channel or channels, not both')
     if ident == 'Sync_Check' and params.get('primary') and params['primary'] not in view.channels:
@@ -385,7 +395,7 @@ class LegacyAlgorithm:
 
     def __init__(self, ident, inputs, dependencies):
         version = ('ir-adapter-16' if ident == 'Numeric_Check' else
-                   'ir-adapter-18' if ident == 'Action_Smoothness' else
+                   'ir-adapter-19' if ident == 'Action_Smoothness' else
                    'ir-adapter-15' if ident == 'Reset_Detection' else
                    'ir-adapter-14')
         descriptions, schema = cpu_parameters(ident)
@@ -422,8 +432,16 @@ class LegacyAlgorithm:
                                for name, field in dedup_inputs(episode, params.get('channel'))]}
         if self.spec.id == 'Action_Smoothness':
             c = selected_pose(episode, params)
-            return {'inputs': [{'channel': c.name, 'field': 'position', 'unit': 'm',
-                                'side': c.side, 'time_source': c.time_source}]}
+            from .action import timeline_plan
+            plan = timeline_plan(episode, c, params)
+            inputs = [{'channel': c.name, 'field': 'position', 'unit': 'm',
+                       'side': c.side, 'time_source': c.time_source}]
+            if plan['reference_channel']:
+                inputs.append({'channel': plan['reference_channel'], 'role': 'reference_timeline',
+                               'time_source': 'acquisition', 'frames_required': False})
+            return {'availability': 'partial' if plan['issues'] else 'available',
+                    'reason': '; '.join(plan['issues']), 'inputs': inputs,
+                    'scope': 'residual_jerk_on_explicit_timeline'}
         if self.spec.id == 'Check_Timestamp':
             if 'multi_timestamps' not in capabilities(episode) or not any(
                     c.modality == 'rgb' and c.timestamps for c in episode.channels.values()):
@@ -485,9 +503,8 @@ class LegacyAlgorithm:
             params.pop('channel', None)
         if self.spec.id == "Action_Smoothness":
             channel = selected_pose(ep, params)
-            ep.read_signal(channel.name, "position")  # Validate only the input actually consumed.
-            if getattr(ep, '_explicit_pose_channel', None):
-                params['side'] = 'any'  # One validated explicit topic; legacy reader cannot choose another.
+            from .action import assess
+            return assess(ep, channel, params, context)
         if self.spec.id == "Dedup_Check":
             return self._dedup(ep, params, context)
         if self.spec.id == "Reset_Detection":

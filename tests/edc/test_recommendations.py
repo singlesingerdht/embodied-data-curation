@@ -129,7 +129,7 @@ def test_unrelated_unknown_hand_and_joint_do_not_block_selected_pose(tmp_path):
         'hand': {'modality': 'other', 'fields': ['recorded_values'], 'unit': None,
                  'body_part': 'hand', 'representation': {'quantity': 'unknown'}}})
     with open_dataset(path, profile=p) as ds:
-        assert entries(recommend(ds))['Action_Smoothness']['availability'] == 'available'
+        assert entries(recommend(ds, params={'Action_Smoothness': {'expected_rate_hz': 20}}))['Action_Smoothness']['availability'] == 'available'
         run(ds, algorithm_ids=['Action_Smoothness'], output=tmp_path / 'out')
         left = entries(recommend(ds, params={'Action_Smoothness': {'side': 'left'}}))['Action_Smoothness']
         assert left['status'] == 'missing_input' and 'left_pose.position' in left['reason']

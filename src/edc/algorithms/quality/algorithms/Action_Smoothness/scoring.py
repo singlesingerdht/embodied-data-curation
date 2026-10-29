@@ -23,7 +23,7 @@ def build_action_smoothness_module(jerk_result: dict, slam_result: dict,
     # ── 轨迹抖动: inverse 连续化 ──
     jerk_score = float(jerk_result.get("score", 0))
     jerk_th = float(jerk_result.get("details", {}).get("threshold", 15.0))
-    q1 = compute_quality(jerk_score, JERK_TMIN, JERK_TMAX, "inverse")
+    q1 = compute_quality(jerk_score, jerk_th, JERK_TMAX, "inverse")
     s1 = round(q1 * 100, 1)
     gap1 = round(100 - s1, 1)
     if s1 == 0:
@@ -32,13 +32,13 @@ def build_action_smoothness_module(jerk_result: dict, slam_result: dict,
         "name": "轨迹抖动",
         "default_weight": 0.60,
         "weight": c_weights["轨迹抖动"],
-        "threshold_rule": f"inverse: T_min={JERK_TMIN}, T_max={JERK_TMAX}(P80基线), 任一原子=0→C=0",
+        "threshold_rule": f"inverse: T_min={jerk_th}, T_max={JERK_TMAX}(P80基线), 任一原子=0→C=0",
         "raw_value": f"Jerk={jerk_score:.2f}, P80基线={JERK_TMAX}, 阈值={jerk_th:.1f}",
         "quality": q1,
         "passed": s1 > 0,
         "score": s1,
         "direction": "inverse",
-        "t_min": JERK_TMIN,
+        "t_min": jerk_th,
         "t_max": JERK_TMAX,
         "current_value": jerk_score,
         "gap": gap1,

@@ -2,6 +2,13 @@ defaults:
   arms: all
   selection: runnable
 methods:
+  Action_Smoothness:
+    params:
+      timeline: {mode: native}
+      expected_rate_hz: 30
+      window_length: 11
+      vel_threshold_factor: 0.1
+      jerk_threshold_m_s3: 15
   Video_Integrity:
     params: {input_mode: auto, sample_step: 1, downscale: 4}
   Sync_Check:

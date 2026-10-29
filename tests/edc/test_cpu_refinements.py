@@ -183,7 +183,7 @@ def test_static_pose_has_evaluable_segment_and_existing_score():
     assert report['assessment_complete'] and report['score'] == 100
 
 
-def test_smoothness_jerk_uses_filtered_position_not_high_frequency_residual():
+def test_smoothness_jerk_uses_original_position_minus_filtered_residual():
     pytest.importorskip('scipy')
     from edc.algorithms.quality.algorithms.Action_Smoothness.action_evaluator import ActionEvaluator
 
@@ -196,10 +196,21 @@ def test_smoothness_jerk_uses_filtered_position_not_high_frequency_residual():
     result = ActionEvaluator().evaluate_arrays(positions, ts)
 
     assert result['assessment_complete']
-    assert result['score'] < 15.0
+    from scipy.signal import savgol_filter
+    filtered = savgol_filter(positions, 11, 3, axis=0)
+    residual = positions - filtered
+    jerk = residual
+    for _ in range(3):
+        jerk = np.gradient(jerk, ts-ts[0], axis=0, edge_order=2)
+    _, mask, _, _, _ = ActionEvaluator().calculate_jitter_stationary_with_timestamps(
+        positions, ts, min_segment_frames=20)
+    expected = np.sqrt(np.mean(np.linalg.norm(jerk, axis=1)[mask]**2))
+    assert result['score'] == pytest.approx(expected)
+    assert result['score'] > 15.0
+    assert result['details']['jerk_signal'] == 'filtered_residual'
 
 
-def test_smoothness_jerk_records_uniform_time_grid_for_irregular_timestamps():
+def test_smoothness_jerk_uses_per_sample_irregular_timestamps():
     pytest.importorskip('scipy')
     from edc.algorithms.quality.algorithms.Action_Smoothness.action_evaluator import ActionEvaluator
 
@@ -215,11 +226,9 @@ def test_smoothness_jerk_records_uniform_time_grid_for_irregular_timestamps():
     details = result['details']
 
     assert result['assessment_complete']
-    assert details['time_axis']['resampled_uniformly'] is True
-    assert details['time_axis']['nominal_dt_seconds'] == pytest.approx(0.01)
-    assert details['time_axis']['interval_max_seconds'] == pytest.approx(0.019)
-    assert details['speed']['unit'] == 'm/s'
-    assert details['speed']['max'] < 0.01
+    assert details['time_axis']['derivative_basis'] == 'per_sample_timestamp'
+    assert details['time_axis']['dt_median_s'] == pytest.approx(0.01)
+    assert details['time_axis']['dt_max_s'] == pytest.approx(0.019)
     assert details['max_jerk_magnitude'] < 1.0
 
 
@@ -265,7 +274,8 @@ def test_execution_does_not_keep_trajectory_without_stationary_segment(tmp_path)
                'channels': {'pose': {'modality': 'pose', 'fields': ['position'], 'unit': 'm',
                                      'side': 'right', 'time_source': 'acquisition', 'clock': 'robot', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}}}
     with open_dataset(source, profile=profile) as dataset:
-        summary = run(dataset, output=tmp_path/'out', algorithm_ids=['Action_Smoothness'])
+        summary = run(dataset, output=tmp_path/'out', algorithm_ids=['Action_Smoothness'],
+                      params={'Action_Smoothness': {'expected_rate_hz': 100}})
     assert summary['status_counts'] == {'completed': 1}
     selection = json.loads(next((tmp_path/'out/_runs').glob('*/selection.json')).read_text())
     assert selection[0]['decision'] == 'unassessed'

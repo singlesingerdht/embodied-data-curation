@@ -1,10 +1,20 @@
 # 当前验收状态
 
-日期：**2026-10-30**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-16**，Action_Smoothness 适配 **ir-adapter-18**，Reset_Detection 适配 **ir-adapter-15**，其余 CPU 适配 **ir-adapter-14**。
+日期：**2026-10-30**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-16**，Action_Smoothness 适配 **ir-adapter-19**，Reset_Detection 适配 **ir-adapter-15**，其余 CPU 适配 **ir-adapter-14**。
 
 当前算法池为 **66 个仓库内登记项**：`quality_cpu` 默认预设 9 个 CPU 方法，`quality_indicators` 预设 57 个模态指标，其中 46 个已实现、11 个登记但因实现或输入条件暂不可执行。全部算法均由本仓库实现或登记；基础安装不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。单独安装的集成只属于开发者接口，不改变这组核心数量。
 
-本次基线回归：源码及源码外安装 wheel 全量均为 **741 passed / 23 skipped**；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV，`pip check` 通过。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+本次基线回归：源码及源码外安装 wheel 全量均为 **764 passed / 23 skipped**；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV，`pip check` 通过。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+
+## Action_Smoothness 参考时间轴与残差 jerk（2026-10-30）
+
+- 使用者算法端新增 `timeline.mode=native/reference_channel`、参考源 topic／逻辑名、acquisition 来源、线性重采样及 clock 策略；机器人／数据集端继续提供单位、反馈语义、clock 和明确映射，不按时间值接近推定共同 clock。默认 native，默认参数标定频率 30 Hz；参考示例见 `configs/algorithms/smoothness_reference.yaml`。
+- 按用户确认恢复原残差 jerk 方法：Savitzky-Golay → `0.1 × 全局峰值速度` → 原低速段形态学 → 原位置减平滑位置 → 按逐点实际时间求三阶导 → 静止段 RMS。恢复边界膨胀口径并保留其额外纳入帧证据，不沿用上一阶段 filtered_position／均匀时间网格及边界保护的计算口径。SLAM 冻结方法保持原实现；默认评分公式与 5／15 m/s³ 基线不变，显式阈值进入同一公式。
+- 参考模式只读取相机时间，不解码或编码图像。位置先经 SI 执行视图，再应用明确 clock 映射并插值到真实参考时间；仅取重叠范围，不外推。缺共同 clock／映射时不执行 jerk，返回 `NEEDS_REVIEW`、`score=null`、`assessment_complete=false`。原生 250 Hz 与默认 30 Hz 标定不匹配时，原 jerk 仅作为诊断留存，不能作该阈值的质量结论；`expected_rate_hz` 不生成时间，默认频率容差为 20%。
+- 每个实例保存 `timeline.json`，包含原始与目标秒制时间、参考保留／排除行、插值左右源行和权重、clock 参数、源映射、时间范围、实测间隔及滤波窗口时长。双臂分别执行，共用的头部参考轴不进入另一臂位置选区；推荐和执行使用同一绑定与门槛。缺依赖、缺物理语义及配置冲突保持明确阻塞。
+- 真实 X1 Pro 同一 MCAP／同一右臂输入复现：native 12,070 帧，残差 jerk RMS **371.792612 m/s³**；正式参考模式因两路 clock 仍未确认而待复核。独立假设对照在头部真实 acquisition 时间上得到 1,432 帧、**3.743689 m/s³**；均匀 30 Hz 诊断为 **4.089634 m/s³**。假设对照不能证明原采集同步，也不是正式质量通过。源 MCAP 和机器人配置 SHA-256 保持不变，未把假设写回配置。
+- 新增时间轴专项 **23 passed**；源码及源码外 wheel 全量各 **764 passed / 23 skipped**。wheel 206 个 Python 文件与源码一致；干净基础环境只有本包、NumPy/PyYAML 与 pip，`pip check` 通过，发现仍为 66 项且未加载模型／GPU库。基础隔离时移除宿主 ROS 的 `PYTHONPATH`；完整 wheel 测试复用本机可选依赖。23 项跳过范围沿用前一基线，不新增官方 LeRobot 或 GPU 验收。
+- 说明及可复现命令：[本轮验收](../validation/smoothness_timeline_20261030/README.md)。此前 filtered_position 结果作为历史证据保留，与本轮方法版本 `smoothness_stationary_residual_explicit_dt_v8` 不直接比较。
 
 ## 指标池配置与执行契约（2026-10-29 至 2026-10-30）
 
