@@ -58,12 +58,13 @@ def test_blank_units_allowed_but_physics_blocked_and_partial_explicit(tmp_path, 
     assert record(tmp_path / 'out', 'Structure_Check')['status'] == 'completed'
 
 
-def test_si_length_joint_does_not_enter_angular_detector(tmp_path):
+def test_si_length_joint_uses_length_detector_target(tmp_path):
     path, p = fixture(tmp_path, 'm')
     with open_dataset(path, profile=p) as ds:
         field = next(x for x in entries(recommend(ds))['Numeric_Check']['fields'] if x['channel'] == 'joint_pos')
-        assert not field['physical_checks_available'] and field['required_unit'] == 'rad'
-        assert any('dimensions do not match' in r for r in field['reasons'])
+        assert field['required_unit'] == 'm'
+        assert not field['physical_checks_available']  # author confirmation is still pending
+        assert not any('dimensions do not match' in r for r in field['reasons'])
         run(ds, algorithm_ids=['Numeric_Check'], output=tmp_path / 'out')
     result = record(tmp_path / 'out', 'Numeric_Check')['result']['reports'][0]
     assert not result['physical_checks_applied'] and result['unit'] == 'm'
@@ -89,7 +90,8 @@ def test_explicit_head_tilt_and_extension_split_convert_independently(tmp_path, 
             assert ep.channels['head_extension'].field_spec('position')['source_kind'] == 'feedback'
         es = entries(recommend(ds))
         field = next(f for f in es['Numeric_Check']['fields'] if f['channel'] == 'head_extension')
-        assert any('dimensions do not match' in r for r in field['reasons'])
+        assert field['required_unit'] == 'm'
+        assert not any('dimensions do not match' in r for r in field['reasons'])
 
 
 def test_video_preflight_does_not_depend_on_unknown_numeric_units(tmp_path, monkeypatch):

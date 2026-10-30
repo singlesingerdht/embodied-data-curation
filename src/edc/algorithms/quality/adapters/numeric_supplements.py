@@ -14,6 +14,15 @@ FREEZE_GROUPS = {'joint_positions': 'joint_freeze', 'cmd_positions': 'cmd_freeze
                  'gyro': 'gyro_freeze', 'accel': 'accel_freeze'}
 
 
+def _si_field_unit(channel, field, fallback):
+    """SI unit of the executed field; never assume every joint position is an angle."""
+    from edc.data.ir.units import UnitInputError, si_unit
+    try:
+        return si_unit(channel.field_spec(field).get('unit'))
+    except (UnitInputError, KeyError, TypeError):
+        return fallback
+
+
 def source_mapping(episode, channel, field):
     selection = copy.deepcopy(channel.selection or {})
     return {'source': channel.source, 'channel': selection.get('channel', channel.name),
@@ -95,7 +104,8 @@ def command_limits(values, episode, channel, field, settings, physical):
     elif values.ndim == 2 and len(limits) != values.shape[1]:
         state, reason = 'invalid_configuration', '指令限位必须逐项对应当前所选字段的分量顺序与数量。'
     check = {'id': 'command_limits', 'name': '动作指令位置限位', 'status': state,
-             'threshold': copy.deepcopy(limits), 'unit': 'rad', 'reason': reason,
+             'threshold': copy.deepcopy(limits),
+             'unit': _si_field_unit(channel, field, 'rad'), 'reason': reason,
              'outcome': None, 'events': [], 'source_mapping': source_mapping(episode, channel, field),
              'changes_score': False, 'violations_count': 0, 'verdict': None}
     if state != 'evaluated':
@@ -104,7 +114,7 @@ def command_limits(values, episode, channel, field, settings, physical):
     bad = np.argwhere((values < bounds[:, 0]) | (values > bounds[:, 1]))
     check.update(outcome='finding' if len(bad) else 'no_finding',
                  violations_count=len(bad), verdict='DO_NOT_USE' if len(bad) else 'ACCEPTABLE',
-                 reason='闭区间逐分量检查；阈值按当前字段顺序配置，单位 rad；原评分保持不变。')
+                 reason=f"闭区间逐分量检查；阈值按当前字段顺序配置，单位 {check['unit']}；原评分保持不变。")
     for row, component in bad:
         j = int(component)
         check['events'].append({'type': 'command_position_out_of_limits', 'source_row': int(row),
@@ -123,7 +133,8 @@ def numeric_freeze(values, episode, channel, field, target, settings, physical):
         'cmd_freeze': '动作指令数值冻结候选', 'gyro_freeze': 'IMU 角速度数值冻结候选',
         'accel_freeze': 'IMU 加速度数值冻结候选'}[group], 'status': state,
         'threshold': copy.deepcopy(settings),
-        'unit': {'joint_positions': 'rad', 'cmd_positions': 'rad', 'gyro': 'rad/s', 'accel': 'm/s^2'}[target],
+        'unit': ({'gyro': 'rad/s', 'accel': 'm/s^2'}.get(target)
+                 or _si_field_unit(channel, field, 'rad')),
         'reason': reason, 'outcome': None, 'events': [], 'observations': [],
         'source_mapping': source_mapping(episode, channel, field), 'timeline': timeline,
         'changes_score': False, 'proves_acquisition_failure': False}

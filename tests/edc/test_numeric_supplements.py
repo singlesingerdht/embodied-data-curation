@@ -57,7 +57,7 @@ def checks(report):
 
 
 def record(report):
-    return {'algorithm': {'id': 'Numeric_Check', 'version': 'ir-adapter-16'},
+    return {'algorithm': {'id': 'Numeric_Check', 'version': 'ir-adapter-17'},
             'object': {'type': 'episode', 'id': 'e'}, 'status': 'completed',
             'result': {'reports': [report]}}
 

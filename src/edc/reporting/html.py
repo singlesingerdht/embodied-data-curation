@@ -194,18 +194,37 @@ def configuration_panel(profile, params, normalization=None, recommendations=Non
                     'gyro_max': '角速度幅值上限', 'acc_max': '加速度幅值上限',
                     'gyro_bias_max': '角速度偏置上限', 'acc_bias_max': '加速度偏置上限',
                     'min_static_frames': '最短静止样本数'}
+    def threshold_unit(group, key):
+        # Joint thresholds are expressed in the field's SI unit. A joint-space
+        # configuration may contain both rad (revolute) and m (prismatic) fields,
+        # so the global threshold table must not claim one of them.
+        if key in {'min_run', 'lookback', 'min_static_frames'}:
+            return '样本'
+        if key == 'reset_ratio':
+            return '比例'
+        if group in {'joint', 'cmd', 'joint_freeze', 'cmd_freeze', 'command_limits'}:
+            if key == 'limits':
+                return '字段单位'
+            if group == 'cmd' or group == 'command_limits':
+                return '字段单位/样本²' if group == 'cmd' else '字段单位'
+            if key in {'freeze_eps', 'motion_threshold'}:
+                return '字段单位'
+            return '字段单位/样本'
+        if group == 'gyro_freeze':
+            return 'rad/s'
+        if group == 'accel_freeze':
+            return 'm/s²'
+        if group == 'pose_freeze':
+            return 'm' if key == 'freeze_eps' else 'm/样本'
+        return 'rad/s' if key.startswith('gyro') else 'm/s²'
+
     rows = []
     for group, values in review['settings']['thresholds'].items():
         for key, value in values.items():
             value = '未设置，不检查该范围' if value is None else json.dumps(value, ensure_ascii=False)
             description = ('恒值区间全幅差阈值' if key == 'freeze_eps' and group != 'pose_freeze'
                            else descriptions[key])
-            unit = ('样本' if key in {'min_run', 'lookback', 'min_static_frames'} else '比例' if key == 'reset_ratio'
-                    else {'joint_freeze': 'rad', 'cmd_freeze': 'rad', 'gyro_freeze': 'rad/s',
-                          'accel_freeze': 'm/s²'}[group] if group in {'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'}
-                    else 'rad' if key == 'limits' else 'rad/样本' if group == 'joint'
-                    else 'rad/样本²' if group == 'cmd' else 'm' if key == 'freeze_eps'
-                    else 'm/样本' if group == 'pose_freeze' else 'rad/s' if key.startswith('gyro') else 'm/s²')
+            unit = threshold_unit(group, key)
             rows.append(f'<tr><td>{esc(labels[group])}</td><td>{esc(description)}<span class="muted block">{esc(key)}</span></td><td>{esc(value)}</td><td>{esc(unit)}</td></tr>')
     return ('<section class="report-section" data-section="configuration"><h3>参数与单位确认</h3>'
         f'<p class="notice">{esc(state)}。有限值检查始终执行；相关物理检查须完成确认。</p>'

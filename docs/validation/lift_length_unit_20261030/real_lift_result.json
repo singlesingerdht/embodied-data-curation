@@ -1,0 +1,57 @@
+{
+  "description": "Real X1 Pro MCAP, Numeric_Check only, lift position declared length/m after ir-adapter-17.",
+  "dataset": "same real MCAP used by the validation runs; read-only",
+  "record": {
+    "status": "completed",
+    "reason": "Finiteness checks available; physical checks configured for 17/44 fields. 仍有子项缺少配置、联合输入或足够样本，详见字段原因；实际区段覆盖在运行后核验。",
+    "field_reports": 44,
+    "physical_checks_applied": 17
+  },
+  "lift_position": {
+    "input_channel": "/lift/joint_states",
+    "input_field": "position",
+    "physical_checks_applied": true,
+    "unit": "m",
+    "source_unit": "m",
+    "shape": [
+      12069,
+      1
+    ],
+    "verdict": "ACCEPTABLE",
+    "score": 100.0,
+    "coverage_complete": false,
+    "joint_difference_unit": "m",
+    "coverage_checks": [
+      {
+        "id": "joint_limits",
+        "status": "unconfigured",
+        "unit": "m"
+      },
+      {
+        "id": "joint_step",
+        "status": "evaluated",
+        "unit": "m per adjacent sample"
+      },
+      {
+        "id": "joint_freeze",
+        "status": "evaluated",
+        "unit": "m"
+      }
+    ],
+    "supplemental_freeze": [
+      {
+        "id": "joint_freeze",
+        "status": "evaluated",
+        "unit": "m"
+      }
+    ]
+  },
+  "workflow_gate": {
+    "delivery_status": "suspended",
+    "decision": "unassessed",
+    "reasons": 37,
+    "reason_counts": {
+      "Required assessment coverage incomplete": 37
+    }
+  }
+}

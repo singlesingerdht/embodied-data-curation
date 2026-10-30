@@ -394,7 +394,7 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = ('ir-adapter-16' if ident == 'Numeric_Check' else
+        version = ('ir-adapter-17' if ident == 'Numeric_Check' else
                    'ir-adapter-19' if ident == 'Action_Smoothness' else
                    'ir-adapter-15' if ident == 'Reset_Detection' else
                    'ir-adapter-14')
@@ -692,7 +692,8 @@ class LegacyAlgorithm:
                     result = {"score": None, "verdict": "DO_NOT_USE", "finite": False,
                               "reason": "Nonfinite numeric values"}
                 elif physical and shape_valid:
-                    result = module.assess(**{target[0]: values}, **review['settings'])
+                    result = module.assess(**{target[0]: values}, unit=target[1],
+                                           **review['settings'])
                 elif physical:
                     result = {'score': None, 'verdict': 'NOT_APPLICABLE', 'finite': True,
                               'reason': 'Numeric field shape/count does not match the declared input'}
