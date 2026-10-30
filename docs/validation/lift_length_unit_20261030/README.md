@@ -77,11 +77,11 @@ tests/edc/test_numeric_review.py
 
 ### 2. 真实配置确认
 
-使用之前被拒绝的 `results/round2_d2c63ec/configs/robot_filled_length_m.yaml`：
+使用之前被拒绝的 `results/runs/20261030_x1_pro_numeric_length_m/config/robot_filled_length_m.yaml`：
 
 ```bash
 edc robot confirm-numeric \
-  --profile results/round2_d2c63ec/configs/robot_filled_length_m.yaml \
+  --profile results/runs/20261030_x1_pro_numeric_length_m/config/robot_filled_length_m.yaml \
   --reviewer "lift unit validation" \
   --output /tmp/lift_length_confirmed.yaml
 ```
@@ -124,7 +124,7 @@ CLI 只写新文件，不覆盖源配置；对应的“确认不覆盖源文件�
 cd /root/workspace/embodied-data-curation
 .venv-b/bin/python -m pytest -q
 .venv-b/bin/edc robot confirm-numeric \
-  --profile results/round2_d2c63ec/configs/robot_filled_length_m.yaml \
+  --profile results/runs/20261030_x1_pro_numeric_length_m/config/robot_filled_length_m.yaml \
   --reviewer "lift unit validation" \
   --output /tmp/lift_length_confirmed.yaml
 ```
