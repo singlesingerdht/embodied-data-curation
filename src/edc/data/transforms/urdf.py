@@ -7,7 +7,11 @@ import numpy as np
 from .core import rotation
 
 
-def import_urdf_chain(path, base_frame, tip_frame, *, inputs=None):
+def import_urdf_chain(path, base_frame, tip_frame, *, inputs=None, limit_margin=0.0):
+    """limit_margin (rad or m, per joint unit) widens every URDF limit symmetrically as sensor slack."""
+    if isinstance(limit_margin, bool) or not isinstance(limit_margin, (int, float)) \
+            or not np.isfinite(limit_margin) or limit_margin < 0:
+        raise ValueError('limit_margin must be a finite nonnegative number')
     path = Path(path).resolve()
     data = path.read_bytes()
     if b'<!DOCTYPE' in data.upper() or b'<!ENTITY' in data.upper():
@@ -81,7 +85,7 @@ def import_urdf_chain(path, base_frame, tip_frame, *, inputs=None):
                 bounds = [float(limit.get(k)) for k in ('lower', 'upper')]
                 if not np.isfinite(bounds).all() or bounds[0] > bounds[1]:
                     raise ValueError(f'{name}: invalid joint limits')
-                joint['limits'] = bounds
+                joint['limits'] = [bounds[0] - limit_margin, bounds[1] + limit_margin]
         joints.append(joint)
     bindings = inputs or {}
     moving = {j['name'] for j in joints if j['type'] != 'fixed'}
@@ -92,4 +96,4 @@ def import_urdf_chain(path, base_frame, tip_frame, *, inputs=None):
             joint['input'] = copy.deepcopy(bindings[joint['name']])
     return {'base_frame': base_frame, 'tip_frame': tip_frame, 'joints': joints,
             'urdf_source': {'path': str(path), 'sha256': hashlib.sha256(data).hexdigest(),
-                            'robot': root.get('name')}}
+                            'robot': root.get('name'), 'limit_margin': float(limit_margin)}}

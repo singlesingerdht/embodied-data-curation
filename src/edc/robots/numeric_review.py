@@ -9,7 +9,21 @@ SI_UNITS = {'length': 'm', 'angle': 'rad', 'time': 's', 'angular_velocity': 'rad
 TARGETS = {('joint_space', 'position'): ('joint_positions', 'rad'),
            ('pose', 'position'): ('pose_freeze_positions', 'm'),
            ('joint_space', 'joint_q'): ('cmd_positions', 'rad'),
-           ('imu', 'ang_vel'): ('gyro', 'rad/s'), ('imu', 'lin_acc'): ('accel', 'm/s^2')}
+           ('imu', 'ang_vel'): ('gyro', 'rad/s'), ('imu', 'lin_acc'): ('accel', 'm/s^2'),
+           # Adapter-only target: recorded joint velocity, checked in numeric_supplements, never by the method.
+           ('joint_space', 'velocity'): ('joint_velocities', 'rad/s')}
+# Threshold groups the adapter owns. Stripped before the method validates or receives thresholds,
+# and only present when configured, so existing confirmation digests are unchanged.
+ADAPTER_GROUPS = {'joint_velocity': {'max_abs'}}
+ADAPTER_TARGETS = {'joint_velocities': 'joint_velocity'}
+
+
+def method_settings(settings):
+    """Settings for the original Numeric_Check method: adapter-only threshold groups removed."""
+    result = copy.deepcopy(settings)
+    for group in ADAPTER_GROUPS:
+        result['thresholds'].pop(group, None)
+    return result
 
 
 def numeric_field_status(episode, channel, field, review):
@@ -36,6 +50,9 @@ def numeric_field_status(episode, channel, field, review):
             reasons.append(f'{channel.name}.{field}: declare command or feedback')
         if review['status'] != 'confirmed':
             reasons.append('Numeric_Check: configuration confirmation for the current fields and thresholds is pending/stale')
+        group = ADAPTER_TARGETS.get(target[0])
+        if group and group not in review['settings']['thresholds']:
+            reasons.append(f'numeric_check.thresholds.{group} is not configured; no default threshold is assumed')
     return {'channel': channel.name, 'field': field, 'source_unit': spec.get('source_unit', spec['unit']),
             'execution_unit': spec['unit'], 'required_unit': target[1] if target else None,
             'physical_checks_available': bool(target) and not reasons, 'reasons': reasons,
@@ -43,27 +60,88 @@ def numeric_field_status(episode, channel, field, review):
 
 
 def numeric_settings(profile=None, params=None):
-    from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds
     configured = (profile or {}).get('numeric_check', {})
     params = params or {}
-    # Topic scope does not change any numerical threshold or configuration confirmation.
-    params = {k: v for k, v in params.items() if k not in {'channels', 'arms'}}
+    # Topic scope and the finiteness-only declaration change no threshold or configuration confirmation.
+    params = {k: v for k, v in params.items() if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s'}}
     for value in (configured, params):
         if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
             raise ValueError('Numeric_Check accepts thresholds and weights')
-    base = thresholds(configured.get('thresholds'))
+    base = _thresholds(configured.get('thresholds'))
     overrides = params.get('thresholds', {})
     if not isinstance(overrides, dict):
         raise ValueError('Numeric_Check thresholds must be a mapping')
     merged = copy.deepcopy(base)
     for group, values in overrides.items():
+        if group in ADAPTER_GROUPS and isinstance(values, dict):
+            merged.setdefault(group, {})
         if group not in merged or not isinstance(values, dict):
             raise ValueError(f'Unknown Numeric_Check threshold group: {group}')
         merged[group].update(values)
     weights = params.get('weights', configured.get('weights'))
     if weights is not None and not isinstance(weights, dict):
         raise ValueError('Numeric_Check weights must be a mapping')
-    return {'thresholds': thresholds(merged), 'weights': copy.deepcopy(weights)}
+    return {'thresholds': _thresholds(merged), 'weights': copy.deepcopy(weights)}
+
+
+def _thresholds(overrides):
+    """Method thresholds plus per-channel joint limits {channel or logical_name: [[lower, upper], ...]}.
+
+    Each per-channel table is validated with the method's own rules; the method itself
+    only ever receives the single table resolved for its input channel.
+    """
+    import math
+    from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds
+    adapter = {}
+    if isinstance(overrides, dict) and set(overrides) & set(ADAPTER_GROUPS):
+        overrides = copy.deepcopy(overrides)
+        for group, names in ADAPTER_GROUPS.items():
+            if group not in overrides:
+                continue
+            values = overrides.pop(group)
+            if not isinstance(values, dict) or set(values) != names:
+                raise ValueError(f'{group} requires exactly {sorted(names)}')
+            if any(type(v) not in (int, float) or not math.isfinite(v) or v <= 0 for v in values.values()):
+                raise ValueError(f'{group} thresholds must be finite and positive')
+            adapter[group] = dict(values)
+    result = _method_thresholds(overrides, thresholds)
+    result.update(adapter)
+    return result
+
+
+LIMIT_GROUPS = ('joint', 'command_limits')  # Groups whose `limits` may be a per-channel table.
+
+
+def _method_thresholds(overrides, thresholds):
+    tables = {group: ((overrides or {}).get(group) or {}).get('limits') if isinstance(overrides, dict) else None
+              for group in LIMIT_GROUPS}
+    tables = {group: limits for group, limits in tables.items() if isinstance(limits, dict)}
+    if not tables:
+        return thresholds(overrides)
+    stripped = copy.deepcopy(overrides)
+    for group, limits in tables.items():
+        if not limits:
+            raise ValueError(f'Per-channel {group} limits require at least one channel')
+        for table in limits.values():
+            thresholds({group: {'limits': table}})
+        stripped[group]['limits'] = None
+    result = thresholds(stripped)
+    for group, limits in tables.items():
+        result[group]['limits'] = copy.deepcopy(limits)
+    return result
+
+
+def channel_settings(settings, channel):
+    """Settings for one input channel; a channel without its own limits table stays unconfigured."""
+    tables = [g for g in LIMIT_GROUPS if isinstance(settings['thresholds'][g]['limits'], dict)]
+    if not tables:
+        return settings
+    result = copy.deepcopy(settings)
+    names = (channel.name, getattr(channel, 'logical_name', None))
+    for group in tables:
+        limits = settings['thresholds'][group]['limits']
+        result['thresholds'][group]['limits'] = next((limits[n] for n in names if n in limits), None)
+    return result
 
 
 def review_digest(profile, settings):

@@ -136,3 +136,56 @@ def test_cli_confirmation_writes_new_profile_without_overwriting_source(tmp_path
     assert source.read_bytes() == before
     assert numeric_review(load_profile(target))['status'] == 'confirmed'
     assert main(['robot','confirm-numeric','--profile',str(source),'--reviewer','author','--output',str(target)]) == 2
+
+
+def test_per_channel_joint_limits_apply_only_to_their_own_channel():
+    """Mirrored dual arms need separate tables; a channel without a table is not range-checked."""
+    p = profile()
+    p['channels'] = {name: dict(profile()['channels']['joint_pos']) for name in ('left', 'right', 'other')}
+    p['numeric_check'] = {'thresholds': {'joint': {'vel_threshold': 5., 'limits': {
+        'left': [[-0.3, 2.0]], 'right': [[-2.0, 0.3]]}}}}
+    confirmed = confirm_numeric_profile(p, 'author')
+    values = np.array([[1.0], [1.0], [1.0]])
+    channels = {name: Channel(name, 'joint_space', ['position'], 3, 'source.json', unit='rad',
+                              source_kind='feedback', calibration_status='confirmed', value_available=True,
+                              representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
+                for name in ('left', 'right', 'other')}
+    ep = SimpleNamespace(profile=confirmed, channels=channels, read_signal=lambda n, f: values)
+    reports = {r['input_channel']: r for r in algorithm().run(SimpleNamespace(episode=ep), {})}
+    check = lambda name: next(c for c in reports[name]['check_coverage']['checks'] if c['id'] == 'joint_limits')
+    assert check('left')['outcome'] == 'no_finding' and check('left')['threshold'] == [[-0.3, 2.0]]
+    assert check('right')['events'] and check('right')['threshold'] == [[-2.0, 0.3]]
+    assert check('other')['status'] == 'unconfigured' and check('other')['threshold'] is None
+
+
+def test_per_channel_command_limits_resolve_like_joint_limits():
+    from edc.robots.numeric_review import _thresholds, channel_settings
+    settings = {'thresholds': _thresholds({'command_limits': {'limits': {'cmd': [[-1e9, 1e9]] * 2}}})}
+    resolve = lambda name: channel_settings(settings, SimpleNamespace(name=name))['thresholds']['command_limits']['limits']
+    assert resolve('cmd') == [[-1e9, 1e9]] * 2 and resolve('other') is None
+    with pytest.raises(ValueError):
+        _thresholds({'command_limits': {'limits': {'cmd': [[1, 0]]}}})
+
+
+def test_declared_finiteness_only_field_counts_as_complete():
+    from edc.execution.completeness import report_complete
+    hand = Channel('hand', 'other', ['position'], 3, 'source.json', unit='rad', source_kind='feedback',
+                   calibration_status='confirmed', value_available=True,
+                   representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
+    ep = SimpleNamespace(profile=profile(), channels={'hand': hand}, read_signal=lambda n, f: np.array([[0.], [1.], [2.]]))
+    run_ = lambda params: algorithm().run(SimpleNamespace(episode=ep), params)[0]
+    assert not report_complete(run_({}), 'Numeric_Check')
+    declared = run_({'finiteness_only': ['hand.position']})
+    assert declared['verdict'] == 'ACCEPTABLE' and report_complete(declared, 'Numeric_Check')
+    ep.channels = {'joint_pos': Channel('joint_pos', 'joint_space', ['position'], 3, 'source.json', unit='rad',
+        source_kind='feedback', calibration_status='confirmed', value_available=True,
+        representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})}
+    with pytest.raises(ValueError, match='物理检查项'):
+        run_({'finiteness_only': ['joint_pos.position']})
+
+
+@pytest.mark.parametrize('limits', [{}, {'left': [[2, 1]]}, {'left': []}])
+def test_invalid_per_channel_joint_limits_are_rejected(limits):
+    p = profile(); p['numeric_check'] = {'thresholds': {'joint': {'limits': limits}}}
+    with pytest.raises(ValueError):
+        load_profile(p)

@@ -113,7 +113,50 @@ def command_limits(values, episode, channel, field, settings, physical):
     return check
 
 
-def numeric_freeze(values, episode, channel, field, target, settings, physical):
+def joint_velocity_limit(values, episode, channel, field, settings, physical):
+    """|recorded joint velocity| > max_abs (rad/s) per component; counts and contiguous segments."""
+    state, reason = _state(values, channel, physical)
+    if settings is None:
+        state, reason = 'unconfigured', '未填写 numeric_check.thresholds.joint_velocity.max_abs；不假设默认阈值。'
+    limit = (settings or {}).get('max_abs')
+    timeline, times = _timeline(channel, len(values) if values.ndim else 0)
+    check = {'id': 'joint_velocity_limit', 'name': '关节速度上限', 'status': state,
+             'threshold': limit, 'unit': 'rad/s', 'reason': reason, 'outcome': None,
+             'events': [], 'source_mapping': source_mapping(episode, channel, field), 'timeline': timeline,
+             'changes_score': False, 'verdict': None, 'frames': int(len(values)) if values.ndim else 0,
+             'frames_over': 0, 'samples_over': 0, 'segments': 0, 'per_component': []}
+    if state != 'evaluated':
+        return check
+    over = np.abs(values) > limit
+    for j in range(values.shape[1]):
+        column = over[:, j]
+        edges = np.diff(np.r_[0, column.astype(int), 0])
+        starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
+        for start, stop in zip(starts, stops):
+            peak = start + int(np.abs(values[start:stop, j]).argmax())
+            event = {'type': 'joint_velocity_over_limit', 'start': int(start), 'stop': int(stop),
+                     'sample_count': int(stop - start), **_component(channel, field, j),
+                     'peak_value': float(values[peak, j]), 'peak_row': int(peak), 'limit': float(limit),
+                     'needs_review': True, 'duration_s': None, 'start_time_s': None, 'last_time_s': None,
+                     'interpretation': f'峰值 {values[peak, j]:.2f} rad/s，超过 {limit:g} rad/s；可能是真实快速动作，需复核。'}
+            if times is not None:
+                event.update(start_time_s=float(times[start]), last_time_s=float(times[stop - 1]),
+                             duration_s=float(times[stop - 1] - times[start]))
+            check['events'].append(event)
+        if column.any():
+            check['per_component'].append({**_component(channel, field, j), 'samples_over': int(column.sum()),
+                'segments': int(len(starts)), 'max_abs': float(np.abs(values[:, j]).max())})
+    found = bool(check['events'])
+    check.update(outcome='finding' if found else 'no_finding', verdict='NEEDS_REVIEW' if found else 'ACCEPTABLE',
+                 frames_over=int(over.any(axis=1).sum()), samples_over=int(over.sum()), segments=len(check['events']),
+                 max_abs=float(np.abs(values).max()),
+                 reason=f'逐分量检查 |速度| > {limit:g} rad/s；连续超限的行合并为一段。超限可能是真实快速动作，需复核。')
+    return check
+
+
+def numeric_freeze(values, episode, channel, field, target, settings, physical, min_duration_s=None):
+    """min_duration_s (per robot, adapter option): a hold shorter than this after motion is a normal
+    pause, recorded as an observation only. None keeps the sample-count rule (min_run) alone."""
     state, reason = _state(values, channel, physical, settings['min_run'])
     if target in {'gyro', 'accel'} and values.ndim == 2 and values.shape[1] != 3:
         state, reason = 'insufficient_input', 'IMU 冻结检查要求 N×3 字段。'
@@ -134,14 +177,19 @@ def numeric_freeze(values, episode, channel, field, target, settings, physical):
         for start, stop in _constant_runs(column, settings['freeze_eps'], settings['min_run']):
             prior = max(0, start - settings['lookback'])
             span = float(np.ptp(column[prior:start + 1]))
-            candidate = span > settings['motion_threshold']
-            event = {'type': 'constant_after_motion_candidate' if candidate else 'constant_observation',
+            moved = span > settings['motion_threshold']
+            held = float(times[stop - 1] - times[start]) if times is not None else None
+            short_hold = moved and min_duration_s is not None and held is not None and held < min_duration_s
+            candidate = moved and not short_hold
+            event = {'type': 'constant_after_motion_candidate' if candidate else
+                             'short_hold_after_motion' if short_hold else 'constant_observation',
                      'start': start, 'stop': stop, 'sample_count': stop - start,
                      **_component(channel, field, j), 'value_min': float(column[start:stop].min()),
                      'value_max': float(column[start:stop].max()), 'preceding_start': prior,
                      'preceding_range': span, 'needs_review': candidate,
                      'duration_s': None, 'start_time_s': None, 'last_time_s': None,
                      'interpretation': '运动后恒值，可能为正常保持或冻结，需复核。' if candidate
+                         else f'运动后恒值不到 {min_duration_s:g} 秒，按本机型设置视为正常停住。' if short_hold
                          else '恒值观察，缺少此前运动证据；不能据此证明正常静止或采集故障。'}
             if times is not None:
                 event.update(start_time_s=float(times[start]), last_time_s=float(times[stop - 1]),
@@ -152,13 +200,15 @@ def numeric_freeze(values, episode, channel, field, target, settings, physical):
     return check
 
 
-def supplements(values, episode, channel, field, target, settings, physical, workdir=None):
+def supplements(values, episode, channel, field, target, settings, physical, workdir=None, freeze_min_duration_s=None):
     checks = []
     if target == 'cmd_positions':
         checks.append(command_limits(values, episode, channel, field, settings['command_limits'], physical))
+    if target == 'joint_velocities':
+        checks.append(joint_velocity_limit(values, episode, channel, field, settings.get('joint_velocity'), physical))
     if target in FREEZE_GROUPS:
         checks.append(numeric_freeze(values, episode, channel, field, target,
-                                     settings[FREEZE_GROUPS[target]], physical))
+                                     settings[FREEZE_GROUPS[target]], physical, freeze_min_duration_s))
     if workdir is not None:
         for check in checks:
             events = check['events'] + check.get('observations', [])

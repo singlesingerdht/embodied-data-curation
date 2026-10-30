@@ -3,7 +3,7 @@ import numpy as np
 
 
 def coverage(values, eligibility, settings, result, physical, unit_reason=None, imu_pair=None,
-             extra_checks=(), shape_valid=True):
+             extra_checks=(), shape_valid=True, finiteness_only=False):
     rows = []
     target = eligibility['target'][0] if eligibility['target'] else None
     n = len(values) if values.ndim else 0
@@ -76,7 +76,10 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
     add('pose_freeze', '末端位置冻结', applicable=target == 'pose_freeze_positions',
         enough=n >= settings['pose_freeze']['min_run'], threshold=settings['pose_freeze'], unit='m; samples',
         group='pose_freeze', reason='相邻位置变化及前段运动条件；不代表速度检测。')
-    if target is None:
+    if target is None and finiteness_only:
+        rows.append({'id': 'other_physical', 'name': '其他物理子项', 'status': 'not_applicable', 'outcome': None,
+            'reason': '机型配置声明此字段只查有限值（物理量或单位尚未确认）。'})
+    elif target is None:
         rows.append({'id': 'other_physical', 'name': '其他物理子项',
             'status': 'pending_confirmation' if blockers else 'unsupported', 'outcome': None,
             'reason': blockers or '现有 Numeric_Check 未实现此字段的物理检查，仅查有限值。'})

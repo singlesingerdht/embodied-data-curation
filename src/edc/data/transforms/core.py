@@ -83,11 +83,12 @@ class RobotTransforms:
         self.cameras=named_mapping(self.config.get('cameras',{}),'cameras')
         for name, chain in list(self.chains.items()):
             if 'urdf' in chain:
-                if set(chain) - {'urdf', 'base_frame', 'tip_frame', 'inputs'}:
-                    raise ValueError('URDF chains accept urdf/base_frame/tip_frame/inputs only')
+                if set(chain) - {'urdf', 'base_frame', 'tip_frame', 'inputs', 'limit_margin'}:
+                    raise ValueError('URDF chains accept urdf/base_frame/tip_frame/inputs/limit_margin only')
                 from .urdf import import_urdf_chain
                 self.chains[name] = import_urdf_chain(chain['urdf'], chain['base_frame'], chain['tip_frame'],
-                                                     inputs=chain.get('inputs'))
+                                                     inputs=chain.get('inputs'),
+                                                     limit_margin=chain.get('limit_margin', 0.0))
         self._validate()
 
     def _validate(self):

@@ -8,11 +8,13 @@ def validate_options(params):
     timeline = params.get('timeline') or {}
     mode = timeline.get('mode', 'native')
     reference = timeline.get('reference_channel')
-    if mode == 'reference_channel':
+    if mode in {'reference_channel', 'reference_rate'}:
         if not reference:
-            raise ValueError('reference_channel mode requires timeline.reference_channel')
+            raise ValueError(f'{mode} mode requires timeline.reference_channel')
         if timeline.get('time_source', 'acquisition') != 'acquisition':
-            raise ValueError('reference_channel mode requires acquisition time, not container/playback time')
+            raise ValueError(f'{mode} mode requires acquisition time, not container/playback time')
+    elif mode != 'native':
+        raise ValueError(f'Unknown timeline mode: {mode}')
     elif reference:
         raise ValueError('native mode cannot declare a reference_channel')
     if params.get('window_length', 11) % 2 != 1:
@@ -46,17 +48,32 @@ def timeline_plan(episode, channel, params):
             'source_time_source': channel.time_source, 'source_clock': channel.clock,
             'clock_policy': 'require_common_or_explicit_mapping',
             'clock_status': 'not_required_single_channel', 'issues': [],
-            'resample': 'linear' if mode == 'reference_channel' else None,
+            'resample': {'reference_channel': 'linear', 'reference_rate': 'keep_every_kth_row'}.get(mode),
             'proves_acquisition_sync': False, 'extrapolation': False}
     if reference:
         plan['reference'] = {'file': reference.source,
                              'source_mapping': copy.deepcopy(reference.source_mapping),
                              'time_evidence': copy.deepcopy(reference.time_evidence)}
     try:
-        source = _axis(channel, 'acquisition' if mode == 'reference_channel' else options.get('time_source'))
+        source = _axis(channel, 'acquisition' if mode != 'native' else options.get('time_source'))
         target = source
         plan['source_timestamps_s'] = source.tolist()
         plan['source_time_range_s'] = [float(source[0]), float(source[-1])]
+        if mode == 'reference_rate':
+            if reference is None:
+                raise ValueError('Reference rate channel is unavailable; no fallback allowed')
+            # Only a duration crosses over: the reference frame interval measured on its own clock.
+            # A constant clock offset cancels in a difference, so no common clock is needed.
+            ref = _axis(reference, 'acquisition')
+            reference_rate = float(1 / np.median(np.diff(ref)))
+            source_rate = float(1 / np.median(np.diff(source)))
+            stride = max(1, round(source_rate / reference_rate))
+            rows = np.arange(0, len(source), stride)
+            target = source[rows]
+            plan.update(reference_clock=reference.clock, reference_time_source=reference.time_source,
+                        reference_frames=reference.count, reference_rate_hz=reference_rate,
+                        source_rate_hz=source_rate, stride=stride, source_rows=rows.tolist(),
+                        clock_status='not_required_interval_only')
         if mode == 'reference_channel':
             if reference is None:
                 raise ValueError('Reference timeline channel is unavailable; no fallback allowed')
@@ -137,6 +154,9 @@ def assess(episode, channel, params, context):
                         'params': plan['clock_transform'], 'original_timestamps_s': channel.timestamps,
                         'time_source': channel.time_source, 'rows': 'identity',
                         'resampled': False, 'resampling_evidence': 'timeline.json'})
+            elif plan['mode'] == 'reference_rate':
+                positions = positions[plan['source_rows']]  # Original samples only; no interpolation.
+                plan['source_mapping'] = {'rows': 'every_kth', 'stride': plan['stride']}
             else:
                 plan['source_mapping'] = {'rows': 'identity'}
             report = assess_arrays(positions, timestamps, weights=params.get('weights'),
@@ -149,6 +169,13 @@ def assess(episode, channel, params, context):
                 result['raw'] = report['raw']
             else:
                 result = report
+                if result.get('verdict') == 'OBSERVATION':
+                    # The jitter score is measured only while the arm holds still; without a still
+                    # stretch there is nothing to measure, so a person looks instead.
+                    from .cpu import needs_person
+                    arm = {'left': '左臂', 'right': '右臂'}.get(channel.side, channel.name)
+                    needs_person(result, f'{arm}全程在动，没有足够长的静止段，抖动没法自动测：'
+                                         f'请看{arm}的画面，动作是否平顺、有没有突然抖一下')
     plan['source'] = {'file': str(episode.path), 'selector': copy.deepcopy(episode.selector),
                       'source_mapping': copy.deepcopy(channel.source_mapping),
                       'time_evidence': copy.deepcopy(channel.time_evidence),
@@ -156,7 +183,8 @@ def assess(episode, channel, params, context):
     context.write_result('timeline.json', plan)
     result['timeline'] = {k: v for k, v in plan.items() if k not in {
         'source_timestamps_s', 'mapped_source_timestamps_s', 'reference_timestamps_s',
-        'target_timestamps_s', 'source_mapping', 'resampling_params', 'reference_rows', 'excluded_reference_rows'}}
+        'target_timestamps_s', 'source_mapping', 'resampling_params', 'reference_rows', 'excluded_reference_rows',
+        'source_rows'}}
     result['timeline']['evidence'] = 'timeline.json'
     result.update(input_channel=channel.name, side=channel.side,
                   input=channel.source, num_poses=plan.get('evaluated_frames', 0))

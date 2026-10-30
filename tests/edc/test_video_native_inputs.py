@@ -49,7 +49,8 @@ def test_auto_frames_no_video_or_timeline_required(tmp_path, monkeypatch):
     report = assess(ep, {'sample_step': 1, 'downscale': 4}, Context(None, ep, tmp_path))[0]
     assert report['input_mode'] == 'frames' and report['requested_input_mode'] == 'auto'
     assert report['frame_quality']['real_frames'] == 3
-    assert report['score'] is None and report['assessment_complete'] is False
+    # Image-only cameras: the frame check is the whole assessment (2026-10-30).
+    assert report['score'] is None and report['assessment_complete'] is True
     assert report['container_checks']['status'] == 'not_applicable'
     assert not list(tmp_path.glob('*.mp4'))
 

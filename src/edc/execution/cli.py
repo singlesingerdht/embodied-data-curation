@@ -13,6 +13,11 @@ from edc.reporting.results import report
 from edc.algorithms.recommendations import recommend, recommend_episode, recommend_dataset
 
 
+
+# Default shortest episode for `edc run` / `edc batch` (user decision 2026-10-30); a robot profile's
+# min_duration_s overrides it, null switches it off.
+CLI_MIN_DURATION_S = 3.0
+
 def emit(value):
     print(json.dumps(value, ensure_ascii=False, indent=2))
 
@@ -60,6 +65,16 @@ def main(argv=None):
             p.add_argument("--preset", default="quality_cpu")
             p.add_argument("--output", required=True)
             p.add_argument("--algorithm", action="append")
+    p = sub.add_parser('batch', help='Run all algorithms on every episode file under the inputs, in parallel, into one HTML report')
+    p.add_argument('inputs', nargs='+', help='Folders (searched recursively) or single episode files')
+    group = p.add_mutually_exclusive_group(required=True)
+    group.add_argument('--robot', help='Robot name under configs/robots/ (uses <name>_signed.yaml and <name>/params.json)')
+    group.add_argument('--profile', help='Robot profile file')
+    p.add_argument('--params', help='JSON file mapping algorithm IDs to parameter objects')
+    p.add_argument('--jobs', type=int, help='Files run at the same time (default: all of them)')
+    p.add_argument('--output', help='Report file (default: <robot>_report_<time>.html)')
+    p.add_argument('--keep', help='Keep the full run output of every file under this new folder')
+    p.add_argument('--tmp', help='Where temporary run folders go (default: system temp)')
     p = sub.add_parser("convert-to-lerobot")
     p.add_argument("input")
     p.add_argument("--profile", required=True)
@@ -158,6 +173,12 @@ def main(argv=None):
             emit(review(args.output, run_id=args.run_id, algorithm=args.algorithm,
                 object_id=args.object_id, report_index=args.report_index, action=args.action,
                 reviewer=args.reviewer, reason=args.reason, evidence=args.evidence))
+        elif args.command == 'batch':
+            from edc.execution.batch import run_batch
+            result = run_batch(args.inputs, profile=args.profile, robot=args.robot, params=args.params,
+                               jobs=args.jobs, output=args.output, keep=args.keep, tmp=args.tmp,
+                               log=lambda text: print(text, flush=True))
+            return 1 if result['failed'] else 0
         elif args.command == "algorithms":
             registry = algorithms()
             items = [asdict(p.spec) for p in registry.plugins.values()]
@@ -209,10 +230,15 @@ def main(argv=None):
             with open_dataset(args.input, profile=getattr(args, "profile", None), robot=getattr(args, "robot", None),
                               backend=getattr(args, "backend", "auto")) as dataset:
                 if args.command == "run":
-                    result = run(dataset, preset=args.preset, output=args.output, algorithm_ids=args.algorithm,
-                        params=json.loads(Path(args.params).read_text()) if args.params else None,
-                        on_preflight=lambda episode, statuses: emit({"episode": episode, "preflight": statuses}),
-                        unit_policy=args.unit_policy)
+                    from edc.algorithms.quality.adapters import cpu
+                    saved, cpu.DEFAULT_MIN_DURATION_S = cpu.DEFAULT_MIN_DURATION_S, CLI_MIN_DURATION_S
+                    try:
+                        result = run(dataset, preset=args.preset, output=args.output, algorithm_ids=args.algorithm,
+                            params=json.loads(Path(args.params).read_text()) if args.params else None,
+                            on_preflight=lambda episode, statuses: emit({"episode": episode, "preflight": statuses}),
+                            unit_policy=args.unit_policy)
+                    finally:
+                        cpu.DEFAULT_MIN_DURATION_S = saved
                     emit(result)
                     return 1 if result["status_counts"].get("processing_error") else 0
                 operation = recommend if args.command == 'recommend' else inspect

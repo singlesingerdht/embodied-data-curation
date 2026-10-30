@@ -59,15 +59,19 @@ def _assess_channel(episode, channel, params, context, index, started, role):
             downscale=params.get('downscale', 4)).detect_frames(
                 episode.iter_frames(channel.name), channel.count)
         measured_failure = fq.get('verdict') == 'DO_NOT_USE'
-        measured_warning = fq.get('verdict') == 'NEEDS_REVIEW'
-        result = {'score': None, 'passed': False if measured_failure else None,
-            'verdict': 'DO_NOT_USE' if measured_failure else 'NEEDS_REVIEW' if measured_warning else 'OBSERVATION',
-            'assessment_complete': False, 'frame_quality': fq,
+        if fq.get('verdict') == 'NEEDS_REVIEW':
+            # Pass or exclude only (user decision 2026-10-30): a few bad frames below the method's
+            # exclusion ratio pass, and the report notes how many. The method's verdict is kept.
+            fq = {**fq, 'method_verdict': fq['verdict'], 'verdict': 'ACCEPTABLE'}
+        # Image-only storage has no container to check, so the frame check is the whole assessment.
+        result = {'score': None, 'passed': not measured_failure,
+            'verdict': 'DO_NOT_USE' if measured_failure else 'ACCEPTABLE',
+            'assessment_complete': True, 'frame_quality': fq,
             'inspection_object': 'source_decoded_frames',
             'encoding_integrity_scope': 'Source pixel decode only; no independent encoded-byte validation',
             'container_checks': {'status': 'not_applicable',
                 'reason': 'Frame input has no video container; packet PTS and video frame-count checks are not applied'},
-            'reasons': ['原始解码画面已检查；视频容器及原始编码字节独立完整性未评估'],
+            'reasons': ['相机存的是逐帧图片：已抽帧解码检查画面；没有视频容器，容器检查不适用'],
             'process_time_ms': round((time.perf_counter()-started)*1000, 1)}
     else:
         directory = getattr(context, 'workdir', None)

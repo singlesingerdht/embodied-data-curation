@@ -278,8 +278,9 @@ def test_execution_does_not_keep_trajectory_without_stationary_segment(tmp_path)
                       params={'Action_Smoothness': {'expected_rate_hz': 100}})
     assert summary['status_counts'] == {'completed': 1}
     selection = json.loads(next((tmp_path/'out/_runs').glob('*/selection.json')).read_text())
-    assert selection[0]['decision'] == 'unassessed'
-    assert not selection[0]['assessment_complete']
+    # No stationary segment: the jitter score cannot be measured, so a person reviews it (2026-10-30).
+    assert selection[0]['decision'] == 'review'
+    assert selection[0]['assessment_complete']  # Handed to a person; the original verdict is kept in the record.
 
 
 def test_increasing_timestamps_and_repeated_images_are_independent(tmp_path):

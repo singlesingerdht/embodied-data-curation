@@ -20,12 +20,24 @@ SPECS = (
 )
 
 
+def topic_metadata(episode):
+    """Read-only recorded topic metadata (modality, msg_type, count, recorded timestamps).
+
+    Unit/orientation wrappers deep-copy the whole legacy info on every describe_legacy() call,
+    timelines included; preflight gating only reads fields those wrappers never change, so it
+    uses the innermost episode's info directly. Callers must not mutate the result."""
+    source = episode
+    while getattr(source, '_source', None) is not None or getattr(source, '_episode', None) is not None:
+        source = getattr(source, '_source', None) or source._episode
+    describe = getattr(source, 'describe_legacy', None)
+    return describe() if callable(describe) else None
+
+
 def dedup_inputs(episode, selected=None, info=None):
     """Recorded timelines or an explicitly mapped raw timestamp field; no inferred clock."""
     from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
-    describe = getattr(episode, 'describe_legacy', None)
-    if info is None and callable(describe):
-        info = describe()
+    if info is None:
+        info = topic_metadata(episode)
     inputs = []
     seen_shared = set()
     for c in episode.channels.values():
@@ -87,9 +99,8 @@ def capabilities(episode):
 
 def unavailable_dedup_inputs(episode, inputs=None, info=None):
     from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
-    describe = getattr(episode, 'describe_legacy', None)
-    if info is None and callable(describe):
-        info = describe()
+    if info is None:
+        info = topic_metadata(episode)
     available = {name for name, _ in (inputs if inputs is not None else dedup_inputs(episode, info=info))}
     rows = []
     for c in episode.channels.values():
@@ -376,6 +387,231 @@ def reset_calibration(episode):
     return result
 
 
+CALENDAR_MIN_S = 946684800.0   # 2000-01-01 UTC; earlier headers are device counters, not dates
+# Record time mixes clock offset with transport/processing latency (Leju head depth arrives
+# 0.2-0.4 s late on a shared clock), so only offsets beyond 1 s are named as separate clocks.
+# Smaller mismatches still show in Sync_Check's own alignment numbers.
+CLOCK_GROUP_GAP_MS = 1000.0
+# "Salvageable" = every channel's record-minus-header lag is the same at the start and the end of
+# the episode (medians of CLOCK_WINDOWS equal slices within CLOCK_STABLE_MS), so one shift per
+# channel maps it onto the record clock. Record time also carries transport latency: Leju wrist
+# cameras on a correct clock still move up to ~60 ms within one episode, while clock faults are
+# hundreds of ms or more. Alignment is re-checked after the shift, so this only says "shift is worth trying".
+CLOCK_WINDOWS = 10
+CLOCK_STABLE_MS = 100.0
+
+
+def clock_diagnosis(episode, names):
+    """Plain-language causes behind timing scores, for channels declared on one clock.
+
+    Uses each message's bag record time only as a shared ruler: median(record - header) per
+    channel. Same-clock channels differ only by latency; groups further apart than
+    CLOCK_GROUP_GAP_MS point to unsynchronised device clocks. Never changes timestamps or scores.
+    """
+    import datetime
+    import time
+    import numpy as np
+    info = episode.describe_legacy()
+    latest = time.time() + 365 * 86400
+    rows, offsets, notes = {}, {}, []
+    for name in names:
+        c = episode.channels[name]
+        if c.selection:
+            continue  # Derived channels share their source's timeline.
+        t = np.asarray(c.timestamps, dtype=float)
+        record = getattr(info.topics.get(name), 'container_timestamps_ns', None)
+        row = {'clock': c.clock, 'calendar_time': bool(CALENDAR_MIN_S <= t.min() and t.max() <= latest)}
+        if record is not None and len(record) == len(t):
+            lag = (np.asarray(record, dtype=float) * 1e-9 - t) * 1000
+            row['record_minus_header_ms'] = round(float(np.median(lag)), 1)
+            if len(lag) >= CLOCK_WINDOWS * 3:
+                # A fixed offset keeps the same median lag from start to end; drift or a jump moves it.
+                windows = [np.median(part) for part in np.array_split(lag, CLOCK_WINDOWS)]
+                row['record_minus_header_change_ms'] = round(float(max(windows) - min(windows)), 1)
+        rows[name] = row
+        if not row['calendar_time']:
+            try:
+                when = (datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+                        + datetime.timedelta(seconds=float(t[0]))).strftime('%Y-%m-%d')
+            except (OverflowError, ValueError):
+                when = f'{t[0]:.0f} 秒（超出日期范围）'
+            notes.append(f'{name}: header 时间换算为 {when}，不是正常日期时间，可能是设备内部计数（如开机时长），'
+                         '不能和其他话题直接比较时间')
+        elif 'record_minus_header_ms' in row:
+            offsets[name] = row['record_minus_header_ms']
+    groups = []
+    for name, value in sorted(offsets.items(), key=lambda item: item[1]):
+        if groups and value - groups[-1]['offsets'][-1] <= CLOCK_GROUP_GAP_MS:
+            groups[-1]['channels'].append(name)
+            groups[-1]['offsets'].append(value)
+        else:
+            groups.append({'channels': [name], 'offsets': [value]})
+    groups = [{'channels': g['channels'], 'record_minus_header_ms': round(float(np.median(g['offsets'])), 1),
+               'record_minus_header_range_ms': [min(g['offsets']), max(g['offsets'])]} for g in groups]
+    if len(groups) > 1:
+        def amount(ms):
+            return f'{ms / 1000:.1f} 秒' if abs(ms) >= 1000 else f'{ms:.0f} 毫秒'
+
+        def span(g):
+            lo, hi = g['record_minus_header_range_ms']
+            return f'{amount(lo)}–{amount(hi)}' if hi - lo >= 10 else amount(g['record_minus_header_ms'])
+        parts = [f"{'、'.join(g['channels'])}（header 比录包时间早约 {span(g)}）" for g in groups]
+        spread = groups[-1]['record_minus_header_ms'] - groups[0]['record_minus_header_ms']
+        notes.append(f'声明为同一时钟的话题实际分成 {len(groups)} 组：' + '；'.join(parts) +
+                     f'。组间最多相差约 {amount(spread)}，疑似不同设备的时钟没有对准')
+    if names and not offsets and not notes:
+        notes.append('缺少录包时间，无法估计各话题的时钟偏差')
+    salvage = None
+    if len(groups) > 1 or any(not row['calendar_time'] for row in rows.values()):
+        change = {n: row.get('record_minus_header_change_ms') for n, row in rows.items()}
+        moving = {n: v for n, v in change.items() if v is None or v > CLOCK_STABLE_MS}
+        salvage = {'status': 'unstable' if moving else 'fixed_offset', 'stable_ms': CLOCK_STABLE_MS,
+                   'max_change_ms': max((v for v in change.values() if v is not None), default=None),
+                   'moving_channels': moving}
+        if moving:
+            notes.append('不是固定偏差，不能简单平移：' + '、'.join(
+                f'{n}（{"无法测量" if v is None else f"数据内变化 {v:.0f} 毫秒"}）' for n, v in moving.items()))
+        else:
+            notes.append(f'各话题与录包时间的偏差从头到尾基本不变（最多变化 {salvage["max_change_ms"]:.0f} 毫秒），'
+                         '是固定偏差：按各自偏差平移时间后可重新检查（可救）')
+    return {'method': 'median(record_time - header), record time as shared ruler',
+            'group_gap_ms': CLOCK_GROUP_GAP_MS, 'channels': rows, 'groups': groups, 'salvage': salvage,
+            'notes': notes}
+
+
+def clock_shift(episode, diagnosis):
+    """Seconds to add to each channel so every clock group lines up with the largest group.
+
+    A group's clock offset is its smallest record - header: the fastest channel has almost no
+    transport latency (a 400 ms depth camera must not drag its group's estimate). Channels inside
+    one group keep their own latency differences. Derived channels follow their source.
+    """
+    groups = diagnosis['groups']
+    lag = {n: g['record_minus_header_range_ms'][0] for g in groups for n in g['channels']}
+    lag.update({n: row['record_minus_header_ms'] for n, row in diagnosis['channels'].items()
+                if not row['calendar_time'] and 'record_minus_header_ms' in row})
+    if len(set(lag.values())) < 2:
+        return {}
+    reference = max(groups, key=lambda g: len(g['channels']))['record_minus_header_range_ms'][0] if groups else 0.0
+    def key(c):
+        t = c.timestamps
+        return (float(t[0]), float(t[-1]), len(t)) if t is not None and len(t) else None
+    # Channels computed from another (e.g. FK poses) have no record time of their own but
+    # the very same timeline as their source.
+    by_timeline = {key(episode.channels[n]): lag[n] for n in lag if n in episode.channels}
+    shift = {}
+    for name, c in episode.channels.items():
+        source = (c.selection or {}).get('channel', name)
+        value = lag.get(source, by_timeline.get(key(c)))
+        if value is not None and value != reference:
+            shift[name] = (value - reference) / 1000
+    return shift
+
+
+def shift_note(shift):
+    """'已把 a、b 的时间平移 +31.9 秒' grouped by amount."""
+    amounts, counters = {}, []
+    for name, seconds in shift.items():
+        if abs(seconds) > 365 * 86400:  # header was a device counter, not a date
+            counters.append(name)
+        else:
+            amounts.setdefault(round(seconds, 1), []).append(name)
+    parts = [f"已把 {'、'.join(names)} 的时间平移 {s:+.1f} 秒" for s, names in amounts.items()]
+    if counters:
+        parts.append(f"已把 {'、'.join(counters)} 的设备计数时间换算到统一时钟")
+    return '；'.join(parts)
+
+
+class ShiftedReader:
+    """The same reader, with timestamps moved by clock_shift (and derived copies left out) before an algorithm sees them."""
+    def __init__(self, reader, shift, drop=()):
+        self._reader, self._shift, self._drop = reader, shift, set(drop)
+
+    def __getattr__(self, name):
+        return getattr(self._reader, name)
+
+    def require_timestamps(self, info, min_channels=2):
+        ts = self._reader.require_timestamps(info, min_channels=min_channels)
+        return {n: [t + self._shift[n] for t in v] if n in self._shift else v
+                for n, v in ts.items() if n not in self._drop}
+
+
+def derived_copies(episode, info):
+    """Channels that only repeat another channel's timeline: split from one message (selection) or
+    computed from it (e.g. FK poses, no record time of their own). Scoring each copy again would
+    count one stream's timing several times."""
+    def key(c):
+        t = c.timestamps
+        return (float(t[0]), float(t[-1]), len(t)) if t is not None and len(t) else None
+    own = {n for n, c in episode.channels.items() if not c.selection
+           and getattr(info.topics.get(n), 'container_timestamps_ns', None) is not None}
+    timelines = {key(episode.channels[n]) for n in own}
+    return sorted(n for n, c in episode.channels.items() if n not in own and (
+        (c.selection or {}).get('channel') in own or key(c) in timelines))
+
+
+# Check_Timestamp's own command-line options (run_check.py argparse), settable per robot.
+TIMESTAMP_SCORING = {'absolute_error_floor_ms': 'DEFAULT_ABSOLUTE_ERROR_FLOOR_MS',
+                     'dt_cv_no_penalty': 'DEFAULT_DT_CV_NO_PENALTY', 'dt_cv_zero': 'DEFAULT_DT_CV_ZERO',
+                     'long_gap_ratio_warning': 'DEFAULT_LONG_GAP_RATIO_WARNING',
+                     'long_gap_ratio_zero': 'DEFAULT_LONG_GAP_RATIO_ZERO', 'iou_threshold': 'DEFAULT_IOU_THRESHOLD'}
+
+
+class timestamp_scoring:
+    """Run Check_Timestamp with per-robot values for its own CLI options; restored afterwards.
+
+    assess_from_ir builds its options from these module defaults at call time; the method file is unchanged.
+    """
+    def __init__(self, module, values):
+        unknown = set(values or {}) - set(TIMESTAMP_SCORING)
+        if unknown:
+            raise ValueError(f'Unknown Check_Timestamp scoring option: {sorted(unknown)}')
+        self.module, self.values, self.saved = module, values or {}, {}
+
+    def __enter__(self):
+        for key, value in self.values.items():
+            name = TIMESTAMP_SCORING[key]
+            self.saved[name] = getattr(self.module, name)
+            setattr(self.module, name, float(value))
+
+    def __exit__(self, *exc):
+        for name, value in self.saved.items():
+            setattr(self.module, name, value)
+
+
+def needs_person(result, reason):
+    """No automatic verdict possible: hand the item to a person instead of leaving OBSERVATION."""
+    result.update(original_verdict=result.get('verdict'), verdict='NEEDS_REVIEW', passed=None,
+                  assessment_complete=True, automatic_check_complete=False)
+    result.setdefault('review_candidates', []).append({'check': 'manual', 'needs_review': True, 'reason': reason})
+    result['reasons'] = [reason] + list(result.get('reasons') or [])
+    return result
+
+
+# Used when a profile has no min_duration_s. None here (library calls, tests); `edc run` sets
+# CLI_MIN_DURATION_S so every robot and input format checked from the command line gets 3 s.
+DEFAULT_MIN_DURATION_S = None
+
+
+def too_short(episode):
+    """{'seconds', 'min_duration_s'} when the episode is shorter than min_duration_s, else None.
+
+    The robot profile may set its own min_duration_s, or null to switch the rule off.
+    Duration is the longest single channel's own span, so device-counter clocks are never mixed.
+    """
+    profile = getattr(episode, 'profile', None) or {}
+    minimum = profile.get('min_duration_s', DEFAULT_MIN_DURATION_S)
+    if minimum is None:
+        return None
+    if type(minimum) not in (int, float) or not minimum > 0:
+        raise ValueError('min_duration_s must be a positive number of seconds')
+    spans = [c.timestamps[-1] - c.timestamps[0] for c in episode.channels.values()
+             if c.timestamps is not None and len(c.timestamps) > 1]
+    if not spans or max(spans) >= minimum:
+        return None
+    return {'seconds': round(float(max(spans)), 2), 'min_duration_s': float(minimum)}
+
+
 class LegacyAlgorithm:
     def instances(self, episode, params):
         from edc.robots.scope import instances
@@ -394,10 +630,10 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = ('ir-adapter-16' if ident == 'Numeric_Check' else
-                   'ir-adapter-19' if ident == 'Action_Smoothness' else
-                   'ir-adapter-15' if ident == 'Reset_Detection' else
-                   'ir-adapter-14')
+        version = {'Numeric_Check': 'ir-adapter-20', 'Action_Smoothness': 'ir-adapter-22',
+                   'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-17',
+                   'Root_Cause': 'ir-adapter-18', 'Check_Timestamp': 'ir-adapter-19',
+                   'Video_Integrity': 'ir-adapter-16'}.get(ident, 'ir-adapter-15')
         descriptions, schema = cpu_parameters(ident)
         self.spec = AlgorithmSpec(ident, version, ident, "Repository contributors",
             "Existing CPU implementation; see edc.algorithms.quality/algorithms/" + ident,
@@ -451,7 +687,7 @@ class LegacyAlgorithm:
                         'reason': '可观察现有单路或公共行时间的间隔；缺少独立时间轴、共同 clock 或相机参考，跨通道对齐不评估。'}
         if self.spec.id != 'Numeric_Check':
             return {'inputs': [{'channel': c.name} for c in episode.channels.values()]}
-        from edc.robots.numeric_review import numeric_review, numeric_field_status
+        from edc.robots.numeric_review import numeric_review, numeric_field_status, channel_settings
         review = numeric_review(episode.profile, params)
         fields = [numeric_field_status(episode, channel, field, review)
                   for channel in episode.channels.values() if channel.value_available
@@ -459,7 +695,7 @@ class LegacyAlgorithm:
         for item in fields:
             target = item.pop('target')
             channel = episode.channels[item['channel']]
-            settings = review['settings']['thresholds']
+            settings = channel_settings(review['settings'], channel)['thresholds']
             blockers = list(item['reasons'])
             kind = target[0] if target else None
             if kind == 'joint_positions' and settings['joint']['limits'] is None:
@@ -496,6 +732,13 @@ class LegacyAlgorithm:
 
     def run(self, context, params):
         legacy()
+        short = too_short(context.episode)
+        if short and self.spec.id != 'Structure_Check':
+            # Structure_Check excludes it with the reason; nothing else is worth checking.
+            return {'score': None, 'passed': None, 'verdict': 'NOT_APPLICABLE', 'assessment_complete': True,
+                    'skipped': 'too_short', 'duration': short,
+                    'reasons': [f"数据只有 {short['seconds']:.1f} 秒，短于本机型要求的 {short['min_duration_s']:g} 秒，"
+                                '已在结构完整性里排除，本项不检查']}
         params = resolve_channel_parameters(context.episode, params)
         ep = selected_inputs(context.episode, params, self.spec.id)
         params = {k: v for k, v in params.items() if k not in {'channels', 'target_clock'}}
@@ -543,8 +786,27 @@ class LegacyAlgorithm:
                             'reason': 'Invalid timeline' if invalid else 'Common clock and camera reference not confirmed'},
                         'reasons': ['已逐路检查记录时间间隔；无效时间轴、共同 clock 或参考条件不足时不计算跨路得分'],
                         'method_version': 'native_cadence_with_clock_gate_v1'}
-            result = fn(info, reader, **params)
+            diagnosis = clock_diagnosis(ep, [c.name for c in ep.channels.values()
+                if c.time_source == 'acquisition' and c.clock and c.timestamps])
+            # A fixed clock offset is already judged by Sync_Check; shift it out and judge the
+            # alignment itself. A moving offset cannot be shifted out, so it is judged as recorded.
+            shift = clock_shift(ep, diagnosis) if (diagnosis['salvage'] or {}).get('status') == 'fixed_offset' else {}
+            params = dict(params)
+            scoring = params.pop('scoring', None)
+            drop = derived_copies(ep, info) if params.pop('count_each_source_once', False) else []
+            with timestamp_scoring(module, scoring):
+                result = fn(info, ShiftedReader(reader, shift, drop) if shift or drop else reader, **params)
             result['cadence'] = cadence
+            result['clock_diagnosis'] = diagnosis
+            if scoring:
+                result['scoring_overrides'] = dict(scoring)
+            if drop:
+                result['derived_copies_not_scored'] = drop
+            if shift:
+                result['clock_shift_s'] = shift
+                result['reasons'] = [f'时钟有固定偏差（见采集同步），{shift_note(shift)}后再评价对齐'] + (result.get('reasons') or [])
+            else:
+                result['reasons'] = (result.get('reasons') or []) + diagnosis['notes']
             result['cross_channel_alignment'] = {'status': 'evaluated',
                 'time_source': next(c.time_source for c in ep.channels.values() if c.timestamps),
                 'establishes_acquisition_sync': False}
@@ -556,15 +818,97 @@ class LegacyAlgorithm:
                 from edc.data.ir.metadata import IRNotProvided
                 from edc.data.readers.base import make_ir_report
                 return make_ir_report("同步", "sync_check", IRNotProvided("独立采集时间轴", ep.format))
-            return module.assess(ts, **params)
+            result = module.assess(ts, **params)
+            result['clock_diagnosis'] = clock_diagnosis(ep, list(ts))
+            result['reasons'] = (result.get('reasons') or []) + result['clock_diagnosis']['notes']
+            return result
         if self.spec.id == "Structure_Check":
-            return module.assess(str(ep.path), info.topics, required_topics=ep.profile.get("required_channels"),
+            result = module.assess(str(ep.path), info.topics, required_topics=ep.profile.get("required_channels"),
                 camera_requirements=ep.profile.get("camera_requirements"),
                 channel_config=ep.profile.get("channels", {}), **params)
+            if short:
+                result.update(original_verdict=result.get('verdict'), verdict='DO_NOT_USE', passed=False, too_short=short)
+                result['reasons'] = [f"数据太短：只有 {short['seconds']:.1f} 秒，本机型要求至少 {short['min_duration_s']:g} 秒"]                     + list(result.get('reasons') or [])
+            return result
+        if self.spec.id == 'Root_Cause':
+            return self._root_cause_on_one_clock(ep, module, info, reader, params)
         result = fn(info, reader, **params)
         if self.spec.id == 'Action_Smoothness' and getattr(ep, '_explicit_pose_channel', None):
             result['side'] = ep.channels[ep._explicit_pose_channel].side
         return result
+
+    def _root_cause_on_one_clock(self, ep, module, info, reader, params):
+        """Root_Cause after shifting any clock offset out, so drift and jumps can be measured.
+
+        Fixed or moving, the per-group median offset is removed; whatever moves around that
+        median is left for the method's own drift/jump checks to judge.
+        """
+        diagnosis = clock_diagnosis(ep, [c.name for c in ep.channels.values()
+            if c.time_source == 'acquisition' and c.clock and c.timestamps])
+        shift = clock_shift(ep, diagnosis) if diagnosis['salvage'] else {}
+        result = self._root_cause(module, info, ShiftedReader(reader, shift) if shift else reader, params)
+        if not isinstance(result, dict):
+            return result
+        result['clock_diagnosis'] = diagnosis
+        if shift:
+            result['clock_shift_s'] = shift
+            result['reasons'] = [f'时钟偏差已先平移掉（{shift_note(shift)}），再查漂移、跳变和断档'] + (result.get('reasons') or [])
+        else:
+            result['reasons'] = (result.get('reasons') or []) + diagnosis['notes']
+        if result.get('verdict') == 'OBSERVATION':
+            missing = [s['name'] for s in result.get('sub_indicators') or [] if s.get('score') is None]
+            # check_stability skips any channel with fewer than its min_samples (100) samples.
+            names = (result.get('timestamp_scope') or {}).get('included_topics') or []
+            counts = {n: len(ep.channels[n].timestamps) for n in names if n in ep.channels and ep.channels[n].timestamps}
+            short = {n: k for n, k in counts.items() if k < 100}
+            if short and missing:
+                # Each channel's own span: device-counter clocks cannot be compared with each other.
+                seconds = max(ep.channels[n].timestamps[-1] - ep.channels[n].timestamps[0] for n in counts)
+                fewest = min(short, key=short.get)
+                result['short_input'] = {'seconds': round(float(seconds), 2), 'channel': fewest,
+                                         'samples': short[fewest], 'required': 100, 'channels': sorted(short)}
+                reason = (f'数据太短：整条只有 {seconds:.1f} 秒，{fewest} 只有 {short[fewest]} 个样本；'
+                          f'{"、".join(missing)}每一路至少要 100 个样本才能算，所以没算出来')
+                checked = [s for s in result.get('sub_indicators') or [] if s.get('score') is not None]
+                if checked and all(s['score'] >= 100 for s in checked):
+                    # User decision 2026-10-30: in a few seconds a clock cannot drift or jump in a way
+                    # that matters, so the unmeasurable items do not block a pass when the rest is clean.
+                    result.update(original_verdict=result.get('verdict'), verdict='ACCEPTABLE', passed=True,
+                                  assessment_complete=True, automatic_check_complete=False)
+                    result['reasons'] = [reason + '；这么短的数据里时钟来不及漂移或跳变，这两项不需要查'] + list(result.get('reasons') or [])
+                else:
+                    needs_person(result, reason)
+            else:
+                needs_person(result, '时间异常归因没能自动做完' + (f"（{'、'.join(missing)}没有算出来）" if missing else '')
+                             + '：请看各路数据在时间轴上是否有同时断档或时间突然跳动')
+        return result
+
+    @staticmethod
+    def _root_cause(module, info, reader, params):
+        """Root_Cause with the clock-stability input its IR entry never passes.
+
+        The original entry runs first and keeps every shortage/synthetic-time outcome. When it
+        evaluated real timelines, the same timelines are re-assessed with Sync_Check's own
+        check_stability (drift and jumps), and configured source groups are limited to the
+        topics this episode has, since the method rejects names it was not given.
+        """
+        families = params.get('families')
+        result = module.assess_from_ir(info, reader, **{**params, 'families': None})
+        if not (result.get('timestamp_scope') or {}).get('included_topics'):
+            return result
+        import numpy as np
+        from edc.data.readers.base import filter_real_timestamps
+        from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
+        from edc.algorithms.quality.algorithms.Sync_Check.sync_check import check_stability
+        ts_map, _ = filter_real_timestamps(info, reader.require_timestamps(info, min_channels=2))
+        ts_map, _ = partition_timing_topics(info, ts_map)
+        stability = check_stability({n: np.asarray(t, dtype=float).tolist() for n, t in ts_map.items()})
+        families = {n: g for n, g in (families or {}).items() if n in ts_map} or None
+        full = module.assess(ts_map, stability, weights=params.get('weights'), families=families)
+        full.update(excluded_topics=result.get('excluded_topics'), timestamp_scope=result['timestamp_scope'],
+                    stability_input='Sync_Check.check_stability on the same timelines (adapter)',
+                    source_groups_input='configured' if families else 'method default (topic namespace)')
+        return full
 
     def _dedup(self, ep, params, context=None):
         import numpy as np
@@ -656,13 +1000,22 @@ class LegacyAlgorithm:
         import csv
         import hashlib
         import numpy as np
-        from edc.robots.numeric_review import numeric_review, numeric_field_status
+        from edc.robots.numeric_review import (numeric_review, numeric_field_status, channel_settings,
+                                               method_settings, ADAPTER_TARGETS)
         from edc.data.ir.units import UnitInputError
         reports = []
         review = numeric_review(getattr(ep, 'profile', {}), params)
+        # Per-robot declaration: fields Numeric_Check has no physical check for are only
+        # checked for NaN/Inf, and that counts as a finished check ("channel.field").
+        finiteness_only = set(params.get('finiteness_only') or ())
+        # Per-robot: a constant run after motion shorter than this is a normal pause, not a freeze candidate.
+        freeze_min_duration_s = params.get('freeze_min_duration_s')
+        if freeze_min_duration_s is not None and (type(freeze_min_duration_s) not in (int, float) or freeze_min_duration_s <= 0):
+            raise ValueError('freeze_min_duration_s must be a positive number of seconds')
         for channel in ep.channels.values():
             if not channel.value_available:
                 continue
+            settings = channel_settings(review['settings'], channel)
             for field in channel.fields:
                 unit_reason = None
                 recorded_orientation = field == 'orientation' and callable(getattr(ep, 'inspect_recorded_signal', None))
@@ -680,6 +1033,9 @@ class LegacyAlgorithm:
                 spec = (ep.recorded_channels[channel.name] if recorded_orientation else channel).field_spec(field)
                 eligibility = numeric_field_status(ep, channel, field, review)
                 target = eligibility['target']
+                declared = bool({f'{n}.{field}' for n in (channel.name, getattr(channel, 'logical_name', None))} & finiteness_only)
+                if declared and target:
+                    raise ValueError(f'{channel.name}.{field}: 有物理检查项，不能声明为只查有限值')
                 unit = spec["unit"]
                 finite = bool(np.isfinite(values).all())
                 physical = not unit_reason and eligibility['physical_checks_available']
@@ -691,11 +1047,17 @@ class LegacyAlgorithm:
                 elif not finite:
                     result = {"score": None, "verdict": "DO_NOT_USE", "finite": False,
                               "reason": "Nonfinite numeric values"}
+                elif physical and shape_valid and target[0] in ADAPTER_TARGETS:
+                    # Adapter-only check; its verdict is filled from the supplement below.
+                    result = {'score': None, 'verdict': None, 'adapter_check': target[0]}
                 elif physical and shape_valid:
-                    result = module.assess(**{target[0]: values}, **review['settings'])
+                    result = module.assess(**{target[0]: values}, **method_settings(settings))
                 elif physical:
                     result = {'score': None, 'verdict': 'NOT_APPLICABLE', 'finite': True,
                               'reason': 'Numeric field shape/count does not match the declared input'}
+                elif declared:
+                    result = {"score": None, "verdict": "ACCEPTABLE", "finite": True,
+                              "reason": "按机型配置只查有限值：物理量或单位尚未确认，不做物理检查"}
                 else:
                     finite = bool(np.isfinite(values).all())
                     result = {"score": None, "verdict": "NOT_APPLICABLE" if finite else "DO_NOT_USE",
@@ -727,7 +1089,7 @@ class LegacyAlgorithm:
                               nonfinite_indices=[x['indices'] for x in examples], nonfinite_examples=examples,
                               nonfinite_indices_truncated=len(bad) > 100,
                               finite=finite if values.size else None,
-                              assessment_complete=bool(values.size and finite and physical and shape_valid),
+                              assessment_complete=bool(values.size and finite and (physical or declared) and shape_valid),
                               physical_checks_applied=bool(values.size and finite and physical and shape_valid),
                               configuration_review={k: v for k, v in review.items() if k not in {'settings', 'unit_suggestions'}},
                               suggested_unit=target[1] if target else None,
@@ -741,13 +1103,22 @@ class LegacyAlgorithm:
                 result["unit_normalization_reason"] = unit_reason
                 result["physical_check_blockers"] = eligibility['reasons']
                 result["input_scope"] = "recorded_finiteness_only" if unit_reason else "SI"
+                result["finiteness_only_declared"] = declared
                 result["source_kind"] = spec["source_kind"]
                 result["calibration_status"] = spec["calibration_status"]
                 result["shape"] = list(values.shape)
                 from .numeric_supplements import supplements
                 extra_checks = supplements(values, ep, channel, field, target[0] if target else None,
-                    review['settings']['thresholds'], physical, getattr(context, 'workdir', None))
+                    settings['thresholds'], physical, getattr(context, 'workdir', None),
+                    freeze_min_duration_s=freeze_min_duration_s)
                 result['supplemental_checks'] = extra_checks
+                if result.get('adapter_check'):
+                    check = next(c for c in extra_checks if c['id'] == 'joint_velocity_limit')
+                    result.update(verdict=check['verdict'], passed=check['verdict'] == 'ACCEPTABLE',
+                                  reasons=[f"{check['frames_over']}/{check['frames']} 帧、{check['segments']} 段超过 "
+                                           f"{check['threshold']:g} rad/s（最大 {check['max_abs']:.2f}）"] if check['events'] else [],
+                                  joint_velocity={k: check[k] for k in ('threshold', 'frames', 'frames_over',
+                                      'samples_over', 'segments', 'max_abs', 'per_component')})
                 if any(check.get('verdict') == 'DO_NOT_USE' for check in extra_checks):
                     result['supplemental_verdict'] = 'DO_NOT_USE'
                 result['review_candidates'] = [{'check': check['id'], 'needs_review': True,
@@ -763,8 +1134,8 @@ class LegacyAlgorithm:
                             'needs_review': True, 'events': imu_pair['events'],
                             'reason': '联合输入发现加速度偏置线索，保留历史评分并请求复核。'})
                 from .numeric_coverage import coverage
-                result['check_coverage'] = coverage(values, eligibility, review['settings']['thresholds'],
-                    result, physical, unit_reason, imu_pair, extra_checks, shape_valid)
+                result['check_coverage'] = coverage(values, eligibility, settings['thresholds'],
+                    result, physical, unit_reason, imu_pair, extra_checks, shape_valid, declared)
                 result['coverage_complete'] = result['check_coverage']['coverage_complete']
                 joint_result = (result.get('numeric') or {}).get('joint') or {}
                 for event in joint_result.get('events', []):
@@ -850,6 +1221,14 @@ class LegacyAlgorithm:
                 raise ValueError("Invalid reset reference shape or nonfinite signal")
             evidence.append({"channel": channel, "start_error": float(np.max(np.abs(values[0] - home))),
                              "end_error": float(np.max(np.abs(values[-1] - home)))})
+            # Where to look when reviewing: the worst joint and the time of the first/last sample.
+            times = getattr(ep.channels[channel], "timestamps", None)
+            for key, row in (("start", values[0]), ("end", values[-1])):
+                worst = int(np.argmax(np.abs(row - home)))
+                evidence[-1][f"{key}_joint_index"] = worst
+                evidence[-1][f"{key}_joint_offset"] = float(row[worst] - home[worst])
+                evidence[-1][f"{key}_time_s"] = (float(times[0 if key == "start" else -1])
+                                                 if times is not None and len(times) == len(values) else None)
         passed = all(max(e["start_error"], e["end_error"]) <= tolerance for e in evidence)
         return {"method": "calibrated_home_reference_v1", "passed": passed,
                 "verdict": "ACCEPTABLE" if passed else "NEEDS_REVIEW", "evidence": evidence,

@@ -185,7 +185,7 @@ def configuration_panel(profile, params, normalization=None, recommendations=Non
     labels = {'joint': '关节反馈', 'cmd': '动作指令', 'imu': 'IMU', 'pose_freeze': '位姿冻结',
               'command_limits': '动作指令独立限位', 'joint_freeze': '关节反馈冻结候选',
               'cmd_freeze': '动作指令冻结候选', 'gyro_freeze': '角速度冻结候选',
-              'accel_freeze': '加速度冻结候选'}
+              'accel_freeze': '加速度冻结候选', 'joint_velocity': '关节速度上限（适配层补充检查）'}
     descriptions = {'vel_threshold': '相邻样本差阈值（非每秒速度）', 'velocity_peak': '单步差峰值',
                     'reset_ratio': '大步差占比（非 Home 复位）', 'limits': '逐维范围',
                     'jerk_threshold': '二阶样本差阈值（非物理 jerk）', 'min_run': '最短冻结样本数',
@@ -193,14 +193,15 @@ def configuration_panel(profile, params, normalization=None, recommendations=Non
                     'motion_threshold': '此前运动全幅差阈值（非速度）',
                     'gyro_max': '角速度幅值上限', 'acc_max': '加速度幅值上限',
                     'gyro_bias_max': '角速度偏置上限', 'acc_bias_max': '加速度偏置上限',
-                    'min_static_frames': '最短静止样本数'}
+                    'min_static_frames': '最短静止样本数', 'max_abs': '记录速度绝对值上限'}
     rows = []
     for group, values in review['settings']['thresholds'].items():
         for key, value in values.items():
             value = '未设置，不检查该范围' if value is None else json.dumps(value, ensure_ascii=False)
             description = ('恒值区间全幅差阈值' if key == 'freeze_eps' and group != 'pose_freeze'
                            else descriptions[key])
-            unit = ('样本' if key in {'min_run', 'lookback', 'min_static_frames'} else '比例' if key == 'reset_ratio'
+            unit = ('rad/s' if group == 'joint_velocity'
+                    else '样本' if key in {'min_run', 'lookback', 'min_static_frames'} else '比例' if key == 'reset_ratio'
                     else {'joint_freeze': 'rad', 'cmd_freeze': 'rad', 'gyro_freeze': 'rad/s',
                           'accel_freeze': 'm/s²'}[group] if group in {'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'}
                     else 'rad' if key == 'limits' else 'rad/样本' if group == 'joint'
@@ -331,7 +332,9 @@ def numeric_panel(records, root):
                         event['source_component_index'], interval,
                         f'{duration:g} s' if duration is not None else '—', meaning)) + '</tr>')
                 subchecks.append('<details class="subdetail"><summary>' + esc(label + ' · ' + check['name'])
-                    + (' · 指令越界，筛选排除（原评分保留）' if check.get('verdict') == 'DO_NOT_USE' else ' · 区间证据，恒值不等于采集故障')
+                    + (' · 指令越界，筛选排除（原评分保留）' if check.get('verdict') == 'DO_NOT_USE'
+                       else f" · {check.get('segments')} 段超限，需复核" if check['id'] == 'joint_velocity_limit'
+                       else ' · 区间证据，恒值不等于采集故障')
                     + '</summary><p>行号从 0 开始，区间 [start, stop)；持续时间仅来自当前通道有效记录时间。'
                     '预览最多 20 条，全部事件保存在原始记录及 CSV。</p><div class="scroll"><table>'
                     '<tr><th>源分量</th><th>源行／区间</th><th>记录时间跨度</th><th>说明</th></tr>'
@@ -425,7 +428,9 @@ def record_detail(root, record, profile):
             if field:
                 target += f'<span class="muted block">字段：{esc(field)}</span>'
             mapping = profile.get('channels', {}).get(channel, {}).get('select') if channel else None
-            if mapping:
+            if mapping and 'fk' in mapping:
+                target += f'<span class="muted block">FK 派生位置，非新增样本：运动链 {esc(mapping["fk"])}</span>'
+            elif mapping:
                 target += (f'<span class="muted block">拆分视图，非新增样本：{esc(mapping.get("channel"))}'
                            f' · 索引 {esc(mapping.get("indices"))}</span>')
             verdict = VERDICTS.get(item.get('verdict'), item.get('verdict') or '未给出判定')

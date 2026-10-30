@@ -167,11 +167,23 @@ class Episode:
                         'dtype': reader.features[reader.mapping[name]['feature']]['dtype'] if name in reader.mapping else None}
                 # Legacy timestamp algorithms must not interpret unknown/playback time as acquisition.
                 topic.timestamps_synthetic = origin not in {"acquisition", "container"}
-            for name, c in channels.items():
+            # FK-derived channels last: they read metadata already resolved on their joint inputs.
+            for name, c in sorted(channels.items(), key=lambda item: 'fk' in item[1].selection):
                 if not c.selection:
                     continue
-                source = channels[c.selection['channel']]
-                source_spec = source.field_spec(c.selection['field'])
+                if 'fk' in c.selection:
+                    from edc.robots.mapping import fk_metadata, fk_source
+                    source = channels[fk_source(self.profile, c.selection)]
+                    known_values = fk_metadata(self.profile, c.selection, channels)
+                elif 'fields' in c.selection:
+                    # Source fields are not declared on the source channel; only its feedback/command role carries over.
+                    source = channels[c.selection['channel']]
+                    known_values = {'source_kind': source.source_kind}
+                else:
+                    source = channels[c.selection['channel']]
+                    source_spec = source.field_spec(c.selection['field'])
+                    known_values = {key: source_spec.get(key, source.representation.get(key)) for key in
+                                    ('unit', 'source_kind', 'coordinate_frame', 'calibration_status', 'quantity', 'semantic_status')}
                 mapping = self.profile['channels'][name]
                 if mapping.get('clock', source.clock) != source.clock or mapping.get('time_source', source.time_source) != source.time_source:
                     raise ValueError(f'{name}: selection cannot change source clock/time_source; transform explicitly')
@@ -179,16 +191,17 @@ class Episode:
                 c.time_evidence = copy.deepcopy(source.time_evidence)
                 c.count = source.count
                 c.source_mapping = {**copy.deepcopy(source.source_mapping), 'selection': copy.deepcopy(c.selection)}
-                for key in ('unit', 'source_kind', 'coordinate_frame', 'calibration_status', 'quantity', 'semantic_status'):
-                    known = source_spec.get(key, source.representation.get(key))
-                    supplied = c.field_spec(c.fields[0]).get(key)
-                    unknown_values = (None, '', 'unknown') if key == 'unit' else (None, 'unknown')
-                    if known not in unknown_values:
-                        if supplied not in (None, 'unknown', known):
-                            raise ValueError(f'{name}: selection cannot relabel {key}; transform explicitly')
-                        c.field_metadata.setdefault(c.fields[0], {})[key] = known
-                c.joint_names = ([source_spec['joint_names'][i] for i in c.selection['indices']]
-                                 if source_spec.get('joint_names') and max(c.selection['indices']) < len(source_spec['joint_names']) and not c.joint_names else c.joint_names)
+                for target in (c.fields if 'fields' in c.selection else c.fields[:1]):
+                    for key, known in known_values.items():
+                        supplied = c.field_spec(target).get(key)
+                        unknown_values = (None, '', 'unknown') if key == 'unit' else (None, 'unknown')
+                        if known not in unknown_values:
+                            if supplied not in (None, 'unknown', known):
+                                raise ValueError(f'{name}: selection cannot relabel {key}; transform explicitly')
+                            c.field_metadata.setdefault(target, {})[key] = known
+                if 'indices' in c.selection and 'fields' not in c.selection:
+                    c.joint_names =([source_spec['joint_names'][i] for i in c.selection['indices']]
+                                     if source_spec.get('joint_names') and max(c.selection['indices']) < len(source_spec['joint_names']) and not c.joint_names else c.joint_names)
                 c.source_kind = c.field_spec(c.fields[0])['source_kind']
                 topic = info.topics[name]
                 topic.modality = legacy_modality(c.modality, c.source_kind)
@@ -242,6 +255,10 @@ class Episode:
 
     def read_values(self, channel, indices=None):
         self.open()
+        if 'fields' in self.channels[channel].selection:
+            from edc.robots.mapping import select_field_rows
+            rows = select_field_rows(self, channel)
+            return rows if indices is None else [rows[i] for i in indices]
         if self.channels[channel].selection:
             from edc.robots.mapping import select_values, check_joint_shape
             values = select_values(self, channel)
@@ -297,7 +314,7 @@ class Episode:
             raise ValueError(f"Field not provided: {channel}.{field}")
         if c.selection:
             from edc.robots.mapping import select_values
-            result = select_values(self, channel)
+            result = select_values(self, channel, field)
         else:
             result = self._reader.read_field(self._info, channel, field)
         if result is None:

@@ -89,7 +89,7 @@ def test_source_frame_mode_never_encodes_or_applies_container_metrics(tmp_path,m
     r=out[0]
     assert r['camera_role']=='chest' and r['threshold_set']=='camera_agnostic'
     assert r['inspection_object']=='source_decoded_frames'
-    assert r['score'] is None and not r['assessment_complete']
+    assert r['score'] is None and r['assessment_complete']  # Image-only: no container, frame check is complete.
     assert r['frame_quality']['real_frames']==4
     assert r['container_checks']['status']=='not_applicable'
 

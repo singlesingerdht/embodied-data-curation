@@ -6,6 +6,9 @@ from edc.data.ir.metadata import DataInfo, TopicInfo, classify_channel
 from edc.data.ir.values import infer_fields, recorded_ros_fields, ros_values_to_dict
 
 
+PIXEL_TYPES = ('/Image', '/CompressedImage', '/PointCloud2')
+
+
 def _paths(path):
     path = Path(path)
     # ROS2 metadata owns the storage-file list, including MCAP and split DB3.
@@ -55,6 +58,9 @@ class RosBagReader(DataReader):
     def open(self, path):
         self._path = str(path)
         topics, acquired, sequences, recorded = {}, {}, {}, {}
+        # Every message is already deserialized here for its header; keep numeric rows of
+        # non-image topics so channel_values() never rescans the (image-dominated) bag.
+        values, uncached = {}, set()
         with _reader(path) as reader:
             for connection, timestamp, raw in reader.messages():
                 name = connection.topic
@@ -82,6 +88,15 @@ class RosBagReader(DataReader):
                 except Exception:
                     acquired[name].append(None)
                     sequences[name].append(None)
+                    uncached.add(name)
+                    continue
+                # value_available may still be granted later by the profile (e.g. custom robot messages),
+                # so cache every non-pixel topic, not only those classified as numeric here.
+                if not connection.msgtype.endswith(PIXEL_TYPES) and name not in uncached:
+                    value = ros_values_to_dict(message, connection.msgtype)
+                    if hasattr(message, 'name'):
+                        value['names'] = list(message.name)
+                    values.setdefault(name, []).append(value)
             for name, topic in topics.items():
                 from .timeline import set_recorded_timelines
                 set_recorded_timelines(topic, recorded[name], acquired[name], container_field='bag_record_time')
@@ -93,6 +108,8 @@ class RosBagReader(DataReader):
         source = Path(path)
         fmt = 'ros2_bag' if source.is_dir() or source.suffix in {'.db3','.mcap'} else 'ros1_bag'
         self._topics_cache = topics
+        self._values_cache = {name: rows for name, rows in values.items()
+                              if name not in uncached and len(rows) == topics[name].count}
         self._info = DataInfo(path=str(path), format=fmt, topics=topics,
             start_time=min(times), end_time=max(times), duration=max(times)-min(times))
         return self._info
@@ -100,6 +117,13 @@ class RosBagReader(DataReader):
     def channel_values(self, name, indices=None):
         if name not in self._topics_cache:
             return None
+        cached = getattr(self, '_values_cache', {}).get(name)
+        if cached is not None:
+            # Fresh dicts per call: callers may add keys; values are never modified in place.
+            if indices is None:
+                return [dict(row) for row in cached]
+            # Same contract as the scan below: message order, duplicates and out-of-range ignored.
+            return [dict(cached[i]) for i in sorted(set(indices)) if 0 <= i < len(cached)]
         rows = []
         selected = None if indices is None else set(indices)
         with _reader(self._path) as reader:

@@ -121,11 +121,18 @@ def ros_values_to_dict(msg: Any, msg_type: str = "") -> Dict[str, Any]:
             }
         if "sensorsdata" in mt and hasattr(msg, "joint_data"):
             jd = msg.joint_data
-            return {
+            values = {
                 "joint_q": list(getattr(jd, "joint_q", [])),
                 "joint_v": list(getattr(jd, "joint_v", [])),
                 "tau": list(getattr(jd, "joint_torque", [])),
             }
+            imu = getattr(msg, "imu_data", None)
+            if imu is not None:
+                # kuavo_msgs/imuData: Vector3 gyro/acc/free_acc and a named-field Quaternion.
+                # Source names kept; a profile maps them to ang_vel/lin_acc/orientation via select.fields.
+                values.update(imu_gyro=xyz(imu.gyro), imu_acc=xyz(imu.acc),
+                              imu_free_acc=xyz(imu.free_acc), imu_quat=xyzw(imu.quat))
+            return values
         if "odometry" in mt:
             # Odom orientation/velocity are estimates, not raw IMU readings.
             # Keep pose and twist covariance separate; never synthesize acceleration.
