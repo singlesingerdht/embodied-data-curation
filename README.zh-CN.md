@@ -64,89 +64,43 @@ flowchart TD
 
 ## 快速开始
 
-最常见的用法：**拿一批机器人数据，检查质量，得到一份网页报告。** 按下面 4 步做。
+以 X1 Pro 为例，数据是 04 格式：每条数据一个文件夹，里面有 1 个轨迹 JSON 和 3 个 MP4（样例见 `input_example/04_episode_json_mp4_x1pro`）。
 
 ### 第 1 步：准备环境（只做一次）
 
-需要 Python 3.10 或更新版本。在仓库根目录（`embodied-data-curation/`）运行：
+需要 Python 3.10 或更新版本。在仓库根目录运行：
 
 ```bash
-python -m venv .venv                          # 在仓库里建一个项目专用的 Python 环境，放在 .venv 文件夹
-.venv/bin/pip install -e '.[formats,test]'    # 把框架和读取各种数据格式、跑测试要用的库装进去
+python -m venv .venv                          # 建一个项目专用的 Python 环境
+.venv/bin/pip install -e '.[formats,test]'    # 把框架和要用的库装进去
 ```
 
-装好后，框架的命令行程序在 `.venv/bin/edc`。服务器副本 `/mnt/public/rxs/code/embodied-data-curation` 已经装好，直接从第 2 步开始。之后所有命令都在仓库根目录运行：
+服务器副本已经装好，跳过这一步。之后的命令都在仓库根目录运行：
 
 ```bash
 cd /mnt/public/rxs/code/embodied-data-curation
 ```
 
-### 第 2 步：确认这台机器人已有配置
-
-每种机器人要有一份配置，告诉框架：哪个字段是关节、单位是什么、限位多少、初始位置在哪。目前已配好、已签名的：
-
-| 机器人 | 数据长什么样 | 命令里写 |
-|---|---|---|
-| 乐聚 KUAVO | ROS1 的 `.bag` 文件 | `--robot leju_kuavo` |
-| X1 Pro | 每条一个文件夹：1 个轨迹 JSON + 3 个 MP4（样例 `input_example/04_episode_json_mp4_x1pro`） | `--robot x1pro_episode` |
-
-其他机器人或格式（如 X1 Pro 的 mcap、ROS2 bag，LeRobot、HDF5）要先新建配置，见 [配置与机器人复用](#配置与机器人复用)。
-
-### 第 3 步：检查数据
-
-```bash
-.venv/bin/edc batch 数据文件夹 --robot x1pro_episode --jobs 8 --output reports/我的报告.html
-```
-
-- `数据文件夹`：一个或多个文件夹（会往里一层层找数据），也可以是单条数据。
-- `--jobs 8`：同时检查 8 条。共享服务器上别开太多。
-- 屏幕上每检查完一条显示一行；最后显示各结论的条数和报告位置。
-
-例子：检查 X1 Pro 的 pen_in_cup 任务。
+### 第 2 步：检查数据
 
 ```bash
 .venv/bin/edc batch /mnt/public/datasets/x1pro/pen_in_cup --robot x1pro_episode --jobs 8 --output reports/pen_in_cup.html
 ```
 
-### 第 4 步：看报告
+- `/mnt/public/datasets/x1pro/pen_in_cup`：要检查的数据文件夹，会往里一层层找出每条数据。
+- `--robot x1pro_episode`：用 X1 Pro 的配置。
+- `--jobs 8`：同时检查 8 条。
+- `--output`：报告保存的位置。
 
-报告是一个网页文件。在服务器上运行时，在**自己电脑**的终端里把它下载下来，再双击打开：
+### 第 3 步：看报告
+
+在自己电脑的终端里把报告下载下来，双击打开：
 
 ```bash
 scp -P 40112 root@113.56.214.18:/mnt/public/rxs/code/embodied-data-curation/reports/pen_in_cup.html 桌面路径
 ```
 
-报告顶部是统计，下面每条数据一行。每条数据有一个结论：建议保留、建议复核、可救、含建议排除项、未评估完或运行失败；九项检查各一格，点开能看到原因和该去看的时刻。
-
-更多选项、全量运行和重新签名，见下一节 [真实数据批量质检](#真实数据批量质检edc-batch)。
-
-### 进阶：完整工作流演示（用程序生成的假数据）
-
-下面是框架作者给的演示，**用的是程序生成的假数据**，用来展示“检查质量 → 选数据 → 编辑 → 复检”整条流程怎么用配置文件串起来。只做质检时用不到，可以跳过。
-
-```bash
-python examples/curation/make_example.py --output /tmp/edc-demo   # 生成一份假数据，以及一份把它串起来的总配置 curation.yaml
-edc config check /tmp/edc-demo/curation.yaml                      # 检查总配置写得对不对
-edc config recommend /tmp/edc-demo/curation.yaml                  # 列出哪些算法能跑、哪些不能跑，以及原因
-edc config export /tmp/edc-demo/curation.yaml --output /tmp/edc-complete.yaml   # 把它引用的几份配置合成一个完整文件
-edc config run /tmp/edc-complete.yaml --output /tmp/edc-results  # 按配置跑完整工作流
-edc config run /tmp/edc-complete.yaml --output /tmp/edc-results --resume   # 中途停了，从停下的地方接着跑
-```
-
-每次运行要用一个新的输出文件夹。结果入口是 `/tmp/edc-results/report.html`（总报告）和 `catalog.json`（结果清单）；每个流程的页面在 `_workflows/<id>/report.html`，每个算法的原始结果在 `_runs/<id>`。
-
-在 Python 代码里也可以做同样的事：
-
-```python
-from edc import load_config, recommend_config, run_workflow
-
-configuration = load_config("curation.yaml")             # 读总配置
-pool = recommend_config(configuration)                   # 看哪些算法能跑
-result = run_workflow(configuration, output="results")   # 跑完整工作流
-print(result["delivery_status"], result["outputs"], result["pending"])   # 结论、输出位置、还没完成的项
-```
-
-本仓库目前是私有开发版本，公开发布与许可核查见 [发布清单](docs/RELEASE_CHECKLIST.md)。
+每条数据一行，给出结论（建议保留、建议复核、可救、含建议排除项等）；九项检查各一格，点开能看到原因和该去看的时刻。
 
 ## 真实数据批量质检（`edc batch`）
 
