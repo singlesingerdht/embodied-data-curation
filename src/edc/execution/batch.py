@@ -36,11 +36,32 @@ def resolve_robot(name):
     raise ValueError(f'找不到机器人配置 {name}：{robots} 下没有 {name}_signed.yaml 或 {name}.yaml；可改用 --profile 指定文件')
 
 
+def is_episode_dir(path):
+    """A single-episode folder: trajectory JSON (data[] rows) next to its videos, e.g. X1 Pro robot-bridge."""
+    from edc.data.readers.episode import _find_traj_json
+    return path.is_dir() and _find_traj_json(path) is not None
+
+
+def episode_dirs(root):
+    """Episode folders under root (root itself included); an episode folder is not searched further."""
+    if is_episode_dir(root):
+        return [root]
+    found = []
+    for child in sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith('.')):
+        found += episode_dirs(child)
+    return found
+
+
+def size_of(path):
+    return sum(p.stat().st_size for p in path.rglob('*') if p.is_file()) if path.is_dir() else path.stat().st_size
+
+
 def find_inputs(paths):
     files = []
     for path in map(Path, paths):
         if path.is_dir():
-            files += sorted(p for p in path.rglob('*') if p.suffix in SUFFIXES and p.is_file())
+            found = sorted(p for p in path.rglob('*') if p.suffix in SUFFIXES and p.is_file())
+            files += found or episode_dirs(path)
         elif path.is_file():
             files.append(path)
         else:
@@ -69,7 +90,7 @@ def check_one(path, profile, params, keep, tmp):
     finally:
         shutil.rmtree(work, ignore_errors=True)
     summary.update(name=path.name, source=str(path), seconds=round(time.time() - t0, 1),
-                   size_mb=round(path.stat().st_size / 2**20), kept=str(kept) if kept else None)
+                   size_mb=round(size_of(path) / 2**20), kept=str(kept) if kept else None)
     return summary
 
 
@@ -83,14 +104,15 @@ def run_batch(inputs, *, profile=None, robot=None, params=None, jobs=None, outpu
             raise ValueError(f'找不到文件：{path}')
     files = find_inputs(inputs)
     if not files:
-        raise ValueError('没有找到数据文件（' + '、'.join(SUFFIXES) + '）')
+        raise ValueError('没有找到数据（' + '、'.join(SUFFIXES) + ' 文件或含轨迹 JSON 的单条数据目录）')
     if keep:
         Path(keep).mkdir(parents=True, exist_ok=False)  # Never mix with an earlier run.
     jobs = jobs or len(files)
     label = robot or Path(profile).stem
     output = Path(output or f'{label}_report_{datetime.now():%Y%m%d_%H%M}.html')
-    files.sort(key=lambda p: p.stat().st_size, reverse=True)  # Long ones first.
-    log(f'找到 {len(files)} 个文件（共 {sum(p.stat().st_size for p in files) / 2**30:.1f} GB），同时跑 {jobs} 个')
+    sizes = {p: size_of(p) for p in files}
+    files.sort(key=sizes.get, reverse=True)  # Long ones first.
+    log(f'找到 {len(files)} 条数据（共 {sum(sizes.values()) / 2**30:.1f} GB），同时跑 {jobs} 个')
     log(f'配置 {profile}' + (f'，参数 {params}' if params else ''))
     start, results = time.time(), []
     with ThreadPoolExecutor(jobs) as pool:
@@ -103,6 +125,9 @@ def run_batch(inputs, *, profile=None, robot=None, params=None, jobs=None, outpu
             'finished': f'{datetime.now():%Y-%m-%d %H:%M}', 'profile': str(profile), 'params': str(params or '')}
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(page(results, info), encoding='utf-8')
+    # The same verdicts as data, for tallies across many reports.
+    output.with_suffix('.json').write_text(json.dumps({'info': info, 'results': results}, ensure_ascii=False),
+                                           encoding='utf-8')
     counts = Counter(DECISION.get(r['decision'], (r['decision'],))[0] for r in results)
     log(f'\n全部完成，用时 {info["seconds"]:.0f} 秒。' + '，'.join(f'{k} {n} 个' for k, n in counts.items()))
     log(f'报告：{output.resolve()}')

@@ -1,0 +1,60 @@
+{
+ "Action_Smoothness": {
+  "timeline": {
+   "mode": "reference_rate",
+   "reference_channel": "rgb/head",
+   "time_source": "acquisition"
+  },
+  "expected_rate_hz": 30,
+  "rate_tolerance_ratio": 0.2,
+  "window_length": 11,
+  "vel_threshold_factor": 0.1,
+  "jerk_threshold_m_s3": 15,
+  "jerk_frames": "slow_only"
+ },
+ "Numeric_Check": {
+  "freeze_min_duration_s": 5,
+  "finiteness_only": [
+   "car_pose_odom.value",
+   "car_pose_odom_position.value",
+   "car_pose_odom_rotation.value",
+   "follow_left_gripper.position",
+   "follow_left_joint.effort",
+   "follow_left_joint.position",
+   "follow_left_joint.velocity",
+   "follow_left_rotation.rotation",
+   "follow_right_gripper.position",
+   "follow_right_joint.effort",
+   "follow_right_joint.position",
+   "follow_right_joint.velocity",
+   "follow_right_rotation.rotation",
+   "head_pitch.value",
+   "head_rotation.value",
+   "head_yaw.value",
+   "lifting_mechanism_position.value",
+   "master_left_gripper.position",
+   "master_left_rotation.rotation",
+   "master_right_gripper.position",
+   "master_right_rotation.rotation",
+   "velocity_decomposed_odom.value"
+  ],
+  "joint_stuck": {
+   "min_move_m": 0.02,
+   "min_moving_s": 1.0,
+   "moving_speed_m_s": 0.02,
+   "verdict": "DO_NOT_USE"
+  }
+ },
+ "Check_Timestamp": {
+  "count_each_source_once": true,
+  "scoring": {
+   "absolute_error_floor_ms": 11.1,
+   "dt_cv_no_penalty": 0.3,
+   "dt_cv_zero": 0.6
+  },
+  "shared_row_max_gap_s": 0.1
+ },
+ "Reset_Detection": {
+  "split_segments": true
+ }
+}

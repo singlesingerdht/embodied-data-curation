@@ -15,6 +15,8 @@
 
 ## 最新动态
 
+- **2026-10-31**：X1 Pro 轨迹 JSON＋MP4 格式接入 `edc batch`（`--robot x1pro_episode`），使用厂家 URDF 限位；见 [真实数据批量质检](#真实数据批量质检edc-batch)。
+- **2026-10-30**：新增 `edc batch` 批量质检和单页 HTML 报告；乐聚 KUAVO（ROS1 bag，`--robot leju_kuavo`）完成配置与签名。
 - **2026-10-26**：公共 Python／CLI 统一使用 `edc`；安装包为 `embodied-data-curation`，源码按六个模块组织。
 - **2026-10-26**：统一总入口可引用四类配置并导出完整单文件；机器人与任务数据集独立，支持单臂／双臂范围选择。
 - **2026-10-26**：算法推荐与实际执行共享绑定；编辑、增强生成新版本后经过来源校验与质量复检。验证结果与边界见 [STATUS](docs/framework/STATUS.md)。
@@ -89,6 +91,59 @@ result = run_workflow(configuration, output="results")
 print(result["delivery_status"], result["outputs"], result["pending"])
 ```
 
+## 真实数据批量质检（`edc batch`）
+
+一条命令检查一批真实数据：逐条运行九项质量算法，汇总成一份 HTML 报告（同名 `.json` 是数据版，便于统计）。以下命令在仓库根目录运行；`.venv/bin/edc` 是仓库自带环境里的 `edc` 程序，写全路径以免用到别处安装的版本。
+
+已配置并签名的机器人（每个机器人一份配置；限位、速度上限、Home 等都写在各自配置里，互不影响）：
+
+| 机器人 | `--robot` | 数据格式 | 配置 |
+|---|---|---|---|
+| 乐聚 KUAVO | `leju_kuavo` | ROS1 `.bag` | `configs/robots/leju_kuavo.yaml`，参数 `leju_kuavo/params.json`，签名 `leju_kuavo_signed.yaml` |
+| X1 Pro（自变量 Quanta X1 Pro） | `x1pro_episode` | 每条一个目录：轨迹 JSON（`robot-bridge-v260630`）＋ 3 路 MP4 | `configs/robots/x1pro_episode.yaml`，参数 `x1pro_episode/params.json`，签名 `x1pro_episode_signed.yaml` |
+
+```bash
+# 文件夹（递归查找 .bag 和单条数据目录；软链接解析后去重）或单个文件，可以给多个
+.venv/bin/edc batch /mnt/public/datasets/x1pro/pen_in_cup --robot x1pro_episode --jobs 8 --output reports/pen_in_cup.html
+
+# 按路径清单（每行一条数据）
+mapfile -t L < list.txt
+.venv/bin/edc batch "${L[@]}" --robot x1pro_episode --jobs 8 --output reports/sample.html
+```
+
+| 选项 | 含义 |
+|---|---|
+| `--robot` | `configs/robots/` 下的机器人名；自动使用 `<名字>_signed.yaml` 和 `<名字>/params.json` |
+| `--jobs` | 同时检查几条数据（默认全部同时）；共享服务器建议 8–16 |
+| `--output` | 报告文件；旁边另存同名 `.json` |
+| `--keep` | 保留每条数据的完整运行结果（`edc run` 输出）到这个新文件夹，用于深挖 |
+| `--params` | 换一份算法参数文件（默认用机器人自己的 `params.json`） |
+
+报告里每条数据的结论：建议保留／建议复核／可救（原因清楚能修：时钟固定偏差，或 X1 关节读数卡住、可用末端位姿逆运动学恢复）／含建议排除项／未评估完／运行失败。每一项都写明原因和该看的时刻。
+
+**X1 Pro 全量**（服务器，按任务目录各出一份报告，断了重跑同一命令会接着跑；只含软链接、指向其他目录数据的文件夹自动跳过）：
+
+```bash
+tmux new -s x1run        # 离开：Ctrl+B 后按 D；回来：tmux attach -t x1run
+bash /mnt/public/rxs/code/edc_tools/x1pro_full_run.sh x1pro_full_v2 16   # 输出到 reports/x1pro_full_v2/
+```
+
+脚本副本也在 `input_example/tools/x1pro_full_run.sh`。约 1 万条不重复数据，16 条并行约 1.5 小时。
+
+**X1 Pro 配置要点**：所有数据和画面共用一条行时间（导出时已逐帧对齐），时间戳对齐只查跳帧，采集同步与时间异常归因记为不适用；复位检测用末端位置（容差 5 cm），数据集剪辑记录表明是切片时只查真正的录制开头；关节限位与速度上限来自厂家 URDF（GitHub `X-Square-Robot/sdk_arm_6a` 的 `zbl_arm_6a.urdf.xacro`）；动作平滑度只算原方法找出的真正慢下来的帧；关节读数卡住而末端在动判“可救”。
+
+**测试与重签**：
+
+```bash
+.venv/bin/python -m pytest -q -p no:cacheprovider tests/edc/test_x1pro_episode.py   # X1 专项
+.venv/bin/python -m pytest -q -p no:cacheprovider tests                             # 全套
+
+# 改了机器人配置里的阈值、通道或标定后，旧签名失效：先把旧签名改名留底，再用自己的名字重签
+mv configs/robots/x1pro_episode_signed.yaml configs/robots/x1pro_episode_signed_<日期>.yaml
+.venv/bin/edc robot confirm-numeric --profile configs/robots/x1pro_episode.yaml \
+    --params configs/robots/x1pro_episode/params.json --reviewer <名字> --output configs/robots/x1pro_episode_signed.yaml
+```
+
 ## 配置与机器人复用
 
 ```yaml
@@ -123,7 +178,7 @@ X1 Pro 的 **32 路 topic、23 个逻辑名**合并在 [x1_pro.yaml](configs/rob
 | Sync_Check | 独立采集时间轴之间的同步 | 至少两路及共同时钟或验证过的映射 |
 | Root_Cause | 时间异常关联和来源归因 | 不能从合成公共行时间推断采集根因 |
 | Dedup_Check | 原始时间／序列号重复 | 不判断图像内容，不自动删除记录 |
-| Reset_Detection | 关节反馈与 Home 的接近情况 | 所选关节、Home、单位和容差明确 |
+| Reset_Detection | 开头／结尾的关节反馈（或末端位置）与 Home 的接近情况 | 所选通道、Home、单位和容差明确；可按数据集剪辑记录只查真正的录制开头 |
 | Video_Integrity | 原视频或解码画面检查 | `auto/frames/video`，记录抽样及缩放；检查对象不同不混为同一结论 |
 
 详细最低输入、输出和默认绑定见 [算法表](docs/framework/ALGORITHMS.md)。方法、评分公式和阈值保持原有定义；选择范围和适配约束独立记录。

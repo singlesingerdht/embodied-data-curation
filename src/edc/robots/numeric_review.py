@@ -63,7 +63,9 @@ def numeric_settings(profile=None, params=None):
     configured = (profile or {}).get('numeric_check', {})
     params = params or {}
     # Topic scope and the finiteness-only declaration change no threshold or configuration confirmation.
-    params = {k: v for k, v in params.items() if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s'}}
+    params = {k: v for k, v in params.items()
+              if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s', 'joint_limits_pending',
+                           'joint_stuck'}}
     for value in (configured, params):
         if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
             raise ValueError('Numeric_Check accepts thresholds and weights')

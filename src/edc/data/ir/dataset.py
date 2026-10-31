@@ -125,7 +125,10 @@ class Episode:
                 if unknown_recorded_time:
                     origin = 'unknown'
                 topic.time_source = origin
-                if self.backend != 'official' and topic.msg_type == "video/mp4" and not topic.timestamps_synthetic:
+                # A video whose frames were mapped 1:1 onto the trajectory rows (`video_frame_time: rows`)
+                # carries the rows' recorded time, not its own playback time.
+                if (self.backend != 'official' and topic.msg_type == "video/mp4" and not topic.timestamps_synthetic
+                        and not getattr(topic, 'frame_time_from_rows', False)):
                     origin = "playback"
                 from edc.data.ir.modalities import normalize_modality, legacy_modality
                 declared_modality = mapping.get("modality", topic.modality)

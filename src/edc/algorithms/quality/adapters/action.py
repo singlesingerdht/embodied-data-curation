@@ -21,6 +21,30 @@ def validate_options(params):
         raise ValueError('window_length must be odd')
     if params.get('rate_tolerance_ratio', .2) >= 1:
         raise ValueError('rate_tolerance_ratio must be less than 1')
+    if params.get('jerk_frames', 'method') not in {'method', 'slow_only'}:
+        raise ValueError("jerk_frames must be 'method' or 'slow_only'")
+
+
+def slow_frames_only(jerk):
+    """Score jitter on the frames the method itself found slow, without its boundary fill.
+
+    The method widens each still stretch by a few frames (more on long episodes) before taking the
+    jerk RMS, which pulls start/stop motion into the 'still' set. Its own per-frame statistics already
+    report the RMS on the unwidened set; this swaps that value in. Same metric, same thresholds."""
+    out = copy.deepcopy(jerk)
+    details = out.setdefault('details', {})
+    raw = details.get('raw_stationary_jerk_rms_m_s3')
+    details['method_jerk_score'] = jerk.get('score')
+    details['method_stationary_frames'] = details.get('stationary_frames')
+    details['jerk_frames'] = 'slow_only'
+    if raw is None:
+        details['stationary_frames'] = 0
+        out.update(score=0.0, is_bad=False, assessment_complete=False,
+                   warnings=['没有真正慢下来的帧，静止抖动未评估'])
+    else:
+        details['stationary_frames'] = (details.get('stationary_segmentation') or {}).get('raw_stationary_frames')
+        out.update(score=float(raw), is_bad=bool(raw > details.get('threshold', 15)))
+    return out
 
 
 def _axis(channel, required=None):
@@ -163,6 +187,14 @@ def assess(episode, channel, params, context):
                 window_length=params.get('window_length', 11),
                 vel_threshold_factor=params.get('vel_threshold_factor', .1),
                 jerk_threshold_m_s3=params.get('jerk_threshold_m_s3', 15))
+            if params.get('jerk_frames') == 'slow_only':
+                from edc.algorithms.quality.algorithms.Action_Smoothness.run_check import _report
+                from edc.algorithms.quality.algorithms.Action_Smoothness.scoring import build_action_smoothness_module
+                jerk, slam = slow_frames_only(report['raw']['jerk']), report['raw']['slam_freeze']
+                method = {k: report.get(k) for k in ('score', 'verdict')}
+                report = _report(build_action_smoothness_module(jerk, slam, params.get('weights')))
+                report['raw'] = {'jerk': jerk, 'slam_freeze': slam}
+                report.update(method_score=method['score'], method_verdict=method['verdict'])
             if plan['issues']:
                 # Preserve raw diagnostics, but never publish an uncalibrated pass/fail.
                 result['diagnostic_result'] = report

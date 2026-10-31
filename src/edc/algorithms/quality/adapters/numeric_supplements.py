@@ -114,21 +114,29 @@ def command_limits(values, episode, channel, field, settings, physical):
 
 
 def joint_velocity_limit(values, episode, channel, field, settings, physical):
-    """|recorded joint velocity| > max_abs (rad/s) per component; counts and contiguous segments."""
+    """|recorded joint velocity| > max_abs (rad/s) per component; counts and contiguous segments.
+    max_abs is one number for every joint, or one per joint (e.g. the URDF <limit velocity>)."""
     state, reason = _state(values, channel, physical)
-    if settings is None:
-        state, reason = 'unconfigured', '未填写 numeric_check.thresholds.joint_velocity.max_abs；不假设默认阈值。'
     limit = (settings or {}).get('max_abs')
+    if limit is None:
+        state, reason = 'unconfigured', '未填写 numeric_check.thresholds.joint_velocity.max_abs；不假设默认阈值。'
+    limits = None
+    if state == 'evaluated':
+        limits = np.broadcast_to(np.asarray(limit, dtype=float), values.shape[1:]) if np.ndim(limit) == 0 else np.asarray(limit, float)
+        if limits.shape != values.shape[1:]:
+            state, reason = 'unconfigured', f'joint_velocity.max_abs 有 {limits.size} 个值，但 {channel.name} 有 {values.shape[1]} 个关节'
+    text = '/'.join(f'{x:g}' for x in limit) if isinstance(limit, (list, tuple)) else f'{limit:g}' if limit is not None else ''
     timeline, times = _timeline(channel, len(values) if values.ndim else 0)
     check = {'id': 'joint_velocity_limit', 'name': '关节速度上限', 'status': state,
-             'threshold': limit, 'unit': 'rad/s', 'reason': reason, 'outcome': None,
+             'threshold': limit, 'threshold_text': text, 'unit': 'rad/s', 'reason': reason, 'outcome': None,
              'events': [], 'source_mapping': source_mapping(episode, channel, field), 'timeline': timeline,
              'changes_score': False, 'verdict': None, 'frames': int(len(values)) if values.ndim else 0,
              'frames_over': 0, 'samples_over': 0, 'segments': 0, 'per_component': []}
     if state != 'evaluated':
         return check
-    over = np.abs(values) > limit
+    over = np.abs(values) > limits
     for j in range(values.shape[1]):
+        limit = float(limits[j])
         column = over[:, j]
         edges = np.diff(np.r_[0, column.astype(int), 0])
         starts, stops = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
@@ -150,7 +158,7 @@ def joint_velocity_limit(values, episode, channel, field, settings, physical):
     check.update(outcome='finding' if found else 'no_finding', verdict='NEEDS_REVIEW' if found else 'ACCEPTABLE',
                  frames_over=int(over.any(axis=1).sum()), samples_over=int(over.sum()), segments=len(check['events']),
                  max_abs=float(np.abs(values).max()),
-                 reason=f'逐分量检查 |速度| > {limit:g} rad/s；连续超限的行合并为一段。超限可能是真实快速动作，需复核。')
+                 reason=f'逐分量检查 |速度| > {text} rad/s；连续超限的行合并为一段。超限可能是真实快速动作，需复核。')
     return check
 
 
@@ -200,13 +208,92 @@ def numeric_freeze(values, episode, channel, field, target, settings, physical, 
     return check
 
 
-def supplements(values, episode, channel, field, target, settings, physical, workdir=None, freeze_min_duration_s=None):
+def _paired_pose(episode, channel):
+    """The same arm's recorded tip position on the same row timeline, or None."""
+    for other in episode.channels.values():
+        if (other.modality == 'pose' and other.value_available and 'position' in other.fields
+                and other.robot_part and other.robot_part == channel.robot_part
+                and other.source_kind == channel.source_kind and other.count == channel.count
+                and other.timestamps is not None and channel.timestamps is not None
+                and np.array_equal(np.asarray(other.timestamps, float), np.asarray(channel.timestamps, float))):
+            return other
+    return None
+
+
+def joint_stuck(values, episode, channel, field, settings, physical, min_duration_s):
+    """Per-robot adapter option `joint_stuck` ({min_move_m, verdict}), used instead of the per-joint freeze
+    candidates: some robots (X1 Pro) report bit-identical joint values whenever a joint holds, so a joint or a
+    whole arm holding still is a normal pause. A finding needs all joints of the arm unchanged for at least
+    min_duration_s while the same arm's recorded tip position moves at least min_move_m: the joint readings
+    stopped updating although the arm moved."""
+    min_move = float(settings.get('min_move_m', 0.02))
+    min_moving = float(settings.get('min_moving_s', 1.0))
+    min_speed = float(settings.get('moving_speed_m_s', 0.02))
+    min_duration = float(min_duration_s or 0)
+    state, reason = _state(values, channel, physical, 2)
+    timeline, times = _timeline(channel, len(values) if values.ndim else 0)
+    pose = _paired_pose(episode, channel)
+    check = {'id': 'joint_stuck', 'name': '关节读数卡住（末端在动）', 'status': state,
+             'threshold': {'min_move_m': min_move, 'min_moving_s': min_moving, 'moving_speed_m_s': min_speed,
+                           'min_duration_s': min_duration},
+             'unit': 'rad; m', 'reason': reason, 'outcome': None, 'events': [], 'observations': [],
+             'verdict': None, 'pose_channel': pose.name if pose else None,
+             'source_mapping': source_mapping(episode, channel, field), 'timeline': timeline,
+             'changes_score': False}
+    if state == 'evaluated' and (times is None or pose is None):
+        check.update(status='insufficient_input',
+                     reason='需要本通道有效时间和同一手臂、同一时间轴的末端位置通道。')
+    if check['status'] != 'evaluated':
+        return check
+    tip = np.asarray(episode.read_signal(pose.name, 'position'), dtype=float)
+    same = np.r_[False, (np.diff(values, axis=0) == 0).all(axis=1)]  # row i identical to row i-1 on every joint
+    step = np.r_[0.0, np.diff(times)]
+    speed = np.r_[0.0, np.linalg.norm(np.diff(tip, axis=0), axis=1) / np.maximum(step[1:], 1e-3)]
+    i = 1
+    while i < len(same):
+        if not same[i]:
+            i += 1
+            continue
+        start = i - 1
+        while i < len(same) and same[i]:
+            i += 1
+        stop = i  # rows [start, stop) hold one value
+        held = float(times[stop - 1] - times[start])
+        if held < min_duration:
+            continue
+        moved = float(np.linalg.norm(tip[start:stop] - tip[start], axis=1).max())
+        # Seconds in which the tip really moves while every joint reading stays the same.
+        moving = float(step[start + 1:stop][speed[start + 1:stop] > min_speed].sum())
+        stuck = moved >= min_move and moving >= min_moving
+        event = {'type': 'joint_stuck_while_pose_moves' if stuck else 'arm_hold',
+                 'component_index': None, 'source_component_index': '全部关节', 'start': start, 'stop': stop, 'sample_count': stop - start, 'needs_review': stuck,
+                 'start_time_s': float(times[start]), 'last_time_s': float(times[stop - 1]), 'duration_s': held,
+                 'pose_move_m': moved, 'pose_moving_s': moving, 'reaches_end': stop == len(values),
+                 'pose_channel': pose.name,
+                 'interpretation': (f'整条手臂 {held:.1f} 秒内关节读数一个都没变，其中 {moving:.1f} 秒末端确实在动'
+                                    f'（最远 {moved * 100:.0f} cm）：关节数据没在更新。'
+                                    if stuck else f'整条手臂停住 {held:.1f} 秒，末端也基本没动（{moved * 100:.1f} cm）：正常停住。')}
+        check['events' if stuck else 'observations'].append(event)
+    found = bool(check['events'])
+    check.update(outcome='finding' if found else 'observation' if check['observations'] else 'no_finding',
+                 verdict=settings.get('verdict', 'DO_NOT_USE') if found else 'ACCEPTABLE',
+                 reason=f'整条手臂所有关节同时不变至少 {min_duration:g} 秒、其间末端移动至少 {min_move * 100:g} cm 且真正在动'
+                        f'（速度超过 {min_speed * 100:g} cm/s）的时间至少 {min_moving:g} 秒才算卡住；'
+                        '单个关节或整条手臂停住而末端不动是正常停住，只记观察。')
+    return check
+
+
+def supplements(values, episode, channel, field, target, settings, physical, workdir=None, freeze_min_duration_s=None,
+                joint_stuck_settings=None):
     checks = []
     if target == 'cmd_positions':
         checks.append(command_limits(values, episode, channel, field, settings['command_limits'], physical))
     if target == 'joint_velocities':
         checks.append(joint_velocity_limit(values, episode, channel, field, settings.get('joint_velocity'), physical))
-    if target in FREEZE_GROUPS:
+    if target == 'joint_positions' and joint_stuck_settings is not None:
+        checks.append(joint_stuck(values, episode, channel, field, joint_stuck_settings, physical,
+                                  freeze_min_duration_s))
+    elif target in FREEZE_GROUPS:
         checks.append(numeric_freeze(values, episode, channel, field, target,
                                      settings[FREEZE_GROUPS[target]], physical, freeze_min_duration_s))
     if workdir is not None:

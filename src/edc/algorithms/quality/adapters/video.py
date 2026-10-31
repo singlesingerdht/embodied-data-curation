@@ -83,4 +83,11 @@ def _assess_channel(episode, channel, params, context, index, started, role):
         evidence = getattr(context, 'video_evidence', episode.video_evidence)
         result.update(evidence(channel.name, inspection_input=path))
         result['adapter_elapsed_s'] = time.perf_counter()-started
+        # Pass or exclude only, as for frame input (user decision 2026-10-30): anything the method does not
+        # exclude passes; the report notes the bad-frame counts. The method's verdicts are kept.
+        if result.get('verdict') == 'NEEDS_REVIEW':
+            result.update(method_verdict='NEEDS_REVIEW', verdict='ACCEPTABLE', passed=True)
+        fq = result.get('frame_quality')
+        if result.get('verdict') != 'DO_NOT_USE' and isinstance(fq, dict) and fq.get('verdict') == 'NEEDS_REVIEW':
+            result['frame_quality'] = {**fq, 'method_verdict': fq['verdict'], 'verdict': 'ACCEPTABLE'}
     return result

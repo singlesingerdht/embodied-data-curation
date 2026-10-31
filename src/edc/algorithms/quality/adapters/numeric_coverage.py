@@ -3,7 +3,7 @@ import numpy as np
 
 
 def coverage(values, eligibility, settings, result, physical, unit_reason=None, imu_pair=None,
-             extra_checks=(), shape_valid=True, finiteness_only=False):
+             extra_checks=(), shape_valid=True, finiteness_only=False, limits_pending=None):
     rows = []
     target = eligibility['target'][0] if eligibility['target'] else None
     n = len(values) if values.ndim else 0
@@ -31,9 +31,14 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
         'outcome': ('no_finding' if finite else 'finding') if values.size else None,
         'reason': '不依赖物理单位；逐元素检查，位置见异常索引及 CSV。'})
     joint = settings['joint']
-    add('joint_limits', '关节位置限位', applicable=target == 'joint_positions',
+    # Per-robot `joint_limits_pending`: the robot has no limit source yet (e.g. no URDF); counted as not
+    # applicable with that reason instead of leaving the whole field unassessed.
+    pending = bool(limits_pending) and joint['limits'] is None
+    add('joint_limits', '关节位置限位', applicable=target == 'joint_positions' and not pending,
         configured=joint['limits'] is not None, threshold=joint['limits'], unit='rad',
-        events=('joint_range',), group='joint', reason='未填写 joint.limits，不判断是否越过关节机械限位。' if joint['limits'] is None else '')
+        events=('joint_range',), group='joint',
+        reason=f'本机型暂无关节限位，暂不检查越限：{limits_pending}' if pending else
+               '未填写 joint.limits，不判断是否越过关节机械限位。' if joint['limits'] is None else '')
     if target == 'joint_positions':
         for ident, name, key, events, enough in (
                 ('joint_step', '相邻关节位置差', 'vel_threshold', ('joint_jump',), n >= 2),

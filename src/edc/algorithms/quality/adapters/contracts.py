@@ -25,6 +25,10 @@ def cpu_parameters(ident):
                           'description': 'all 或已声明的机械臂部件 ID 列表；默认按机器人拓扑选择全部臂'}
     if ident != 'Reset_Detection':
         properties['weights'] = {'type': ['object', 'null'], 'description': '原方法的子项权重；未提供时沿用原默认值'}
+    else:
+        properties['split_segments'] = {'type': 'boolean', 'default': False,
+            'description': '数据集自带剪辑记录（数据目录里的 anno/source_segment.json，或上级目录 split_manifest.json 列出本条）时，'
+                           '这条是从长录制剪出来的切片：只查真正的录制开头（从原始第 0 帧剪起时查开头），其余端不查；两端都不查时记为不适用'}
     if ident == 'Dedup_Check':
         properties['channel'] = {'type': ['string', 'null'], 'description': '指定原始时间通道；不填时检查各路，公共行时间只检查一次'}
         properties['dedup_ratio_low'] = {'type': 'number', 'minimum': 0, 'maximum': 1, 'default': .01,
@@ -55,11 +59,20 @@ def cpu_parameters(ident):
             vel_threshold_factor={'type': 'number', 'exclusiveMinimum': 0, 'default': .1,
                 'description': '静止分段速度门限与全局峰值之比'},
             jerk_threshold_m_s3={'type': 'number', 'exclusiveMinimum': 5, 'default': 15,
-                'description': 'SI 残差 jerk 阈值；大于保留的 5 m/s³ 满分基线'})
+                'description': 'SI 残差 jerk 阈值；大于保留的 5 m/s³ 满分基线'},
+            jerk_frames={'type': 'string', 'enum': ['method', 'slow_only'], 'default': 'method',
+                'description': 'method 沿用原方法（静止段两侧补帧后算抖动）；slow_only 只用原方法自己找出的真正慢下来的帧'
+                               '（原方法已输出的 raw_stationary_jerk_rms），同一指标、同一阈值，原分数保留为 method_score'})
     if ident == 'Numeric_Check':
         properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后 Numeric 配置确认失效'}
         properties['freeze_min_duration_s'] = {'type': 'number', 'exclusiveMinimum': 0,
             'description': '动过之后数值连续不变短于这个秒数的，视为正常停住，不进复核；不填按原方法的样本数规则'}
+        properties['joint_stuck'] = {'type': 'object',
+            'description': '本机型关节停住时读数完全不变（如 X1 Pro）时使用：不再把单个关节“动过之后不变”列为冻结候选，'
+                           '改为整条手臂所有关节同时不变至少 freeze_min_duration_s 秒、且同一手臂末端移动至少 min_move_m 米才算关节读数卡住；'
+                           'verdict 为卡住时的结论（默认 DO_NOT_USE）'}
+        properties['joint_limits_pending'] = {'type': 'string',
+            'description': '本机型还没有关节限位来源（如没有 URDF）时写明原因：关节限位子项记为不适用并显示原因；已填 joint.limits 时不起作用'}
         properties['finiteness_only'] = {'type': 'array', 'items': {'type': 'string'},
             'description': '“通道.字段”列表：本机型只查 NaN/Inf、视为检查完成；只允许没有物理检查项的字段'}
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:
@@ -70,6 +83,8 @@ def cpu_parameters(ident):
             'absolute_error_floor_ms、dt_cv_no_penalty、dt_cv_zero、long_gap_ratio_warning、long_gap_ratio_zero、iou_threshold'}
         properties['count_each_source_once'] = {'type': 'boolean', 'default': False,
             'description': '拆分或推算出来的通道（与源话题同一时间轴）不重复计分'}
+        properties['shared_row_max_gap_s'] = {'type': 'number', 'exclusiveMinimum': 0,
+            'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填则只做观察'}
     if ident == 'Root_Cause':
         properties['families'] = {'type': ['object', 'null'], 'description': '显式消息源分组，用于关联异常；未填沿用原方法分组'}
     if ident == 'Sync_Check':

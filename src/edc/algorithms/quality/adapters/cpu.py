@@ -1,4 +1,5 @@
 """Thin adapters preserve historical scores and complete original reports."""
+import functools
 from importlib import import_module, util
 import shutil
 from edc.algorithms.registry import AlgorithmSpec
@@ -95,6 +96,61 @@ def capabilities(episode):
     if len(clocks) >= 2 and all(clocks) and len(set(clocks)) == 1:
         caps.add("sync")
     return caps
+
+
+def short_pose_holds(result, channel, min_duration_s):
+    """Per-robot freeze_min_duration_s also for the method's own tip-position freeze: when every frozen
+    segment is shorter than that on the channel's own time, it is a normal pause. The method's verdict,
+    score and segments are kept; only the verdict used for screening changes."""
+    import numpy as np
+    freeze = (result.get('numeric') or {}).get('pose_freeze') or {}
+    segments = freeze.get('segments') or []
+    times = np.asarray(channel.timestamps, dtype=float) if channel.timestamps is not None else None
+    if not segments or result.get('verdict') != 'NEEDS_REVIEW' or times is None or len(times) != channel.count:
+        return result
+    held = [float(times[min(s['start'] + s['length'] - 1, len(times) - 1)] - times[s['start']]) for s in segments]
+    others = [x for x in result.get('sub_indicators') or [] if x.get('name') != '姿态冻结' and x.get('score') is not None]
+    if max(held) >= min_duration_s or any(x['score'] < 100 for x in others):
+        return result
+    return {**result, 'method_verdict': result['verdict'], 'verdict': 'ACCEPTABLE', 'passed': True,
+            'short_pose_holds': {'durations_s': held, 'min_duration_s': min_duration_s},
+            'reasons': [f'末端位置停住 {len(held)} 处，最长 {max(held):.2f} 秒，短于本机型的 {min_duration_s:g} 秒，按正常停住处理']}
+
+
+def shared_row_timeline(episode):
+    """True when every timed channel uses the one stored row time (e.g. an export already aligned frame by
+    frame): there is no independent channel time to align, only the row intervals themselves."""
+    timed = [c for c in episode.channels.values() if c.timestamps]
+    return bool(timed) and all((c.time_evidence or {}).get('timeline_scope') == 'shared_dataset_rows' for c in timed)
+
+
+def shared_row_intervals(episode, max_gap_s, cadence):
+    """Check_Timestamp on a shared row timeline (per-robot `shared_row_max_gap_s`): rows must go forward and
+    no interval may exceed the limit; a longer interval is a jump in every channel and video at once."""
+    import numpy as np
+    if not np.isfinite(max_gap_s) or max_gap_s <= 0:
+        raise ValueError('shared_row_max_gap_s must be a positive number of seconds')
+    channel = next(c for c in episode.channels.values() if c.timestamps)
+    times = np.asarray(channel.timestamps, dtype=float)
+    dt = np.diff(times)
+    bad = np.flatnonzero(~(dt > 0) | (dt > max_gap_s))
+    events = [{'row': int(i + 1), 'time_s': float(times[i]), 'interval_s': float(dt[i]),
+               'type': 'gap' if dt[i] > max_gap_s else 'not_forward'} for i in bad]
+    median = float(np.median(dt)) if len(dt) else None
+    reasons = ([f'所有数据和画面共用一条行时间（导出时已逐帧对齐），只检查行间隔：中位数 {median * 1000:.0f} 毫秒，'
+                f'没有超过 {max_gap_s:g} 秒的空档'] if not events else
+               [f'行时间有 {sum(e["type"] == "gap" for e in events)} 处空档（超过 {max_gap_s:g} 秒）、'
+                f'{sum(e["type"] == "not_forward" for e in events)} 处不前进；空档处所有数据和画面一起跳过']) if len(dt) else ['只有一行']
+    return {'score': None, 'passed': not events, 'verdict': 'NEEDS_REVIEW' if events else 'ACCEPTABLE',
+            'assessment_complete': True, 'method_version': 'shared_row_intervals_v1',
+            'shared_row_intervals': {'channel': channel.name, 'rows': int(len(times)), 'max_gap_s': max_gap_s,
+                                     'median_interval_s': median, 'largest_interval_s': float(dt.max()) if len(dt) else None,
+                                     'events': events[:50], 'event_count': len(events)},
+            'review_candidates': [{'type': e['type'], 'time_s': e['time_s'], 'interval_s': e['interval_s']}
+                                  for e in events[:50]],
+            'cadence': cadence, 'cross_channel_alignment': {'status': 'not_applicable',
+                'reason': 'All channels share one stored row timeline; there is no independent channel time to align'},
+            'reasons': reasons}
 
 
 def unavailable_dedup_inputs(episode, inputs=None, info=None):
@@ -230,7 +286,9 @@ def _preflight(plugin, episode, params=None):
             return 'missing_input', str(exc)
     missing = set(spec.required_inputs) - capabilities(episode)
     reset_profile = episode.profile.get('calibration', {}).get('Reset_Detection', {})
-    if spec.id == 'Reset_Detection' and isinstance(reset_profile, dict) and isinstance(reset_profile.get('references'), dict):
+    if spec.id == 'Reset_Detection' and isinstance(reset_profile, dict) and (
+            isinstance(reset_profile.get('references'), dict)
+            or reset_profile.get('unit') == 'm' and isinstance(reset_profile.get('reference'), dict)):
         # The v2 profile explicitly names Cartesian feedback channels.  Do not
         # require an unrelated joint channel merely because v1 used one.
         missing.discard('joint')
@@ -612,6 +670,46 @@ def too_short(episode):
     return {'seconds': round(float(max(spans)), 2), 'min_duration_s': float(minimum)}
 
 
+@functools.lru_cache(maxsize=32)
+def _manifest_segments(path):
+    import json
+    with open(path, encoding='utf-8') as handle:
+        segments = json.load(handle).get('segments') or []
+    return {s['output_episode']: s for s in segments if isinstance(s, dict) and s.get('output_episode')}
+
+
+def split_segment(episode):
+    """Where this episode was cut out of a longer recording, as the dataset's own cutting record says, else None.
+
+    Two records are read, nothing is guessed from folder names: the episode's own anno/source_segment.json,
+    or a split_manifest.json up to three folders above that lists this episode as an output_episode.
+    Frame numbers are the source recording's rows, end exclusive."""
+    import json
+    from pathlib import Path
+    source = episode
+    while not getattr(source, 'path', None) and hasattr(source, '_episode'):
+        source = source._episode
+    path = getattr(source, 'path', None)
+    if not path:
+        return None
+    folder = Path(path).resolve()
+    folder = folder if folder.is_dir() else folder.parent
+    own = folder / 'anno' / 'source_segment.json'
+    if own.is_file():
+        data = json.loads(own.read_text(encoding='utf-8'))
+        return {'record': str(own), 'source_episode': data.get('source_episode'),
+                'start_frame': data.get('source_start_frame'), 'end_frame': data.get('source_end_frame')}
+    for parent in list(folder.parents)[:3]:
+        manifest = parent / 'split_manifest.json'
+        if manifest.is_file():
+            segment = _manifest_segments(str(manifest)).get(folder.name)
+            if segment:
+                start, end = (list(segment.get('source_frame_range') or []) + [None, None])[:2]
+                return {'record': str(manifest), 'source_episode': segment.get('source_episode'),
+                        'start_frame': start, 'end_frame': end}
+    return None
+
+
 class LegacyAlgorithm:
     def instances(self, episode, params):
         from edc.robots.scope import instances
@@ -624,6 +722,14 @@ class LegacyAlgorithm:
                 import copy
                 scoped = copy.deepcopy(params)
                 scoped.setdefault('channels', list(calibration['references']))
+                return instances(episode, scoped, 'channels')
+            if (isinstance(calibration, dict) and isinstance(calibration.get('reference'), dict)
+                    and calibration.get('unit') == 'm'):
+                # A Home in metres names Cartesian tip channels instead of joints (X1 Pro: its joint
+                # readings can stop updating while the arm moves, the recorded tip position does not).
+                import copy
+                scoped = copy.deepcopy(params)
+                scoped.setdefault('channels', list(calibration['reference']))
                 return instances(episode, scoped, 'channels')
         modes = {'Action_Smoothness': 'pose_feedback', 'Reset_Detection': 'joint_feedback',
                  'Video_Integrity': 'rgb', 'Numeric_Check': 'numeric'}
@@ -751,7 +857,7 @@ class LegacyAlgorithm:
         if self.spec.id == "Dedup_Check":
             return self._dedup(ep, params, context)
         if self.spec.id == "Reset_Detection":
-            return self._reset(ep)
+            return self._reset(ep, params)
         if self.spec.id == 'Video_Integrity':
             from .video import assess
             return assess(ep, params, context)
@@ -774,6 +880,10 @@ class LegacyAlgorithm:
         if self.spec.id == 'Check_Timestamp':
             from edc.algorithms.quality.shared.cadence import cadence_report
             cadence = cadence_report(ep)
+            params = dict(params)
+            row_gap = params.pop('shared_row_max_gap_s', None)
+            if row_gap is not None and shared_row_timeline(ep):
+                return shared_row_intervals(ep, float(row_gap), cadence)
             has_camera = any(c.modality == 'rgb' and c.timestamps and
                              c.time_source in {'acquisition', 'container'} for c in ep.channels.values())
             invalid = any(row.get('backward_interval_count', 0) or
@@ -1039,7 +1149,9 @@ class LegacyAlgorithm:
                 unit = spec["unit"]
                 finite = bool(np.isfinite(values).all())
                 physical = not unit_reason and eligibility['physical_checks_available']
-                shape_valid = (values.ndim == 2 and values.shape[1] > 0 and len(values) == channel.count
+                # A declared finiteness-only field may be one number per row (e.g. a gripper or lift value).
+                shape_valid = ((values.ndim == 2 and values.shape[1] > 0 or declared and not target and values.ndim == 1)
+                    and len(values) == channel.count
                     and (not target or target[0] not in {'gyro', 'accel'} or values.shape[1] == 3))
                 if values.size == 0:
                     result = {"score": None, "verdict": "NOT_APPLICABLE", "assessment_complete": False,
@@ -1052,6 +1164,8 @@ class LegacyAlgorithm:
                     result = {'score': None, 'verdict': None, 'adapter_check': target[0]}
                 elif physical and shape_valid:
                     result = module.assess(**{target[0]: values}, **method_settings(settings))
+                    if target[0] == 'pose_freeze_positions' and freeze_min_duration_s:
+                        result = short_pose_holds(result, channel, freeze_min_duration_s)
                 elif physical:
                     result = {'score': None, 'verdict': 'NOT_APPLICABLE', 'finite': True,
                               'reason': 'Numeric field shape/count does not match the declared input'}
@@ -1110,13 +1224,13 @@ class LegacyAlgorithm:
                 from .numeric_supplements import supplements
                 extra_checks = supplements(values, ep, channel, field, target[0] if target else None,
                     settings['thresholds'], physical, getattr(context, 'workdir', None),
-                    freeze_min_duration_s=freeze_min_duration_s)
+                    freeze_min_duration_s=freeze_min_duration_s, joint_stuck_settings=params.get('joint_stuck'))
                 result['supplemental_checks'] = extra_checks
                 if result.get('adapter_check'):
                     check = next(c for c in extra_checks if c['id'] == 'joint_velocity_limit')
                     result.update(verdict=check['verdict'], passed=check['verdict'] == 'ACCEPTABLE',
                                   reasons=[f"{check['frames_over']}/{check['frames']} 帧、{check['segments']} 段超过 "
-                                           f"{check['threshold']:g} rad/s（最大 {check['max_abs']:.2f}）"] if check['events'] else [],
+                                           f"{check['threshold_text']} rad/s（最大 {check['max_abs']:.2f}）"] if check['events'] else [],
                                   joint_velocity={k: check[k] for k in ('threshold', 'frames', 'frames_over',
                                       'samples_over', 'segments', 'max_abs', 'per_component')})
                 if any(check.get('verdict') == 'DO_NOT_USE' for check in extra_checks):
@@ -1135,7 +1249,8 @@ class LegacyAlgorithm:
                             'reason': '联合输入发现加速度偏置线索，保留历史评分并请求复核。'})
                 from .numeric_coverage import coverage
                 result['check_coverage'] = coverage(values, eligibility, settings['thresholds'],
-                    result, physical, unit_reason, imu_pair, extra_checks, shape_valid, declared)
+                    result, physical, unit_reason, imu_pair, extra_checks, shape_valid, declared,
+                    params.get('joint_limits_pending'))
                 result['coverage_complete'] = result['check_coverage']['coverage_complete']
                 joint_result = (result.get('numeric') or {}).get('joint') or {}
                 for event in joint_result.get('events', []):
@@ -1149,7 +1264,34 @@ class LegacyAlgorithm:
                 reports.append(result)
         return reports
 
-    def _reset(self, ep):
+    def _reset(self, ep, params=None):
+        """Reset check; with `split_segments`, an episode cut out of a longer recording (per the dataset's own
+        cutting record) is checked only at an end that is a real end of the recording: the start when the cut
+        begins at source frame 0. The end is never known to be the recording's end, so it is not checked."""
+        result = self._reset_ends(ep)
+        segment = split_segment(ep) if (params or {}).get('split_segments') else None
+        if not segment:
+            return result
+        ends = ['start'] if segment.get('start_frame') == 0 else []
+        where = (f"从长录制剪出的切片（来源 {segment.get('source_episode')} 第 {segment.get('start_frame')}–"
+                 f"{segment.get('end_frame')} 帧，记录在 {segment['record']}）")
+        result.update(split_segment=segment, checked_ends=ends, method_verdict=result.get('verdict'))
+        if not ends:
+            result.update(verdict='NOT_APPLICABLE', passed=None, score=None, assessment_complete=True,
+                          reasons=[where + '：开头和结尾都是剪出来的，本来就不在初始位置，不查复位'])
+            return result
+        evidence = result['evidence']
+        if result['method'] == 'calibrated_home_reference_v2':
+            score = min(e['start_score'] for e in evidence)
+            result.update(score=score, passed=score > 0)
+        else:
+            tolerance = float(result['calibration']['tolerance'])
+            result['passed'] = all(e['start_error'] <= tolerance for e in evidence)
+        result.update(verdict='ACCEPTABLE' if result['passed'] else 'NEEDS_REVIEW',
+                      reasons=[where + '：从原始录制的第 0 帧开始，只查开头；结尾是剪出来的，不查'])
+        return result
+
+    def _reset_ends(self, ep):
         import numpy as np
         calibration = reset_calibration(ep)
         if calibration.get('schema_version') == 'edc_reset_calibration_v2':

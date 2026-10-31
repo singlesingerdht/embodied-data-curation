@@ -332,7 +332,8 @@ def numeric_panel(records, root):
                         event['source_component_index'], interval,
                         f'{duration:g} s' if duration is not None else '—', meaning)) + '</tr>')
                 subchecks.append('<details class="subdetail"><summary>' + esc(label + ' · ' + check['name'])
-                    + (' · 指令越界，筛选排除（原评分保留）' if check.get('verdict') == 'DO_NOT_USE'
+                    + (' · 末端在动但关节读数不变，可救：用末端位姿逆运动学恢复关节角（原评分保留）' if check['id'] == 'joint_stuck' and check.get('verdict') == 'DO_NOT_USE'
+                       else ' · 指令越界，筛选排除（原评分保留）' if check.get('verdict') == 'DO_NOT_USE'
                        else f" · {check.get('segments')} 段超限，需复核" if check['id'] == 'joint_velocity_limit'
                        else ' · 区间证据，恒值不等于采集故障')
                     + '</summary><p>行号从 0 开始，区间 [start, stop)；持续时间仅来自当前通道有效记录时间。'

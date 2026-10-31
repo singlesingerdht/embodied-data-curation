@@ -216,6 +216,15 @@ def open_structured(episode):
                 synthetic = True
             for name in sorted(keys - {time_key}):
                 columns[name] = [row.get(name) for row in rows]
+            # Profile-declared groups join per-quantity columns of one device (e.g. joint position,
+            # velocity and effort) into one structured channel, row by row; the columns stay as recorded.
+            for group, members in (episode.profile.get("episode_column_groups") or {}).items():
+                if group in keys or not isinstance(members, dict) or not members:
+                    raise ValueError(f"{group}: column group must be a new name mapping fields to columns")
+                absent = sorted(set(members.values()) - keys)
+                if absent:
+                    raise ValueError(f"{group}: column group source columns absent: {', '.join(absent)}")
+                columns[group] = [{field: row.get(column) for field, column in members.items()} for row in rows]
         elif episode.format == "hdf5":
             import h5py
             reader.handle = h5py.File(episode.path)
@@ -346,10 +355,22 @@ def open_structured(episode):
                     image_available=True, source=str(video), msg_type="video/mp4",
                     timestamps=[i / fps for i in range(frames)] if fps > 0 else None,
                     timestamps_synthetic=True)
+                # Profile-declared `video_frame_time: rows`: the export wrote one row per video frame,
+                # so frame i takes row i's time. Only when the counts match; otherwise FPS time stays.
+                if episode.profile.get("video_frame_time") == "rows" and timestamps is not None:
+                    if frames == len(timestamps):
+                        topics[video.stem].timestamps = list(timestamps)
+                        topics[video.stem].frame_time_from_rows = True
+                    else:
+                        topics[video.stem].time_evidence = {
+                            'video_frame_time': 'fps_generated',
+                            'unavailable_reason': f'video has {frames} frames but the trajectory has '
+                                                  f'{len(timestamps)} rows; frame i = row i cannot be applied'}
         for topic in topics.values():
             # A single stored row timeline is shared, not independently measured
             # sensor clocks. Keep exact source values even if their unit is unknown.
-            if recorded_timestamps is not None and topic.msg_type != 'video/mp4':
+            if recorded_timestamps is not None and (topic.msg_type != 'video/mp4'
+                                                    or getattr(topic, 'frame_time_from_rows', False)):
                 topic.recorded_timestamp_values = recorded_timestamps
                 topic.timestamps_synthetic = synthetic
                 topic.recorded_timestamp_unit = timestamp_unit
@@ -364,6 +385,9 @@ def open_structured(episode):
                     'source_row_mapping': 'identity; no sorting, dropping, or resampling',
                     'establishes_acquisition_sync': False,
                     'limitation': 'Shared row time cannot establish original cross-channel acquisition synchronization'}
+                if topic.msg_type == 'video/mp4':
+                    topic.time_evidence['video_frame_mapping'] = ('frame i = trajectory row i (profile video_frame_time: rows; '
+                                                                  'frame count equals row count)')
         if not topics:
             raise ValueError("No readable channels")
         finite = [t for t in (timestamps or []) if np.isfinite(t)]
