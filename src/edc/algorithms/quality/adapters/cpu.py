@@ -736,7 +736,7 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = {'Numeric_Check': 'ir-adapter-20', 'Action_Smoothness': 'ir-adapter-22',
+        version = {'Numeric_Check': 'ir-adapter-21', 'Action_Smoothness': 'ir-adapter-22',
                    'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-17',
                    'Root_Cause': 'ir-adapter-18', 'Check_Timestamp': 'ir-adapter-19',
                    'Video_Integrity': 'ir-adapter-16'}.get(ident, 'ir-adapter-15')
@@ -1163,7 +1163,8 @@ class LegacyAlgorithm:
                     # Adapter-only check; its verdict is filled from the supplement below.
                     result = {'score': None, 'verdict': None, 'adapter_check': target[0]}
                 elif physical and shape_valid:
-                    result = module.assess(**{target[0]: values}, **method_settings(settings))
+                    result = module.assess(**{target[0]: values}, unit=target[1],
+                                           **method_settings(settings))
                     if target[0] == 'pose_freeze_positions' and freeze_min_duration_s:
                         result = short_pose_holds(result, channel, freeze_min_duration_s)
                 elif physical:

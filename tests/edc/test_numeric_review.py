@@ -189,3 +189,53 @@ def test_invalid_per_channel_joint_limits_are_rejected(limits):
     p = profile(); p['numeric_check'] = {'thresholds': {'joint': {'limits': limits}}}
     with pytest.raises(ValueError):
         load_profile(p)
+def prismatic_profile(unit='m'):
+    return {'schema_version': 1, 'id': 'prismatic_robot', 'version': '1', 'channels': {
+        'lift': {'modality': 'joint_space', 'fields': ['position'], 'unit': unit,
+                 'source_kind': 'feedback', 'calibration_status': 'confirmed',
+                 'representation': {'quantity': 'length', 'semantic_status': 'confirmed'}}}}
+
+
+def run_prismatic(unit='m', values=None):
+    values = np.array([[0.7799], [0.7800], [0.7799]]) if values is None else values
+    p = confirm_numeric_profile(prismatic_profile(unit), 'prismatic author')
+    c = Channel('lift', 'joint_space', ['position'], len(values), 'source.json', unit=unit,
+                source_kind='feedback', calibration_status='confirmed', value_available=True,
+                representation={'quantity': 'length', 'semantic_status': 'confirmed'})
+    ep = SimpleNamespace(profile=p, channels={'lift': c}, read_signal=lambda n, f: values)
+    return algorithm().run(SimpleNamespace(episode=ep), {})[0]
+
+
+def test_prismatic_joint_position_accepts_metres_and_labels_the_unit():
+    result = run_prismatic('m')
+    assert result['physical_checks_applied'] and result['assessment_complete']
+    assert result['unit'] == 'm'
+    assert result['numeric']['joint']['difference_unit'] == 'm'
+    checks = {row['id']: row for row in result['check_coverage']['checks']}
+    assert checks['joint_limits']['unit'] == 'm'
+    assert checks['joint_step']['unit'] == 'm per adjacent sample'
+    assert result['supplemental_checks'][0]['unit'] == 'm'
+
+
+def test_prismatic_joint_position_rejects_a_non_position_dimension():
+    with pytest.raises(ValueError, match='rad or m'):
+        confirm_numeric_profile(prismatic_profile('N'), 'prismatic author')
+
+
+def test_joint_anomaly_labels_the_declared_si_unit():
+    from edc.algorithms.quality.algorithms.Numeric_Check.numeric_check import check_joint_anomaly
+    result = check_joint_anomaly(np.array([[0.0], [0.5], [0.0]]), vel_threshold=0.1, unit='m')
+    assert result['difference_unit'] == 'm'
+    assert result['events'][0]['threshold_unit'] == 'm per adjacent sample'
+
+
+def test_prismatic_quantity_rejects_an_angular_unit():
+    with pytest.raises(ValueError, match='declares length'):
+        confirm_numeric_profile(prismatic_profile('rad'), 'prismatic author')
+
+
+def test_configuration_panel_uses_field_unit_for_joint_thresholds():
+    from edc.reporting.html import configuration_panel
+    panel = configuration_panel(prismatic_profile(), {})
+    assert '字段单位/样本' in panel
+    assert 'rad/样本' not in panel

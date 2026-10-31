@@ -13,11 +13,17 @@ FREEZE_EPS = 1e-6
 
 
 def check_joint_anomaly(positions: np.ndarray,  # (N, D)
-                        vel_threshold: float = 1.0,  # legacy parameter: rad per sample, not rad/s
+                        vel_threshold: float = 1.0,  # legacy parameter: SI unit per sample, not per second
                         velocity_peak: float = 20.0,
                         reset_ratio: float = 0.6,
-                        limits: Optional[List[tuple]] = None) -> dict:
-    """关节异常: NaN/Inf, 范围, 相邻位置差（未除以时间）。"""
+                        limits: Optional[List[tuple]] = None,
+                        unit: str = 'rad') -> dict:
+    """关节异常: NaN/Inf, 范围, 相邻位置差（未除以时间）。
+
+    ``unit`` is the field's SI unit (rad for revolute joints, m for prismatic
+    joints). Threshold values are interpreted in that same unit; the legacy
+    numeric defaults are unchanged.
+    """
     if positions.size == 0:
         return {"severity": "pass", "has_anomaly": False}
     result = {"nan_count": int(np.sum(~np.isfinite(positions))),
@@ -44,7 +50,7 @@ def check_joint_anomaly(positions: np.ndarray,  # (N, D)
             result["events"].append({"type": "joint_jump", "count": int(np.sum(jumps)),
                                      "threshold": vel_threshold,
                                      "quantity": "absolute_adjacent_position_difference",
-                                     "threshold_unit": "rad per adjacent sample",
+                                     "threshold_unit": f"{unit} per adjacent sample",
                                      "count_basis": "adjacent_intervals",
                                      "component_exceedance_count": int(np.sum(diffs > vel_threshold)),
                                      "examples": [
@@ -63,7 +69,7 @@ def check_joint_anomaly(positions: np.ndarray,  # (N, D)
             result["events"].append({"type": "joint_step_peak", "max": round(max_jump, 2),
                                      "threshold": velocity_peak,
                                      "quantity": "absolute_adjacent_position_difference",
-                                     "threshold_unit": "rad per adjacent sample"})
+                                     "threshold_unit": f"{unit} per adjacent sample"})
             result["severity"] = "error"
         if diffs.shape[0] >= 2:
             jump_count = np.sum(np.any(diffs > vel_threshold, axis=1))
@@ -73,6 +79,7 @@ def check_joint_anomaly(positions: np.ndarray,  # (N, D)
                     result["severity"] = "error"
 
     result["difference_basis"] = "adjacent samples; not velocity and not calibrated reset"
+    result["difference_unit"] = unit
     return result
 
 

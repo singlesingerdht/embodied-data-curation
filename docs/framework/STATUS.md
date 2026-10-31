@@ -1,10 +1,19 @@
 # 当前验收状态
 
-日期：**2026-10-30**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-16**，Action_Smoothness 适配 **ir-adapter-19**，Reset_Detection 适配 **ir-adapter-15**，其余 CPU 适配 **ir-adapter-14**。
+日期：**2026-10-30**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-21**，Action_Smoothness 适配 **ir-adapter-22**，Reset_Detection 适配 **ir-adapter-17**，Sync_Check 适配 **ir-adapter-17**，Root_Cause 适配 **ir-adapter-18**，Check_Timestamp 适配 **ir-adapter-19**，Video_Integrity 适配 **ir-adapter-16**，其余 CPU 适配 **ir-adapter-15**。
 
 当前算法池为 **66 个仓库内登记项**：`quality_cpu` 默认预设 9 个 CPU 方法，`quality_indicators` 预设 57 个模态指标，其中 46 个已实现、11 个登记但因实现或输入条件暂不可执行。全部算法均由本仓库实现或登记；基础安装不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。单独安装的集成只属于开发者接口，不改变这组核心数量。
 
-本次基线回归：源码及源码外安装 wheel 全量均为 **764 passed / 23 skipped**；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV，`pip check` 通过。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+本次基线回归：源码全量 **835 passed / 23 skipped**（`leju-kuavo` 分支；`main` 为 769）；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。安装 wheel 构建、干净基础环境安装与 `pip check` 通过，直线关节新增专项在安装包上 **5 passed**。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+
+## 直线/升降关节位置单位（2026-10-30）
+
+- Numeric_Check 适配器升为 **ir-adapter-21**。`joint_space.position`／`joint_q` 不再固定为 `rad`：按字段声明解析为角度（`rad`）或直线（`m`）；`joint_positions`／`cmd_positions` 的执行单位、推荐 `required_unit`、限位和相邻样本差标签都随字段。未知或 `rad`／`m` 以外的量纲继续阻塞；`command`／`feedback`、`calibration_status`、`quantity`、`semantic_status` 门槛未放宽。
+- 阈值数值不变。米制字段的限位和相邻样本差按米解释，但不自动缩放，也不声称默认阈值已经过米制标定；角度字段的评分、阈值和标签仍为 `rad`。
+- 本地最小验证配置（不随仓库分发）现可通过 `edc robot confirm-numeric`（exit 0），升降轴保持 `m`；它只声明 `/lift/joint_states`，不修改官方 `configs/robots/x1_pro.yaml`。CLI 只写新文件，不覆盖源配置。此前该声明会因 `joint_space.position → rad` 被拒绝。
+- 指定真实 MCAP 的最小复现：`Numeric_Check` 只选 `/lift/joint_states`，记录 `completed`，1 个字段 / 1 个物理检查；`/lift/joint_states.position` 为 `physical_checks_applied=true`、`unit=m`、`source_unit=m`、形状 12069×1、`ACCEPTABLE`/100 分，`joint_step` 单位 `m per adjacent sample`，数值冻结单位 `m`。升降限位本次未配置，因此 `coverage_complete=false`，不是升降单位失败。整机 44 字段 / 17 物理检查的结果来自本地完整 profile，只作历史证据，不是本复现依赖。
+- 新增 5 项测试（米制接受并标注、非位置量纲拒绝、量纲/物理量冲突拒绝、检测事件单位随字段、报告阈值表使用字段单位），更新 2 项旧的“长度关节不进入物理检查”断言；源码全量 **835 passed / 23 skipped**（`leju-kuavo` 分支；`main` 为 769）。wheel／sdist、干净 venv 安装和 `pip check` 沿用同一补丁在 `main` 上的验证结果；安装包上新增专项 **5 passed**。报告全局阈值表不再固定标 `rad/样本`，改为“字段单位/样本”，与逐字段的 rad/m 执行单位一致。原始 MCAP、既有运行结果和历史文档中的数字未改写。
+- 说明与复现命令：[直线/升降关节位置单位修复记录](../validation/lift_length_unit_20261030/README.md)。
 
 ## Action_Smoothness 参考时间轴与残差 jerk（2026-10-30）
 

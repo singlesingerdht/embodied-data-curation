@@ -6,9 +6,8 @@ import json
 
 SI_UNITS = {'length': 'm', 'angle': 'rad', 'time': 's', 'angular_velocity': 'rad/s',
             'acceleration': 'm/s^2', 'force': 'N', 'torque': 'N*m', 'current': 'A'}
-TARGETS = {('joint_space', 'position'): ('joint_positions', 'rad'),
-           ('pose', 'position'): ('pose_freeze_positions', 'm'),
-           ('joint_space', 'joint_q'): ('cmd_positions', 'rad'),
+JOINT_POSITION_UNITS = ('rad', 'm')
+TARGETS = {('pose', 'position'): ('pose_freeze_positions', 'm'),
            ('imu', 'ang_vel'): ('gyro', 'rad/s'), ('imu', 'lin_acc'): ('accel', 'm/s^2'),
            # Adapter-only target: recorded joint velocity, checked in numeric_supplements, never by the method.
            ('joint_space', 'velocity'): ('joint_velocities', 'rad/s')}
@@ -26,17 +25,53 @@ def method_settings(settings):
     return result
 
 
+def joint_position_unit(spec, quantity=None):
+    """Resolve the declared SI unit for a joint position field.
+
+    Returns ``(unit, reason)``. A joint position may be rotational (rad) or
+    prismatic (m); any other physical dimension is outside Numeric_Check.
+    ``quantity`` may be supplied when it is declared in channel representation
+    rather than in the field metadata. Missing or unknown source units are left
+    to ``require_si_field`` so the caller gets the existing source-unit message.
+    """
+    from edc.data.ir.units import UnitInputError, si_unit
+    try:
+        unit = si_unit(spec.get('unit'))
+    except UnitInputError:
+        return None, None
+    if unit not in JOINT_POSITION_UNITS:
+        return None, (f"joint position requires SI unit rad or m; declared "
+                      f"{spec.get('unit')!r} maps to {unit}")
+    quantity = quantity if quantity is not None else spec.get('quantity')
+    if quantity == 'angle' and unit != 'rad':
+        return None, (f"joint position declares angle but unit {spec.get('unit')!r} "
+                      f"maps to {unit}")
+    if quantity == 'length' and unit != 'm':
+        return None, (f"joint position declares length but unit {spec.get('unit')!r} "
+                      f"maps to {unit}")
+    return unit, None
+
+
+def numeric_target(channel, field, spec):
+    """Detector target and its SI unit; never silently assumes an angle."""
+    if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
+        unit, _ = joint_position_unit(spec)
+        kind = 'cmd_positions' if spec.get('source_kind') == 'command' else 'joint_positions'
+        return (kind, unit)
+    return TARGETS.get((channel.modality, field))
+
+
 def numeric_field_status(episode, channel, field, review):
     """Shared metadata eligibility for recommendations and the existing detector."""
     from edc.data.ir.units import UnitInputError, require_si_field
     spec = channel.field_spec(field)
-    target = TARGETS.get((channel.modality, field))
-    if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
-        if spec['source_kind'] == 'command':
-            target = ('cmd_positions', 'rad')
-        elif spec['source_kind'] == 'feedback':
-            target = ('joint_positions', 'rad')
+    target = numeric_target(channel, field, spec)
     reasons = []
+    if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
+        quantity = (channel.representation or {}).get('quantity') or spec.get('quantity')
+        _, unit_reason = joint_position_unit(spec, quantity=quantity)
+        if unit_reason:
+            reasons.append(f'{channel.name}.{field}: {unit_reason}')
     try:
         require_si_field(episode, channel.name, field, target[1] if target else None)
     except UnitInputError as exc:
@@ -55,8 +90,8 @@ def numeric_field_status(episode, channel, field, review):
             reasons.append(f'numeric_check.thresholds.{group} is not configured; no default threshold is assumed')
     return {'channel': channel.name, 'field': field, 'source_unit': spec.get('source_unit', spec['unit']),
             'execution_unit': spec['unit'], 'required_unit': target[1] if target else None,
-            'physical_checks_available': bool(target) and not reasons, 'reasons': reasons,
-            'target': target}
+            'physical_checks_available': bool(target) and target[1] is not None and not reasons,
+            'reasons': reasons, 'target': target}
 
 
 def numeric_settings(profile=None, params=None):
@@ -189,22 +224,38 @@ def confirm_numeric_profile(profile, reviewer, params=None):
     for name, channel in profile.get('channels', {}).items():
         modality = normalize_modality(channel.get('modality', 'other'))
         for field in channel.get('fields', []):
-            target = TARGETS.get((modality, field))
-            if not target:
-                continue
-            eligible += 1
             metadata = {**channel, **channel.get('field_metadata', {}).get(field, {})}
-            semantic = channel.get('representation', {})
+            semantic = {**channel.get('representation', {}),
+                        **{key: metadata.get(key) for key in ('quantity', 'semantic_status')
+                           if key in metadata}}
+            if modality == 'joint_space' and field in {'position', 'joint_q'}:
+                unit, unit_reason = joint_position_unit(metadata,
+                                                        quantity=semantic.get('quantity'))
+                if unit is None:
+                    detail = unit_reason or 'explicitly confirm source unit convertible to rad or m'
+                    raise ValueError(f'{name}.{field}: {detail} and calibration_status first')
+                target = ('cmd_positions' if metadata.get('source_kind') == 'command'
+                          else 'joint_positions', unit)
+                allowed = 'rad or m'
+            else:
+                target = TARGETS.get((modality, field))
+                if not target:
+                    continue
+                allowed = target[1]
+            eligible += 1
             if (semantic.get('quantity') == 'unknown' or semantic.get('semantic_status') in
                     {'unknown', 'pending', 'pending_owner_confirmation'}):
                 raise ValueError(f'{name}.{field}: confirm physical quantity before numeric approval')
             from edc.data.ir.units import si_unit, UnitInputError
-            try:
-                compatible = si_unit(metadata.get('unit')) == target[1]
-            except UnitInputError:
-                compatible = False
+            if modality == 'joint_space' and field in {'position', 'joint_q'}:
+                compatible = True
+            else:
+                try:
+                    compatible = si_unit(metadata.get('unit')) == target[1]
+                except UnitInputError:
+                    compatible = False
             if not compatible or metadata.get('calibration_status') != 'confirmed':
-                raise ValueError(f'{name}.{field}: explicitly confirm source unit convertible to {target[1]} and calibration_status first')
+                raise ValueError(f'{name}.{field}: explicitly confirm source unit convertible to {allowed} and calibration_status first')
             if modality == 'joint_space' and metadata.get('source_kind') not in {'command', 'feedback'}:
                 raise ValueError(f'{name}.{field}: explicitly declare command/feedback first')
     if not eligible:
