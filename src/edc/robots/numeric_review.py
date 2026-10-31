@@ -103,8 +103,10 @@ def _thresholds(overrides):
             values = overrides.pop(group)
             if not isinstance(values, dict) or set(values) != names:
                 raise ValueError(f'{group} requires exactly {sorted(names)}')
-            if any(type(v) not in (int, float) or not math.isfinite(v) or v <= 0 for v in values.values()):
-                raise ValueError(f'{group} thresholds must be finite and positive')
+            # One number for every joint, or one per joint (e.g. the URDF <limit velocity>).
+            numbers = [x for v in values.values() for x in (v if isinstance(v, list) and v else [v])]
+            if any(type(x) not in (int, float) or not math.isfinite(x) or x <= 0 for x in numbers):
+                raise ValueError(f'{group} thresholds must be finite and positive (a number or a list of numbers)')
             adapter[group] = dict(values)
     result = _method_thresholds(overrides, thresholds)
     result.update(adapter)

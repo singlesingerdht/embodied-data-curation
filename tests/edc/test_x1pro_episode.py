@@ -234,3 +234,13 @@ def test_reset_on_a_segment_checks_only_real_recording_ends(tmp_path):
     assert c['worst'] == 'NA' and c['note'].startswith('切片')
     text = explain('Reset_Detection', reset_with(first, .3, .3, {'split_segments': True}))
     assert '开头' in text and '结尾' not in text
+
+
+def test_signing_accepts_one_velocity_limit_per_joint():
+    from edc.robots.numeric_review import numeric_settings
+    per_joint = {'max_abs': [4.188, 4.188, 4.188, 3.77, 3.77, 3.77]}
+    settings = numeric_settings({'numeric_check': {'thresholds': {'joint_velocity': per_joint}}})
+    assert settings['thresholds']['joint_velocity'] == per_joint
+    for bad in ({'max_abs': []}, {'max_abs': [4.0, 0]}, {'max_abs': [4.0, float('nan')]}, {'max_abs': [[4.0]]}):
+        with pytest.raises(ValueError):
+            numeric_settings({'numeric_check': {'thresholds': {'joint_velocity': bad}}})

@@ -1,0 +1,586 @@
+schema_version: 1
+id: x1pro_episode
+version: 0.1.0
+model: X1 Pro (robot-bridge-v260630 episode JSON)
+instance_id: null
+status: draft_numeric_signoff_pending
+min_duration_s: 3.0
+timestamp_column: timestamp
+timestamp_unit: s
+video_frame_time: rows
+episode_column_groups:
+  follow_left_joint:
+    position: follow_left_joint_position
+    velocity: follow_left_joint_velocity
+    effort: follow_left_joint_effort
+  follow_right_joint:
+    position: follow_right_joint_position
+    velocity: follow_right_joint_velocity
+    effort: follow_right_joint_effort
+parts:
+  left:
+    type: arm
+    side: left
+    dof: 6
+  right:
+    type: arm
+    side: right
+    dof: 6
+camera_requirements:
+  head:
+  - rgb
+  left_wrist:
+  - rgb
+  right_wrist:
+  - rgb
+channels:
+  follow_left_joint:
+    modality: other
+    fields:
+    - position
+    - velocity
+    - effort
+    source_kind: feedback
+    dimensions:
+    - 7
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+      velocity:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+      effort:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+  follow_right_joint:
+    modality: other
+    fields:
+    - position
+    - velocity
+    - effort
+    source_kind: feedback
+    dimensions:
+    - 7
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+      velocity:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+      effort:
+        unit: null
+        quantity: unknown
+        semantic_status: unknown
+  joint/arm/left/feedback:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    robot_part: left
+    body_part: arm
+    side: left
+    source_kind: feedback
+    dimensions:
+    - 6
+    unit: rad
+    time_source: acquisition
+    clock: x1pro_rows
+    select:
+      channel: follow_left_joint
+      fields:
+        position: position
+        velocity: velocity
+      indices:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    field_metadata:
+      position:
+        unit: rad
+        quantity: joint_angle
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: '200 episodes (x1pro_stats.py): all 12 arm joints within
+          -2.7..2.95 rad; j2 never below -0.006 and j3 never above 0.006 (mechanical
+          stops at 0); start pose median within 0.07 rad of 0 on 10/12 joints'
+      velocity:
+        unit: rad/s
+        quantity: angular_velocity
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: P99 |velocity| / P99 |d(position)/dt| = 0.97-1.05 per
+          joint on 2 episodes (x1pro_values.py); deg/s would be ~57
+    logical_name: joint/arm/left/feedback
+  joint/arm/right/feedback:
+    modality: joint_space
+    fields:
+    - position
+    - velocity
+    robot_part: right
+    body_part: arm
+    side: right
+    source_kind: feedback
+    dimensions:
+    - 6
+    unit: rad
+    time_source: acquisition
+    clock: x1pro_rows
+    select:
+      channel: follow_right_joint
+      fields:
+        position: position
+        velocity: velocity
+      indices:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    field_metadata:
+      position:
+        unit: rad
+        quantity: joint_angle
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: '200 episodes (x1pro_stats.py): all 12 arm joints within
+          -2.7..2.95 rad; j2 never below -0.006 and j3 never above 0.006 (mechanical
+          stops at 0); start pose median within 0.07 rad of 0 on 10/12 joints'
+      velocity:
+        unit: rad/s
+        quantity: angular_velocity
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: P99 |velocity| / P99 |d(position)/dt| = 0.97-1.05 per
+          joint on 2 episodes (x1pro_values.py); deg/s would be ~57
+    logical_name: joint/arm/right/feedback
+  follow_left_position:
+    modality: pose
+    fields:
+    - position
+    robot_part: left
+    body_part: arm
+    side: left
+    source_kind: feedback
+    dimensions:
+    - 3
+    unit: m
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: range about +-0.4 m; tip speed P99 0.17-0.52 m/s, max
+          1.1 m/s on 2 episodes; same field name and Home (about 0) as the algorithm's
+          own quanta_x1 calibration
+    logical_name: pose/arm/left/feedback
+  follow_right_position:
+    modality: pose
+    fields:
+    - position
+    robot_part: right
+    body_part: arm
+    side: right
+    source_kind: feedback
+    dimensions:
+    - 3
+    unit: m
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: range about +-0.4 m; tip speed P99 0.17-0.52 m/s, max
+          1.1 m/s on 2 episodes; same field name and Home (about 0) as the algorithm's
+          own quanta_x1 calibration
+    logical_name: pose/arm/right/feedback
+  follow_left_rotation:
+    modality: other
+    fields:
+    - rotation
+    source_kind: feedback
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_right_rotation:
+    modality: other
+    fields:
+    - rotation
+    source_kind: feedback
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_left_gripper:
+    modality: other
+    fields:
+    - position
+    source_kind: feedback
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_right_gripper:
+    modality: other
+    fields:
+    - position
+    source_kind: feedback
+    time_source: acquisition
+    clock: x1pro_rows
+  master_left_position:
+    modality: pose
+    fields:
+    - position
+    robot_part: left
+    body_part: arm
+    side: left
+    source_kind: command
+    dimensions:
+    - 3
+    unit: m
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: 'tracks follow_left_position within about 1-2 cm (sushi
+          0821: P50 0.000 vs 0.001 m, max 0.323 vs 0.319 m)'
+    logical_name: pose/arm/left/command
+  master_right_position:
+    modality: pose
+    fields:
+    - position
+    robot_part: right
+    body_part: arm
+    side: right
+    source_kind: command
+    dimensions:
+    - 3
+    unit: m
+    time_source: acquisition
+    clock: x1pro_rows
+    field_metadata:
+      position:
+        unit: m
+        quantity: position
+        semantic_status: confirmed
+        confirmed_by: data_evidence_20261031
+        calibration_status: confirmed
+        calibration_evidence: 'tracks follow_right_position within about 1-2 cm (sushi
+          0821: max 0.310 vs 0.306 m)'
+    logical_name: pose/arm/right/command
+  master_left_rotation:
+    modality: other
+    fields:
+    - rotation
+    source_kind: command
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  master_right_rotation:
+    modality: other
+    fields:
+    - rotation
+    source_kind: command
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  master_left_gripper:
+    modality: other
+    fields:
+    - position
+    source_kind: command
+    time_source: acquisition
+    clock: x1pro_rows
+  master_right_gripper:
+    modality: other
+    fields:
+    - position
+    source_kind: command
+    time_source: acquisition
+    clock: x1pro_rows
+  master_left_joint_position:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  master_left_joint_velocity:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  master_left_joint_effort:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  master_right_joint_position:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  master_right_joint_velocity:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  master_right_joint_effort:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_left_joint_position:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_left_joint_velocity:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_left_joint_effort:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_right_joint_position:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_right_joint_velocity:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  follow_right_joint_effort:
+    modality: other
+    fields: []
+    time_source: acquisition
+    clock: x1pro_rows
+  head_rotation:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 2
+    time_source: acquisition
+    clock: x1pro_rows
+  head_pitch:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  head_yaw:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  lifting_mechanism_position:
+    modality: other
+    fields:
+    - value
+    time_source: acquisition
+    clock: x1pro_rows
+  car_pose_odom:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  car_pose_odom_position:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  car_pose_odom_rotation:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  velocity_decomposed_odom:
+    modality: other
+    fields:
+    - value
+    dimensions:
+    - 3
+    time_source: acquisition
+    clock: x1pro_rows
+  faceImg:
+    modality: rgb
+    time_source: acquisition
+    clock: x1pro_rows
+    body_part: head
+    sensor_id: head
+    representation:
+      camera_role: head
+      camera_role_status: confirmed
+      camera_role_confirmed_by: frame_view_20261031
+    logical_name: rgb/head
+  leftImg:
+    modality: rgb
+    time_source: acquisition
+    clock: x1pro_rows
+    body_part: wrist
+    side: left
+    sensor_id: left_wrist
+    representation:
+      camera_role: wrist
+      camera_role_status: confirmed
+      camera_role_confirmed_by: frame_view_20261031
+    logical_name: rgb/wrist/left
+    robot_part: left
+  rightImg:
+    modality: rgb
+    time_source: acquisition
+    clock: x1pro_rows
+    body_part: wrist
+    side: right
+    sensor_id: right_wrist
+    representation:
+      camera_role: wrist
+      camera_role_status: confirmed
+      camera_role_confirmed_by: frame_view_20261031
+    logical_name: rgb/wrist/right
+    robot_part: right
+numeric_check:
+  thresholds:
+    joint:
+      vel_threshold: 1.0
+      velocity_peak: 20.0
+      reset_ratio: 0.6
+      limits:
+        joint/arm/left/feedback:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
+        joint/arm/right/feedback:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
+    imu:
+      gyro_max: 10.0
+      acc_max: 196.2
+      gyro_bias_max: 0.05
+      acc_bias_max: 0.5
+      min_static_frames: 50
+    cmd:
+      jerk_threshold: 10.0
+    pose_freeze:
+      min_run: 3
+      lookback: 10
+      vel_threshold: 0.01
+      freeze_eps: 1.0e-06
+    command_limits:
+      limits: null
+    joint_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    cmd_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    gyro_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    accel_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    joint_velocity:
+      max_abs:
+      - 4.188
+      - 4.188
+      - 4.188
+      - 3.77
+      - 3.77
+      - 3.77
+  weights: null
+calibration:
+  Reset_Detection:
+    unit: m
+    tolerance: 0.05
+    reference:
+      follow_left_position:
+      - -0.007010698318481445
+      - 0.0028152498416602616
+      - 0.002762031741440296
+      follow_right_position:
+      - -0.007658312562853098
+      - 0.01540503278374672
+      - -0.010580490343272686
+numeric_review:
+  status: confirmed
+  confirmed_by: renxiaoshu
+  confirmed_at: '2026-10-31T02:54:49.554580+00:00'
+  configuration_sha256: f56472453e35b0547c2d7e2a258c37d81a0eb5d91465367c3258f63c3381706c
