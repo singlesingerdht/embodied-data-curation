@@ -128,6 +128,104 @@ def test_same_robot_two_tasks_and_ref_export_equivalence(tmp_path):
     assert result['config']['config_snapshot'] == snap
 
 
+@pytest.mark.parametrize('relative', [False, True])
+def test_input_override_preserves_explicit_boundary_and_configuration(tmp_path, monkeypatch, relative):
+    cfg = fixture(tmp_path)
+    cfg['dataset']['episodes'] = cfg['dataset']['episodes'][:1]
+    cfg['dataset']['episodes'][0]['metadata'] = {'source_sha256': 'original-file-hash', 'task_status': 'unconfirmed'}
+    original = copy.deepcopy(cfg)
+    configs = tmp_path / 'configs'
+    configs.mkdir()
+    config_path = configs / 'run.yaml'
+    config_path.write_text(yaml.safe_dump(cfg))
+    before = config_path.read_bytes()
+    source = Path(cfg['dataset']['path']) / 'e0.h5'
+    replacement = tmp_path / 'new input.h5'
+    replacement.write_bytes(source.read_bytes())
+    monkeypatch.chdir(tmp_path)
+    resolved = load_config(config_path, input_path=replacement.name if relative else replacement)
+    assert cfg == original and config_path.read_bytes() == before
+    assert source.read_bytes() == replacement.read_bytes()
+    assert resolved['dataset']['path'] == str(tmp_path)
+    entry, = resolved['dataset']['episodes']
+    assert entry == {**original['dataset']['episodes'][0], 'path': replacement.name,
+                     'metadata': {'task_status': 'unconfirmed'}}
+    for component in ('robot', 'algorithms', 'workflow'):
+        assert resolved[component] == load_config(config_path)[component]
+    with open_config_dataset(resolved) as dataset:
+        episode, = dataset.iter_episodes()
+        assert episode.id == 'e0' and episode.selector == {'group': '/'}
+        with episode.opened():
+            np.testing.assert_allclose(episode.read_signal('main_joint', 'position'), 45.)
+
+
+def test_input_override_without_explicit_index_uses_reader_episode_metadata(tmp_path):
+    cfg = fixture(tmp_path)
+    cfg['dataset'].pop('episodes')
+    source = Path(cfg['dataset']['path']) / 'e1.h5'
+    resolved = load_config(cfg, input_path=source)
+    assert resolved['dataset']['path'] == str(source)
+    assert 'episodes' not in resolved['dataset']
+    with open_config_dataset(resolved) as dataset:
+        assert len(list(dataset.iter_episodes())) == 1
+
+
+@pytest.mark.parametrize('entries', [[], 'invalid', [{}, {}]])
+def test_input_override_rejects_ambiguous_episode_indexes(tmp_path, entries):
+    cfg = fixture(tmp_path)
+    cfg['dataset']['episodes'] = entries
+    with pytest.raises(ValueError, match='exactly one explicit episode'):
+        load_config(cfg, input_path=Path(cfg['dataset']['path']) / 'e0.h5')
+
+
+def test_cli_config_input_is_shared_by_check_recommend_export_and_run(tmp_path, capsys):
+    from edc.execution.cli import main
+    cfg = fixture(tmp_path)
+    cfg['dataset']['episodes'] = cfg['dataset']['episodes'][:1]
+    cfg['algorithms']['methods']['Action_Smoothness'] = {'params': {'expected_rate_hz': 100}}
+    source = Path(cfg['dataset']['path']) / 'e0.h5'
+    inputs = tmp_path / 'inputs'
+    inputs.mkdir()
+    replacement = inputs / 'replacement.h5'
+    replacement.write_bytes(source.read_bytes())
+    source.unlink()  # The configured source cannot satisfy any read by mistake.
+    config_path = tmp_path / 'run.yaml'
+    config_path.write_text(yaml.safe_dump(cfg))
+    before = config_path.read_bytes()
+    args = [str(config_path), '--input', str(replacement)]
+    assert main(['config', 'check', *args]) == 0
+    checked = json.loads(capsys.readouterr().out)['config']['config_snapshot']
+    assert main(['config', 'recommend', *args]) == 0
+    recommended = json.loads(capsys.readouterr().out)
+    assert recommended['config_snapshot'] == checked
+    assert recommended['episodes'][0]['episode_id'] == 'e0'
+    exported = tmp_path / 'resolved.yaml'
+    assert main(['config', 'export', *args, '--output', str(exported)]) == 0
+    capsys.readouterr()
+    assert load_config(exported) == checked
+    output = tmp_path / 'out'
+    assert main(['config', 'run', *args, '--output', str(output)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['config']['config_snapshot'] == checked
+    saved = json.loads(next((output / '_workflows').glob('*/resolved-config.json')).read_text())
+    assert saved == checked and saved['dataset']['episodes'][0]['path'] == replacement.name
+    assert (output / 'report.html').is_file()
+    assert records(output, 'Action_Smoothness')[0]['object']['id'] == 'e0'
+    assert config_path.read_bytes() == before
+
+
+def test_cli_missing_input_fails_before_creating_output(tmp_path, capsys):
+    from edc.execution.cli import main
+    cfg = fixture(tmp_path)
+    config_path = tmp_path / 'run.yaml'
+    config_path.write_text(yaml.safe_dump(cfg))
+    output = tmp_path / 'out'
+    assert main(['config', 'run', str(config_path), '--input', str(tmp_path / 'missing.mcap'),
+                 '--output', str(output)]) == 2
+    assert 'Input path does not exist' in capsys.readouterr().err
+    assert not output.exists()
+
+
 def test_raw_finiteness_unknown_unit_matches_preflight(tmp_path):
     cfg = fixture(tmp_path)
     for c in cfg['robot']['channels'].values():

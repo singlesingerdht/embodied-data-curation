@@ -74,12 +74,12 @@ python -m venv .venv
 . .venv/bin/activate
 ```
 
-文档统一使用以下路径占位符。运行前，用实际值替换，并修改 `configs/datasets/x1_pro_mcap.yaml` 中的对应字段：
+文档统一使用以下路径占位符。将它们替换为实际值，通过 `--input` 指定输入，无需修改数据集 YAML：
 
-| 占位符 | 含义 | 配置字段 |
-|---|---|---|
-| `<DATASET_DIR>` | MCAP 所在的数据集目录，使用绝对路径 | `path` |
-| `<MCAP_FILE>` | MCAP 文件名，包含 `.mcap` 后缀，不含目录 | `episodes[0].path` |
+| 占位符 | 含义 |
+|---|---|
+| `<DATASET_DIR>` | MCAP 所在的数据集目录，使用绝对路径 |
+| `<MCAP_FILE>` | MCAP 文件名，包含 `.mcap` 后缀，不含目录 |
 
 完整输入路径为 `<DATASET_DIR>/<MCAP_FILE>`，下方批量检查命令沿用这两个占位符。
 
@@ -88,11 +88,14 @@ python -m venv .venv
 依次检查配置、查看九项输入推荐、执行并打开报告：
 
 ```bash
-edc config check configs/x1_pro.yaml
-edc config recommend configs/x1_pro.yaml
-edc config run configs/x1_pro.yaml --output results/x1-pro-mcap
+MCAP_PATH='<DATASET_DIR>/<MCAP_FILE>'
+edc config check configs/x1_pro.yaml --input "$MCAP_PATH"
+edc config recommend configs/x1_pro.yaml --input "$MCAP_PATH"
+edc config run configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-mcap
 python -m http.server 8000 --directory results/x1-pro-mcap
 ```
+
+三个命令使用同一输入路径。`--input` 仅覆盖本次输入，保留显式 Episode ID、format 和 selector，实际路径写入运行快照；省略时读取 `configs/datasets/x1_pro_mcap.yaml` 的路径。相对输入路径以执行命令的目录为准。其他采集批次仍需核对机器人、单位与标定是否适用；多条显式轨迹请在数据集 YAML 中逐条登记，或使用下方 batch 命令。
 
 浏览器打开 <http://localhost:8000/report.html>；远程服务器可通过 VS Code Remote-SSH 的“端口”面板转发 8000 端口，打开转发后的本地地址并加上 `/report.html`。保留整个结果目录，避免证据链接失效。
 
@@ -117,7 +120,7 @@ python -m http.server 8000 --directory results/x1-pro-mcap
 可选导出独立配置（输出文件须尚不存在）：
 
 ```bash
-edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
+edc config export configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-resolved.yaml
 ```
 
 ## 批量检查示例（可选）

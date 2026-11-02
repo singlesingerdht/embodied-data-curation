@@ -6,6 +6,13 @@
 
 本次 `data-platform` 基线为 `leju-kuavo` 的 `87c5e6f`，使用独立工作区，未带入其他工作区未提交修改。Quickstart 首轮源码全量 **846 passed / 23 skipped**；相关契约专项 **112 passed**。后续报告统一变更的验证范围单独记录如下，不将首轮全量结果当作新变更的全量验收。
 
+## Quickstart 输入路径与兼容（2026-11-02）
+
+- `edc config check/recommend/run/export` 新增可选 `--input`，中英文 Quickstart 使用同一个 MCAP 路径变量；不传参数仍读取 YAML。原有 `edc run`、`edc batch` 的位置参数和工作流入口保持兼容。Python 入口为 `edc.load_config(config, input_path=...)`。
+- 覆盖单条显式轨迹时保留 ID、format、selector，不改写 YAML 或源数据；替换输入不沿用原样例的文件 SHA256。没有显式索引时沿用读取器边界；多条显式轨迹拒绝单路径覆盖。检查、推荐、导出及运行保存一致的生效配置和实际输入指纹。
+- 新增 8 项边界及完整 CLI 测试，覆盖相对／绝对路径、含空格路径、显式边界、源文件与配置只读、缺输入、多个显式 ID 拒绝及四命令输入一致。Python 3.13 源码全量 **881 passed / 23 skipped**；源码目录外 Python 3.12 安装 wheel 专项 **33 passed**。wheel／sdist 构建、211 个 Python 文件逐字节核对、基础环境 66 项算法发现与无可选依赖导入、两安装环境 `pip check` 通过。
+- 安装后的命令通过 `--input` 重跑真实 X1 Pro MCAP，检查／推荐／导出退出 0，九项共 10 条记录均 `completed`，生成 `results/x1-pro-input-20261102/report.html`。交付仍为 `suspended`，运行退出 1；源 SHA256 前后一致。报告布局、算法、阈值与判定范围保持原契约；本次不新增设备对时或其他采集批次适用性的验收。
+
 ## GitHub Python 测试修复（2026-11-02）
 
 - GitHub 运行 `41427894142` 的 Python 3.10／3.12 各 **16 failed / 853 passed / 23 skipped**：13 项断言仍要求已撤回的报告技术面板或旧文案，2 项依赖英文 `clock` 提示，1 项在普通安装后按源码布局寻找机器人配置。同步测试到当前 KUAVO 报告契约，继续检查原始数值、处理状态、字段范围、完整性、配置快照和证据目录链接；不删除或跳过失败用例，不恢复额外页面面板。

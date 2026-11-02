@@ -114,6 +114,7 @@ def main(argv=None):
     for action in ('check', 'export', 'recommend', 'run'):
         p = configurations.add_parser(action)
         p.add_argument('config')
+        p.add_argument('--input', help='Override the dataset input path; an explicit episode index must contain exactly one episode')
         if action in {'export', 'run'}:
             p.add_argument('--output', required=True)
         if action == 'recommend':
@@ -150,15 +151,16 @@ def main(argv=None):
                 emit(load_channel_registry(value))
             return 0
         if args.command == 'config':
-            from edc.configuration import export_config, recommend_config
+            from edc.configuration import export_config, recommend_config, load_config
             from edc.workflows.validation import validate_workflow
             from edc.workflows.engine import run_workflow
+            config = load_config(args.config, input_path=args.input) if args.input is not None else args.config
             if args.action == 'export':
-                emit({'output': str(export_config(args.config, args.output))})
+                emit({'output': str(export_config(config, args.output))})
             elif args.action == 'recommend':
-                emit(recommend_config(args.config, args.stage))
+                emit(recommend_config(config, args.stage))
             else:
-                result = validate_workflow(args.config) if args.action == 'check' else run_workflow(args.config, args.output, resume=args.resume)
+                result = validate_workflow(config) if args.action == 'check' else run_workflow(config, args.output, resume=args.resume)
                 emit(result)
                 return 0 if result.get('valid') or result.get('delivery_status') == 'ready' else 1
         elif args.command == 'workflow':

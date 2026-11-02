@@ -24,23 +24,26 @@ python -m venv .venv
 . .venv/bin/activate
 ```
 
-The documentation uses the following path placeholders consistently. Before running, replace them with actual values and update the corresponding fields in `configs/datasets/x1_pro_mcap.yaml`:
+The documentation uses the following path placeholders consistently. Replace them with actual values and pass the input through `--input`; no dataset YAML edit is needed:
 
-| Placeholder | Meaning | Configuration field |
-|---|---|---|
-| `<DATASET_DIR>` | Absolute path to the dataset directory containing the MCAP | `path` |
-| `<MCAP_FILE>` | MCAP filename including `.mcap`, without a directory | `episodes[0].path` |
+| Placeholder | Meaning |
+|---|---|
+| `<DATASET_DIR>` | Absolute path to the dataset directory containing the MCAP |
+| `<MCAP_FILE>` | MCAP filename including `.mcap`, without a directory |
 
 The full input path is `<DATASET_DIR>/<MCAP_FILE>`; the batch command below uses the same placeholders.
 
 The example configuration explicitly registers one Episode (`x1_pro_reference_0001`), retaining all 32 source channels. Keep the explicit ID and selector. The task is unconfirmed (`tasks: []`); directory names do not establish it.
 
 ```bash
-edc config check configs/x1_pro.yaml
-edc config recommend configs/x1_pro.yaml
-edc config run configs/x1_pro.yaml --output results/x1-pro-mcap
+MCAP_PATH='<DATASET_DIR>/<MCAP_FILE>'
+edc config check configs/x1_pro.yaml --input "$MCAP_PATH"
+edc config recommend configs/x1_pro.yaml --input "$MCAP_PATH"
+edc config run configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-mcap
 python -m http.server 8000 --directory results/x1-pro-mcap
 ```
+
+All three commands use the same input path. `--input` overrides only this invocation, preserving the explicit Episode ID, format and selector; the effective path is saved in the run snapshot. Omitting it uses the path in `configs/datasets/x1_pro_mcap.yaml`. Relative input paths resolve from the command's working directory. For other captures, check the applicability of robot declarations, units and calibration. Register multiple explicit episodes in the dataset YAML, or use the batch command below.
 
 Open [the report](http://localhost:8000/report.html). In VS Code Remote-SSH, forward port 8000 in the Ports panel, then append `/report.html` to the forwarded local address. Keep the whole output directory so evidence links work.
 
@@ -65,7 +68,7 @@ Each head RGB frame's MCAP `log_time` supplies the intermediate reference. Follo
 Optional standalone configuration export (use a new output file):
 
 ```bash
-edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
+edc config export configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-resolved.yaml
 ```
 
 ## Batch inspection example (optional)

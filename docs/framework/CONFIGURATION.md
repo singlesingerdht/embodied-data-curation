@@ -30,6 +30,14 @@ episodes:
 
 `episodes` 是可选的显式索引，不按 LeRobot 文件数量推断边界。不提供时使用读取器及数据集 metadata 的边界。显式轨迹必须真实存在于 `path` 目录中，ID 唯一，字段 selector 由读取器解释；单个 MCAP 文件也可直接作为 `path`。
 
+`edc config check/recommend/run/export` 均支持 `--input <输入路径>`，Python 对应
+`edc.load_config(config, input_path=...)`。路径须存在，相对路径以调用目录为准。
+配置只有一条显式 Episode 时，覆盖其源路径及数据集目录，保留 ID、format、selector 和其他配置；
+去除原样例的 `metadata.source_sha256`，实际输入指纹由工作流重新计算。
+没有显式索引时覆盖 `dataset.path`，仍由读取器及 metadata 确定轨迹边界。
+多条显式 Episode 拒绝此覆盖，以免把多个 ID 绑定至同一文件；应修改数据集索引或使用 `edc batch`。
+命令不会改写源 YAML，导出与运行快照保存覆盖后的配置；省略参数保持原行为。
+
 - `source_bindings: {joint/arm/main/feedback: /recorded/joints}`：本批次源字段改名，逻辑名与机器人语义保持一致。不能把两个信号合并成同一逻辑名。
 - `capture` 保存本批次的单位、时间来源、clock、标定和变换。填写 `scope` 说明适用批次；`capture.channels` 的键使用源名或逻辑名，补充单位与时间字段；`capture.transforms` 和 `capture.calibration` 提供本批次完整声明。
 - `backend` 使用 `auto/official/compat` 选择读取实现；依赖缺失时不偷偷切换。数据格式支持不代替机器人或算法验收。

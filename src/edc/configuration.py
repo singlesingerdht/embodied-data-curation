@@ -19,7 +19,13 @@ def _component(value, base, stack=()):
     return _component(read_unique_yaml(path.read_text()), path.parent, (*stack, path))
 
 
-def load_config(config):
+def load_config(config, *, input_path=None):
+    """Resolve components, optionally replacing the input without editing files.
+
+    An explicit single-episode index keeps its ID, format and selector. Multiple
+    explicit episodes require editing the index rather than guessing boundaries.
+    Relative overrides use the caller's working directory, like other CLI paths.
+    """
     base = Path.cwd()
     if isinstance(config, (str, Path)):
         path = Path(config).resolve()
@@ -69,6 +75,23 @@ def load_config(config):
                         or type(method.get('enabled', True)) is not bool):
                     raise ValueError(f'{name}: method supports arms, params, enabled')
         resolved[key] = item
+    if input_path is not None:
+        source = Path(input_path).expanduser().resolve()
+        if not source.exists():
+            raise ValueError(f'Input path does not exist: {source}')
+        data = resolved['dataset']
+        if 'episodes' in data:
+            entries = data['episodes']
+            if (not isinstance(entries, list) or len(entries) != 1
+                    or not isinstance(entries[0], dict)):
+                raise ValueError('--input requires exactly one explicit episode; '
+                                 'edit dataset.path and episodes for multiple episodes')
+            data['path'] = str(source.parent)
+            entries[0]['path'] = source.name
+            # A replacement must not inherit the original sample's file hash.
+            entries[0].get('metadata', {}).pop('source_sha256', None)
+        else:
+            data['path'] = str(source)
     return resolved
 
 
