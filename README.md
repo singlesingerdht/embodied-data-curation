@@ -72,9 +72,20 @@ edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
 
 The quick start above already generates a report. To inspect one or more files with `edc batch`, replace the path placeholders in the following command with actual values. This command uses the supplied file paths, the same robot and the matching nine-method parameters in `configs/robots/x1_pro/params.json`. Supply explicit MCAP file paths: recursive directory discovery currently does not scan `.mcap`.
 
+This example assumes **one complete trajectory (Episode) per MCAP file**, with embedded images and numeric signals; no companion JSON or MP4 files are required. A dataset directory can be organized as follows:
+
+```text
+<DATASET_DIR>/
+├── <MCAP_FILE_1>    # e.g. episode_001.mcap
+└── <MCAP_FILE_2>    # e.g. episode_002.mcap
+```
+
+Replace `<MCAP_FILE_1>` and `<MCAP_FILE_2>` with distinct `.mcap` filenames, following the same convention as `<MCAP_FILE>` above. Files may also reside in subdirectories; supply their corresponding paths in the command. Filenames must be unique across all inputs.
+
 ```bash
 edc batch \
-  '<DATASET_DIR>/<MCAP_FILE>' \
+  '<DATASET_DIR>/<MCAP_FILE_1>' \
+  '<DATASET_DIR>/<MCAP_FILE_2>' \
   --robot x1_pro --jobs 1 \
   --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
 ```

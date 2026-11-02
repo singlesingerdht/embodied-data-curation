@@ -124,9 +124,20 @@ edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
 
 上面的快速开始已生成报告。需要通过 `edc batch` 检查一个或多个文件时，将下方路径占位符替换为实际值即可。此命令直接使用传入的文件路径，复用 `x1_pro.yaml` 机器人和 `configs/robots/x1_pro/params.json` 算法参数（与统一配置的九项参数一致）。当前目录递归发现不扫描 `.mcap`，须明确传入文件路径。
 
+本例约定**每个 MCAP 文件保存一条完整轨迹（Episode）**，图像和数值信号内嵌在文件中，无需配套 JSON 或 MP4。数据集目录可组织为：
+
+```text
+<DATASET_DIR>/
+├── <MCAP_FILE_1>    # 例如 episode_001.mcap
+└── <MCAP_FILE_2>    # 例如 episode_002.mcap
+```
+
+`<MCAP_FILE_1>`、`<MCAP_FILE_2>` 分别替换为不同的 `.mcap` 文件名，与上文 `<MCAP_FILE>` 含义相同。文件也可放在子目录中，命令中填写对应路径；所有输入文件的文件名须互不相同。
+
 ```bash
 edc batch \
-  '<DATASET_DIR>/<MCAP_FILE>' \
+  '<DATASET_DIR>/<MCAP_FILE_1>' \
+  '<DATASET_DIR>/<MCAP_FILE_2>' \
   --robot x1_pro --jobs 1 \
   --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
 ```
