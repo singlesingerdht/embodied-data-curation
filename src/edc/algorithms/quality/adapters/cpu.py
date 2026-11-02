@@ -201,6 +201,8 @@ def selected_pose(episode, params=None):
 
 def selected_inputs(episode, params, ident):
     from .selection import select_episode
+    if ident in {'Sync_Check', 'Root_Cause'} and (params.get('timeline') or {}).get('time_source') == 'container' and params.get('target_clock'):
+        raise ValueError('Container diagnostics use the recorded container clock; target_clock cannot be combined')
     reference = None
     if ident == 'Action_Smoothness':
         from .action import validate_options
@@ -284,7 +286,14 @@ def _preflight(plugin, episode, params=None):
                            if c.modality == 'rgb' and c.image_available}
         except ValueError as exc:
             return 'missing_input', str(exc)
-    missing = set(spec.required_inputs) - capabilities(episode)
+    recording = spec.id in {'Sync_Check', 'Root_Cause'} and (params.get('timeline') or {}).get('time_source') == 'container'
+    if recording:
+        from .recording import plan
+        try:
+            plan(episode, params)
+        except ValueError as exc:
+            return 'missing_input', str(exc)
+    missing = set() if recording else set(spec.required_inputs) - capabilities(episode)
     reset_profile = episode.profile.get('calibration', {}).get('Reset_Detection', {})
     if spec.id == 'Reset_Detection' and isinstance(reset_profile, dict) and (
             isinstance(reset_profile.get('references'), dict)
@@ -297,6 +306,8 @@ def _preflight(plugin, episode, params=None):
             missing.add('pose')
     if missing:
         if spec.id in {'Sync_Check', 'Root_Cause', 'Check_Timestamp'}:
+            if any(c.timestamps and not c.clock for c in episode.channels.values()):
+                return 'missing_input', '缺少设备时钟映射，采集同步及跨源采集归因未评估；可显式选择 timeline.time_source=container 分析记录时序。'
             return 'missing_input', ('时间条件不足：需要有效且单位明确的时间轴；跨通道检查还需要独立的原始时间轴和共同 clock。'
                 '只有公共行时间、未知单位或合成时间时，不能评估原始采集同步；现有时间仍保留。')
         if spec.id == 'Dedup_Check':
@@ -333,7 +344,7 @@ def _preflight(plugin, episode, params=None):
         if (pose.timestamps is None or len(pose.timestamps) != pose.count
                 or pose.time_source not in {'acquisition', 'container'}):
             return "missing_input", "动作平滑度需要单位明确且来源已确认的有效时间轴；未知、播放或合成时间不可替代。"
-    if spec.id == "Sync_Check":
+    if spec.id == "Sync_Check" and not recording:
         axes = [tuple(c.timestamps) for c in episode.channels.values() if c.time_source == "acquisition" and c.timestamps]
         if len(set(axes)) < 2:
             return "missing_input", "Independent acquisition timelines are required"
@@ -736,9 +747,9 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = {'Numeric_Check': 'ir-adapter-21', 'Action_Smoothness': 'ir-adapter-22',
-                   'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-17',
-                   'Root_Cause': 'ir-adapter-18', 'Check_Timestamp': 'ir-adapter-19',
+        version = {'Numeric_Check': 'ir-adapter-22', 'Action_Smoothness': 'ir-adapter-24',
+                   'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-19',
+                   'Root_Cause': 'ir-adapter-20', 'Check_Timestamp': 'ir-adapter-19',
                    'Video_Integrity': 'ir-adapter-16'}.get(ident, 'ir-adapter-15')
         descriptions, schema = cpu_parameters(ident)
         self.spec = AlgorithmSpec(ident, version, ident, "Repository contributors",
@@ -753,6 +764,14 @@ class LegacyAlgorithm:
     def availability(self, episode, params):
         params = resolve_channel_parameters(episode, params)
         episode = selected_inputs(episode, params, self.spec.id)
+        if self.spec.id in {'Sync_Check', 'Root_Cause'} and (params.get('timeline') or {}).get('time_source') == 'container':
+            from .recording import plan, BOUNDARY
+            prepared = plan(episode, params)
+            return {'availability': 'partial' if prepared['unavailable'] else 'available',
+                    'scope': 'container_recording_diagnostic',
+                    'reason': BOUNDARY, 'inputs': [dict(channel=name, time_source='container',
+                        clock=axis.params['clock']) for name, axis in prepared['axes'].items()],
+                    'unavailable_inputs': prepared['unavailable']}
         if self.spec.id == 'Video_Integrity':
             from .video import input_mode
             inputs = [{'channel': c.name, 'input_mode': input_mode(episode, c, params)}
@@ -780,7 +799,7 @@ class LegacyAlgorithm:
                        'side': c.side, 'time_source': c.time_source}]
             if plan['reference_channel']:
                 inputs.append({'channel': plan['reference_channel'], 'role': 'reference_timeline',
-                               'time_source': 'acquisition', 'frames_required': False})
+                               'time_source': plan.get('reference_time_source', 'acquisition'), 'frames_required': False})
             return {'availability': 'partial' if plan['issues'] else 'available',
                     'reason': '; '.join(plan['issues']), 'inputs': inputs,
                     'scope': 'residual_jerk_on_explicit_timeline'}
@@ -848,6 +867,11 @@ class LegacyAlgorithm:
         params = resolve_channel_parameters(context.episode, params)
         ep = selected_inputs(context.episode, params, self.spec.id)
         params = {k: v for k, v in params.items() if k not in {'channels', 'target_clock'}}
+        if self.spec.id in {'Sync_Check', 'Root_Cause'}:
+            if (params.get('timeline') or {}).get('time_source') == 'container':
+                from .recording import assess
+                return assess(ep, params, context, self.spec.id)
+            params.pop('timeline', None)
         if self.spec.id == 'Action_Smoothness':
             params.pop('channel', None)
         if self.spec.id == "Action_Smoothness":
@@ -1146,6 +1170,8 @@ class LegacyAlgorithm:
                 declared = bool({f'{n}.{field}' for n in (channel.name, getattr(channel, 'logical_name', None))} & finiteness_only)
                 if declared and target:
                     raise ValueError(f'{channel.name}.{field}: 有物理检查项，不能声明为只查有限值')
+                if not eligibility['in_physical_scope']:
+                    declared = False  # Scoped exclusions remain diagnostics, including unsupported fields.
                 unit = spec["unit"]
                 finite = bool(np.isfinite(values).all())
                 physical = not unit_reason and eligibility['physical_checks_available']
@@ -1177,7 +1203,9 @@ class LegacyAlgorithm:
                     finite = bool(np.isfinite(values).all())
                     result = {"score": None, "verdict": "NOT_APPLICABLE" if finite else "DO_NOT_USE",
                               "finite": finite, "assessment_complete": False,
-                              "reason": "Physical thresholds not applied: Numeric configuration confirmation, source unit or calibration pending"}
+                              "reason": ('Outside configured physical_fields; finiteness diagnostic only'
+                                         if not eligibility['in_physical_scope'] else
+                                         'Physical thresholds not applied: Numeric configuration confirmation, source unit or calibration pending')}
                 bad = np.argwhere(~np.isfinite(values))
                 examples = []
                 selection = getattr(channel, 'selection', {}) or {}
@@ -1217,6 +1245,7 @@ class LegacyAlgorithm:
                 result["source_unit"] = spec.get("source_unit", unit)
                 result["unit_normalization_reason"] = unit_reason
                 result["physical_check_blockers"] = eligibility['reasons']
+                result['in_physical_scope'] = eligibility['in_physical_scope']
                 result["input_scope"] = "recorded_finiteness_only" if unit_reason else "SI"
                 result["finiteness_only_declared"] = declared
                 result["source_kind"] = spec["source_kind"]

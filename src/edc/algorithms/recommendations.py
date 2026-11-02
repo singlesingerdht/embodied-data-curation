@@ -192,9 +192,15 @@ def recommend_dataset(dataset, plugins, params=None, selected=None, method_selec
     return entries
 
 
-def recommend(dataset, params=None, unit_policy='auto', *, method_select=None):
+def recommend(dataset, params=None, unit_policy='auto', *, method_select=None, algorithm_ids=None):
     """List per-episode algorithm availability without running algorithms/models."""
     registry = algorithms()
+    plugins = registry.plugins
+    if algorithm_ids is not None:
+        if (not algorithm_ids or len(set(algorithm_ids)) != len(algorithm_ids)
+                or any(ident not in plugins for ident in algorithm_ids)):
+            raise ValueError('Select unique registered algorithm IDs')
+        plugins = {ident: plugins[ident] for ident in algorithm_ids}
     if params is not None and (not isinstance(params, dict) or any(
             key not in registry.plugins or not isinstance(value, dict) for key, value in params.items())):
         raise ValueError('params must map registered algorithm IDs to parameter objects')
@@ -203,12 +209,12 @@ def recommend(dataset, params=None, unit_policy='auto', *, method_select=None):
     for episode in execution.iter_episodes():
         try:
             with episode.opened():
-                result.append(recommend_episode(episode, registry.plugins, params))
+                result.append(recommend_episode(episode, plugins, params, selected=algorithm_ids))
         except Exception as exc:
             result.append({'schema_version': 'dqs_recommendations_v1', 'episode_id': episode.id,
                            'error': f'{type(exc).__name__}: {exc}', 'algorithms': []})
     try:
-        datasets = recommend_dataset(execution, registry.plugins, params, method_select=method_select)
+        datasets = recommend_dataset(execution, plugins, params, selected=algorithm_ids, method_select=method_select)
     finally:
         for episode in execution.iter_episodes():
             episode.close()

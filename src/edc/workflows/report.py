@@ -26,7 +26,7 @@ def render_workflow(root, manifest, output):
     page += '<p>质量方法按配置与可用条件选择，CPU 与 GPU 方法处于同一阶段。价值评估按需配置；编辑、增强生成的新版本必须质量复检。处理状态、数据达标与人工复核分别记录，各方法保留原始输出。</p>'
     page += '<p>工作流：' + esc(manifest['workflow_id']) + ' · 处理状态：' + esc(manifest['status']) + '</p>'
     page += '<p>最终放行：' + esc(manifest.get('delivery_status', 'suspended')) + '</p>'
-    page += '<p><a href="../../report.html">查看固定版式算法报告</a> · <a href="workflow.json">完整运行记录</a></p>'
+    page += '<p><a href="../../report.html">查看质检汇总与逐条证据</a> · <a href="workflow.json">完整运行记录</a></p>'
     page += ''.join(cards)
     page += '<article><h2>输出与挂起原因</h2><pre>' + esc(json.dumps({
         'outputs': [{'stage': item['stage'], 'accepted_episodes': item['accepted_episodes'],

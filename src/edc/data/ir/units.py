@@ -207,6 +207,10 @@ class SIEpisode:
         from edc.data.transforms.resampling import align_signal
         return align_signal(self, channel, field, reference, **kwargs)
 
+    def time_axis(self, channel, *, time_source):
+        from edc.data.ir.time_axis import time_axis
+        return time_axis(self, channel, time_source=time_source)
+
 
 class SIDataset:
     """Ensure plugins reopening context.dataset also receive the SI view."""

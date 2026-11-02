@@ -1,10 +1,46 @@
 # 当前验收状态
 
-日期：**2026-10-30**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-21**，Action_Smoothness 适配 **ir-adapter-22**，Reset_Detection 适配 **ir-adapter-17**，Sync_Check 适配 **ir-adapter-17**，Root_Cause 适配 **ir-adapter-18**，Check_Timestamp 适配 **ir-adapter-19**，Video_Integrity 适配 **ir-adapter-16**，其余 CPU 适配 **ir-adapter-15**。
+日期：**2026-11-02**。框架版本 **0.2.0a2**；Numeric_Check 适配 **ir-adapter-22**，Action_Smoothness 适配 **ir-adapter-24**，Reset_Detection 适配 **ir-adapter-17**，Sync_Check 适配 **ir-adapter-19**，Root_Cause 适配 **ir-adapter-20**，Check_Timestamp 适配 **ir-adapter-19**，Video_Integrity 适配 **ir-adapter-16**，其余 CPU 适配 **ir-adapter-15**。
 
 当前算法池为 **66 个仓库内登记项**：`quality_cpu` 默认预设 9 个 CPU 方法，`quality_indicators` 预设 57 个模态指标，其中 46 个已实现、11 个登记但因实现或输入条件暂不可执行。全部算法均由本仓库实现或登记；基础安装不依赖外部算法包、模型、私有 wheel 或 GPU 运行时。单独安装的集成只属于开发者接口，不改变这组核心数量。
 
-本次基线回归：源码全量 **835 passed / 23 skipped**（`leju-kuavo` 分支；`main` 为 769）；核心算法池为 66 项（默认 CPU 9 项、内部指标 57 项），57 项均有结构化输入声明。安装 wheel 构建、干净基础环境安装与 `pip check` 通过，直线关节新增专项在安装包上 **5 passed**。干净基础安装仅包含本包、NumPy/PyYAML 与 pip，登记发现未加载 Torch、LeRobot、SciPy 或 OpenCV。格式读取及指标的可选运行依赖通过 `formats` 组提供，基础包不强制安装。具体范围见下方本轮验收。
+本次 `data-platform` 基线为 `leju-kuavo` 的 `87c5e6f`，使用独立工作区，未带入其他工作区未提交修改。Quickstart 首轮源码全量 **846 passed / 23 skipped**；相关契约专项 **112 passed**。后续报告统一变更的验证范围单独记录如下，不将首轮全量结果当作新变更的全量验收。
+
+## 按用户要求恢复 KUAVO 报告结论（2026-11-02）
+
+- 页面仅使用原有通过／复核／可救／排除及不适用，不显示“参考”或“未评估完”。缺输入、无质量判定的项显示不适用，原因保留在原版逐条详情；错误不变成通过，未完成的评估不能显示建议保留。内部 `dqs_record_v1`、完整性和工作流状态不改协议，历史记录不改写。
+- 撤回容器时间包装层的判定覆盖：显式选择记录时间的动作平滑度、同步及归因使用原方法评分和结论，不因时间来源直接变成参考／复核。设备采集时钟仍未知，不据此证明采集同步。频率标定、非法轴、缺口和外推边界继续检查；平滑度插值、数值阈值及原算法未改变。
+- README 原命令重新执行真实样例：九项共 **10 条记录全部 completed**；双臂平滑度各 **100 分／通过**，同步 **99.9 分／通过**，归因按原方法 **0 分／排除**；时间戳对齐不适用，数值及复位复核。整体显示含建议排除项，交付仍挂起。补充 batch 也重新执行；五处 HTML 的 CSS、四个主体标题及四项图例均与参考附件一致，链接有效，无新增结论标签。
+- 源码专项 **91 passed**；源码外安装 wheel 专项 **90 passed / 1 deselected**，仅依赖源码布局的 `--robot` 配置快捷名测试在源码执行。wheel／sdist 构建、干净基础安装与 `pip check` 通过；wheel **211 个 Python 文件**与源码一致，基础安装发现 66 项且不加载格式／GPU／模型库。未重跑仓库全量。原始 MCAP SHA256 不变，**328 个历史运行／配置文件**哈希不变。详见[验收记录](../validation/kuavo_report_restore_20261102/README.md)。下方同日各节保留历史结果，当前行为以本节为准。
+
+## MCAP 记录时间分析与参考样式恢复（2026-11-02，历史阶段）
+
+- `Sync_Check`／`Root_Cause` 新增显式 `timeline: {time_source: container}`，推荐与执行使用同一范围。复用现有同步及 gap 关联方法，使用同一 MCAP 的 `log_time`／记录 clock；不平移时间，不更改设备 clock，不回退到采集或合成时间。原方法评分保留为 `method_score`，正式采集判断保持未评估。默认旧配置行为保持兼容。
+- 原始容器纳秒、秒制时间和源行映射写入各算法 `artifacts/<id>/container_timeline.json`。少样本、倒退或未知 clock 的通道保留缺口原因；不同记录 clock 拒绝比较。记录断档及相对时序变化可能包含传输、排队和发布影响，不证明采集丢帧、设备时钟漂移或硬件故障。
+- 真实 Quickstart 与 batch 均重新执行：九项、双臂共 **10 条记录全部 completed**；两项记录时间诊断覆盖 **27 路**，无不可用采样路。同步记录覆盖率 **99.8%**，相对头部参考的最近邻间隔 P95 最大 **49.39 ms**；归因记录 **53 次关联间隔异常**，最大记录间隔 **0.677 s**。这是记录端证据，源命名空间分组不证明独立硬件。工作流处理状态变为 `completed`，交付仍 `suspended`、轨迹 `unassessed`，退出码 1 不表示处理错误。
+- 按用户要求撤回额外报告面板：仅保留参考样例的四种结论说明和四个主体栏目，单条仍用 batch 表格一行。CSS 与附件 `x1pro_sample50.html` **逐字一致**，四个标题及四项图例一致；完整原始结果、历史和配置留在 catalog／`_runs`，页面不嵌入技术报告、配置面板、工作流或历史。当前主报告 **23,815 字节**；统一／batch／batch 保留结果三处均已核对样式及链接。
+- 真实源 SHA256 前后均为 `95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2`。本次主运行 **39 个证据文件**存在；安装后的基础 wheel 刷新主报告，**222 个记录／配置文件**哈希不变。
+- 源码相关检查分批 **29、137、26 passed**（集合有重叠，不相加）；源码目录外 wheel 契约 **45 passed**。wheel／sdist 构建成功，wheel 的 **211 个 Python 文件**与当前源码一致。隔离基础安装及 `pip check` 通过，可发现 66 项且不导入格式／模型／GPU 库；安装环境检查排除宿主 ROS `PYTHONPATH`，不将 ROS 环境缺失 setuptools 视为本包失败。本轮未重跑仓库全量测试。
+- 当前验证及命令见 [记录时间与参考报告](../validation/recording_time_20261102/README.md)。以下两节保留本日早先方案及首轮结果，当前行为以上述记录为准。
+
+## 单条与批量共用质检报告（2026-11-02）
+
+- `edc run`、`edc config run` 的 `report.html` 与 `edc batch` 共用 batch 模板，单条轨迹显示一行。算法明细、原始评分、源 selector、证据链接在同页展开；配置确认与字段范围折叠展示，历史运行分别保留。原详细渲染入口仅作兼容转发，不再维护另一套页面模板。
+- catalog 及运行快照提供轨迹与所选算法范围，不按记录数或源文件数推断轨迹；dataset 级结果单独展示，不当作逐轨迹质量通过。缺输入、部分覆盖、失败与参考项保留，过期的 keep 记录不能覆盖未完成状态。大型原始 JSON 通过不可变 JSONL 链接按需查看，不再重复嵌入页面。
+- 已有输出可用 `edc report <输出目录>` 刷新页面，无需重跑算法。真实 Quickstart 页面从 **47,453,528** 降至 **1,935,946 字节**（含三次历史运行），本次安装 wheel 在源码目录外刷新两处结果，**239 个运行／工作流／catalog 文件**哈希不变，**207 条相对文件链接**存在，轨迹锚点唯一。原 MCAP SHA256 不变；整体仍为 `unassessed`，同步及跨源归因仍未评估。
+- 源码相关测试 **101 passed**，包括报告、批入口、工作流、统一配置及 MCAP 示例；源码外 wheel 报告契约 **16 passed**。wheel/sdist 构建、干净基础环境安装、`pip check` 通过，wheel 的 **210 个 Python 文件**与源码一致；基础报告不加载格式、模型或 GPU 依赖。本轮未重跑全量算法测试或真实算法计算。
+- 验证记录：[报告统一](../validation/report_unification_20261102/README.md)。中英文 Quickstart 已同步；输出路径和原始记录协议不变，迁移说明见 [配置与报告](CONFIGURATION.md#质检报告与已有结果迁移)。
+
+## X1 Pro MCAP Quickstart（2026-11-02）
+
+- `configs/x1_pro.yaml` 引用 MCAP 数据集、机器人、算法与显式九项工作流。真实文件由数据集索引登记为 `x1_pro_reference_0001` 一条 Episode，保留 32 路源通道；任务未知，不按目录推断。中文／英文 README 以此为主例，补充明确 MCAP 路径的 `edc batch`，两入口使用相同机器人和算法参数。
+- 新增 `Episode.time_axis(channel, *, time_source)` 和公共 `edc.time_axis`，返回 `TransformResult`，保留 acquisition/container 的秒制时间、clock、源行及原始纳秒。`align_signal` 可显式选择来源，未选择时保留旧行为。未知共钟不能进入采集比较；零 header 不回退。
+- 动作平滑度左右臂分别以反馈 XYZ 插值至头部 RGB 的真实 `log_time`，只用重叠帧，不外推，源插值跨度上限 0.1 秒；保存源行、权重及参考行。实测左臂 **1,434 帧 / 3.404470 m/s³**、右臂 **1,435 帧 / 4.113187 m/s³**，均为容器时间诊断，`score=null`、`NEEDS_REVIEW`、`assessment_complete=false`。原始采集轴不变，不能据此认定采集同步或机械振动质量通过。
+- 用户确认主臂为指令、从臂为反馈，六轴顺序、rad/rad/s 及适用标定；主臂速度求导不一致诊断保留。机械臂 effort 为电流、单位未知，不作为力矩。Numeric 物理范围固定为四路臂 position/velocity 和两路反馈 XYZ，共 **10/44 字段**；反馈／指令限位分表登记，沿用用户确认的厂家限位及速度上限，摘要绑定范围与阈值，标识 `data-platform-owner`。其他字段只查有限值；旧配置未填范围时保持旧契约。
+- 真实统一入口与 batch 均生成九项的状态记录（双臂动作共 **10 条记录**），没有 `processing_error`；Sync_Check／Root_Cause 因共同采集时钟未确认而为 `missing_input`。Reset 保留 MCAP v2 标定，结果 `NEEDS_REVIEW`；四路 RGB 直接检查 **1,449 / 1,454 / 1,435 / 1,449 原帧**，未转 MP4。工作流 `status=blocked`、`delivery_status=suspended`、轨迹 `unassessed`，CLI 退出码 1 是未满足放行条件。batch 同样为 `unassessed`。
+- 源文件运行前后 SHA256 均为 `95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2`。统一／批入口各 35 条 artifact 链接存在，报告相对链接已核验。完整结果保留在服务器 `results/`，仓库只含验证摘要；原始数据不分发，许可未知。
+- 源码全量 **846 passed / 23 skipped**，专项 **112 passed**（集合重叠，不相加）。wheel/sdist 构建成功；干净基础 venv 安装及 `pip check` 通过，仅本包、NumPy/PyYAML 与 pip，可发现 66 项，无格式／GPU／模型依赖导入。wheel 的 **209 个 Python 文件**与源码逐字节一致。仓库外 wheel 专项 **112 passed**，并以导出配置重跑真实 MCAP，两臂诊断数值与源哈希一致；结果见[验收记录](../validation/x1_pro_mcap_20261102/README.md)。23 项跳过沿用可选官方 LeRobot、研究桥、GPU 扩展和未分发注册证据范围，不新增这些能力的验收。
+- 迁移边界：[配置](CONFIGURATION.md)、[显式时间轴](TRANSFORMS.md)。本轮未实现设备对时、其他批次物理适用性、真实任务识别、GPU／价值能力或数据发布许可验收；九项状态齐全不等于九项通过。
 
 ## 直线/升降关节位置单位（2026-10-30）
 

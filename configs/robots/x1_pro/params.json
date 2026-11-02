@@ -1,0 +1,63 @@
+{
+  "Structure_Check": {
+    "arms": "all"
+  },
+  "Numeric_Check": {
+    "physical_fields": [
+      "/left_arm/end_pose.position",
+      "/left_arm/joint_states.position",
+      "/left_arm/joint_states.velocity",
+      "/master_left_arm/joint_states.position",
+      "/master_left_arm/joint_states.velocity",
+      "/master_right_arm/joint_states.position",
+      "/master_right_arm/joint_states.velocity",
+      "/right_arm/end_pose.position",
+      "/right_arm/joint_states.position",
+      "/right_arm/joint_states.velocity"
+    ],
+    "arms": "all"
+  },
+  "Action_Smoothness": {
+    "timeline": {
+      "mode": "reference_channel",
+      "reference_channel": "rgb/head",
+      "time_source": "container",
+      "resample": "linear",
+      "clock_policy": "require_common_or_explicit_mapping",
+      "max_gap_s": 0.1
+    },
+    "expected_rate_hz": 30,
+    "window_length": 11,
+    "vel_threshold_factor": 0.1,
+    "jerk_threshold_m_s3": 15,
+    "arms": "all"
+  },
+  "Check_Timestamp": {
+    "arms": "all"
+  },
+  "Sync_Check": {
+    "primary": "rgb/head",
+    "arms": "all",
+    "timeline": {
+      "time_source": "container"
+    }
+  },
+  "Root_Cause": {
+    "arms": "all",
+    "timeline": {
+      "time_source": "container"
+    }
+  },
+  "Dedup_Check": {
+    "arms": "all"
+  },
+  "Reset_Detection": {
+    "arms": "all"
+  },
+  "Video_Integrity": {
+    "input_mode": "auto",
+    "sample_step": 1,
+    "downscale": 4,
+    "arms": "all"
+  }
+}

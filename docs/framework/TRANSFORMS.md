@@ -245,3 +245,20 @@ r = episode.align_signal('left_arm_position', 'position', 'head_rgb',
 - 保留原时间、映射后时间、参考通道、源行索引/插值权重、原单位与指令/反馈语义。
 - synthetic/playback/unknown 来源不升级为 acquisition；对齐成功不证明采集同步。
 - 重采样结果由算法主动消费；不会替换旧算法的默认输入，也不隐式开启 Episode FK 跨通道插值。
+
+### 显式读取记录时间轴（data-platform）
+
+```python
+axis = episode.time_axis('rgb/head', time_source='container')
+# 同样可用 edc.time_axis(episode, 'rgb/head', time_source='container')
+# axis.output: 秒；axis.params: 来源、源字段、clock；
+# axis.source_mapping: 原始 timestamps_ns、源文件、selector 和恒等行映射。
+r = episode.align_signal('pose/arm/left/feedback', 'position', 'rgb/head',
+                         method='linear', max_gap=0.1, time_source='container')
+```
+
+`time_source` 明确选择 `acquisition` 或 `container`。ROS 记录中的原始纳秒值完整保留；
+缺失／零 header 不回退到容器时间。原始倒序／重复轴可读取供诊断，插值时仍拒绝。
+MCAP 的容器 clock 绑定到源文件路径和 `log_time` 字段，不能证明不同设备采集共钟。
+`align_signal` 不填 `time_source` 时沿用既有选定时间轴；显式选择时在证据中保留两路原始轴。
+它仍要求所有参考行处于源支持范围，禁止外推；动作平滑度适配器另显式选择重叠参考行并记录被排除的行。

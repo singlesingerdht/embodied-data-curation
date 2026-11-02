@@ -5,6 +5,7 @@ _EXPORTS = {'open_dataset': 'edc.data.ir.dataset', 'run': 'edc.execution.runner'
 _EXPORTS.update({name: 'edc.configuration' for name in ('load_config', 'export_config', 'open_config_dataset', 'recommend_config')})
 _EXPORTS['load_channel_registry'] = 'edc.data.channel_registry'
 _EXPORTS['convert_orientation'] = 'edc.data.transforms.orientation'
+_EXPORTS['time_axis'] = 'edc.data.ir.time_axis'
 _EXPORTS.update({name: 'edc.data.ir.canonical' for name in
                  ('open_dataset', 'open_source_dataset', 'open_dataset_reference', 'OrientationInputError')})
 __all__ = list(_EXPORTS) + ["__version__"]

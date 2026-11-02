@@ -239,3 +239,44 @@ def test_configuration_panel_uses_field_unit_for_joint_thresholds():
     panel = configuration_panel(prismatic_profile(), {})
     assert '字段单位/样本' in panel
     assert 'rad/样本' not in panel
+
+
+def test_physical_scope_binds_confirmation_and_keeps_other_fields_diagnostic():
+    p = profile()
+    p['channels']['joint_pos']['fields'].append('effort')
+    p['channels']['joint_pos']['logical_name'] = 'joint/arm/left/feedback'
+    p['channels']['joint_pos']['field_metadata'] = {'effort': {
+        'quantity': 'current', 'unit': None, 'calibration_status': 'unknown'}}
+    p['channels']['unconfirmed'] = {'modality': 'joint_space', 'fields': ['position'], 'unit': None}
+    p['numeric_check'] = {'physical_fields': ['joint/arm/left/feedback.position']}
+    confirmed = confirm_numeric_profile(p, 'data-platform-owner')
+    assert confirmed['numeric_check']['physical_fields'] == ['joint_pos.position']
+    c = Channel('joint_pos', 'joint_space', ['position', 'effort'], 3, 'source.mcap', unit='rad',
+                source_kind='feedback', calibration_status='confirmed', value_available=True,
+                representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'},
+                field_metadata=p['channels']['joint_pos']['field_metadata'])
+    ep = SimpleNamespace(profile=confirmed, channels={'joint_pos': c},
+                         read_signal=lambda n, f: np.array([[0.], [1.], [0.]]))
+    results = {r['input_field']: r for r in algorithm().run(SimpleNamespace(episode=ep), {})}
+    assert results['position']['physical_checks_applied'] and results['position']['in_physical_scope']
+    current = results['effort']
+    assert current['finite'] and not current['physical_checks_applied']
+    assert not current['in_physical_scope'] and not current['assessment_complete']
+    assert next(c for c in current['check_coverage']['checks'] if c['id'] == 'other_physical')['status'] == 'outside_configured_scope'
+    assert all(not c.get('events') and c['outcome'] is None for c in current['check_coverage']['checks']
+               if c['id'] != 'finite')
+    declared = algorithm().run(SimpleNamespace(episode=ep), {'finiteness_only': ['joint_pos.effort']})
+    assert not next(r for r in declared if r['input_field'] == 'effort')['assessment_complete']
+    # Changing the field scope or a threshold invalidates the attestation.
+    assert numeric_review(confirmed, {'physical_fields': ['unconfirmed.position']})['status'] == 'stale'
+    assert numeric_review(confirmed, {'thresholds': {'joint': {'vel_threshold': 2}}})['status'] == 'stale'
+    with pytest.raises(ValueError, match='supported physical'):
+        confirm_numeric_profile(confirmed, 'owner', {'physical_fields': ['joint_pos.effort']})
+
+
+@pytest.mark.parametrize('scope', [[], ['missing.position'], ['joint_pos.missing'],
+                                     ['joint_pos.position', 'joint_pos.position']])
+def test_invalid_physical_scope_rejected(scope):
+    p = profile(); p['numeric_check'] = {'physical_fields': scope}
+    with pytest.raises(ValueError, match='physical_fields'):
+        load_profile(p)

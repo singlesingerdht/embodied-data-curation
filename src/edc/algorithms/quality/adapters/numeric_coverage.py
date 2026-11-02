@@ -90,6 +90,11 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
             'status': 'pending_confirmation' if blockers else 'unsupported', 'outcome': None,
             'reason': blockers or '现有 Numeric_Check 未实现此字段的物理检查，仅查有限值。'})
     rows.extend(extra_checks)
+    if not eligibility.get('in_physical_scope', True):
+        for row in rows:
+            if row['id'] != 'finite' and row['status'] != 'not_applicable':
+                row.update(status='outside_configured_scope', outcome=None,
+                           reason='Outside physical_fields; finiteness diagnostic does not constitute physical acceptance')
     return {'schema_version': 'dqs_numeric_coverage_v1', 'checks': rows,
         'coverage_complete': all(row['status'] in {'evaluated', 'not_applicable'} for row in rows),
         'legacy_completeness_scope': 'assessment_complete retains the existing configured-detector eligibility rule; use checks for actual subcheck coverage',

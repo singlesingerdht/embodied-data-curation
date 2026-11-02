@@ -9,9 +9,9 @@ INPUT_DESCRIPTIONS = {
                     '有效序列号为可选输入；不检查图像或轨迹内容，不自动删除记录。'),
     'Check_Timestamp': ('已有、单位明确的记录时间可逐路观察间隔；公共行时间只表示公共行节奏。',
                         '跨通道对齐评分另需独立时间轴、共同 clock、有效时间以及相机参考。'),
-    'Sync_Check': ('至少两条独立原始采集时间轴、有效秒制时间和共同 clock；公共行时间或合成时间不可替代。',),
-    'Root_Cause': ('至少两条可比较的独立记录时间轴及共同 clock；公共行时间不能用于跨通道归因。',),
-    'Action_Smoothness': ('末端反馈 position 换算为 m；native 使用自身时间，reference_channel 使用指定通道真实 acquisition 时间并要求共同 clock 或显式映射，reference_rate 只借参考通道帧间隔、在自身时间上取原始行。频率仅作标定检查，不生成时间。',),
+    'Sync_Check': ('默认需要独立采集时间轴及共同 clock；timeline.time_source=container 可检查同一记录时钟上的覆盖、对齐和记录时序稳定性，不证明采集同步。',),
+    'Root_Cause': ('需要至少两条可比较的独立时间轴；timeline.time_source=container 可关联记录断档，不能据此确定设备采集故障。',),
+    'Action_Smoothness': ('末端反馈 position 换算为 m；native 使用自身时间，reference_channel 使用指定通道真实 acquisition 或显式 container 时间并要求共同 clock 或显式映射，container 对齐只作诊断。reference_rate 只借 acquisition 帧间隔、在自身时间上取原始行。频率仅作标定检查，不生成时间。',),
     'Reset_Detection': ('关节 position；已确认的复位 reference、单位与正 tolerance，且与实际输入量纲一致。',),
     'Video_Integrity': ('可解码 RGB 或原视频；默认auto按读取器声明选择图像或视频入口；frames无需编码；video物化另需显式 FPS 或有效时间轴。',
                         '采样间隔和空间缩小比例单独记录；派生视频结果不能证明原编码或采集同步。'),
@@ -45,11 +45,14 @@ def cpu_parameters(ident):
                     'mode': {'type': 'string', 'enum': ['native', 'reference_channel', 'reference_rate'], 'default': 'native',
                              'description': 'reference_rate：只借参考通道自身时间轴上的帧间隔，在源自身时间轴上每隔 k 行取 1 行原始样本；不比较两个钟，不插值'},
                     'reference_channel': {'type': 'string', 'description': '参考通道的源 topic 或逻辑名；使用真实时间点'},
-                    'time_source': {'type': 'string', 'enum': ['acquisition', 'container']},
+                    'time_source': {'type': 'string', 'enum': ['acquisition', 'container'],
+                                    'description': 'container 显式选择同一源文件记录时间，仅输出动作诊断，不能形成采集时间质量结论'},
+                    'max_gap_s': {'type': 'number', 'exclusiveMinimum': 0,
+                                  'description': '允许线性插值的最大源样本间隔（秒）；超出不插值、不评估 jerk'},
                     'resample': {'type': 'string', 'enum': ['linear', 'keep_every_kth_row'], 'default': 'linear'},
                     'clock_policy': {'type': 'string', 'enum': ['require_common_or_explicit_mapping'],
                                      'default': 'require_common_or_explicit_mapping'}},
-                'description': '算法输入时间轴；参考模式仅接受 acquisition，不外推。缺共同 clock 或映射时 NEEDS_REVIEW'},
+                'description': '算法输入时间轴；reference_channel 可显式选择 container 作诊断，不外推。采集时间缺共同 clock 或映射时 NEEDS_REVIEW'},
             expected_rate_hz={'type': 'number', 'exclusiveMinimum': 0, 'default': 30,
                 'description': '滤波与阈值的标定频率，只检查真实时间轴，不生成均匀时间'},
             rate_tolerance_ratio={'type': 'number', 'minimum': 0, 'maximum': 1, 'default': .2,
@@ -64,6 +67,8 @@ def cpu_parameters(ident):
                 'description': 'method 沿用原方法（静止段两侧补帧后算抖动）；slow_only 只用原方法自己找出的真正慢下来的帧'
                                '（原方法已输出的 raw_stationary_jerk_rms），同一指标、同一阈值，原分数保留为 method_score'})
     if ident == 'Numeric_Check':
+        properties['physical_fields'] = {'type': 'array', 'minItems': 1, 'items': {'type': 'string'},
+            'description': '明确选择 channel.field 或 logical_name.field 的物理检查范围；范围外仅诊断，修改范围使数值确认失效'}
         properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后 Numeric 配置确认失效'}
         properties['freeze_min_duration_s'] = {'type': 'number', 'exclusiveMinimum': 0,
             'description': '动过之后数值连续不变短于这个秒数的，视为正常停住，不进复核；不填按原方法的样本数规则'}
@@ -78,6 +83,11 @@ def cpu_parameters(ident):
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:
         properties['target_clock'] = {'type': 'string',
             'description': '执行时使用的共同clock；仅应用配置中明确的仿射映射，不重采样、不修改原时间或时间来源'}
+    if ident in {'Sync_Check', 'Root_Cause'}:
+        properties['timeline'] = {'type': 'object', 'additionalProperties': False,
+            'required': ['time_source'], 'properties': {
+                'time_source': {'type': 'string', 'enum': ['acquisition', 'container']}},
+            'description': 'container 显式使用各通道记录时间；要求共同记录 clock，不平移时钟，不证明采集同步或采集根因；不填保持原行为'}
     if ident == 'Check_Timestamp':
         properties['scoring'] = {'type': 'object', 'description': '本机型的评分参数（原方法命令行选项）：'
             'absolute_error_floor_ms、dt_cv_no_penalty、dt_cv_zero、long_gap_ratio_warning、long_gap_ratio_zero、iou_threshold'}

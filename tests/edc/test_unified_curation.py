@@ -50,6 +50,15 @@ def records(output, ident):
             for line in p.read_text().splitlines() if line]
 
 
+def test_config_recommendation_respects_explicit_workflow_algorithms(tmp_path):
+    from edc.configuration import recommend_config
+    cfg = fixture(tmp_path)
+    result = recommend_config(cfg)
+    pool = result
+    assert all([r['algorithm']['id'] for r in ep['algorithms']] == ['Action_Smoothness']
+               for ep in pool['episodes'])
+
+
 @pytest.mark.parametrize('arms,selection,expected', [
     (('main',), 'all', ['main']), (('left', 'right'), 'all', ['left', 'right']),
     (('left', 'right'), ['left'], ['left']), (('left', 'right'), ['right'], ['right'])])

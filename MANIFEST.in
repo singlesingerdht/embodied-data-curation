@@ -5,6 +5,7 @@ recursive-include examples *.py *.yaml *.json *.toml *.md
 recursive-include tests *.py
 recursive-include scripts *.py
 recursive-include docs *.md *.json
+include docs/validation/x1_pro_mcap_20261102/verify.py
 recursive-include docs/validation *.log
 prune docs/framework/evidence
 recursive-include .github *.yml

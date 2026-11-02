@@ -217,7 +217,8 @@ def recommend_config(config, stage=None):
     if chosen is None:
         raise ValueError('Unknown workflow stage')
     with open_config_dataset(workflow['config_snapshot']) as dataset:
-        result = recommend(dataset, chosen.get('params', {}), workflow['unit_policy'])
+        result = recommend(dataset, chosen.get('params', {}), workflow['unit_policy'],
+                           algorithm_ids=chosen['algorithms'])
     result.update(stage=chosen['id'], config_snapshot=workflow['config_snapshot'],
                   notice='Input compatibility only. Runtime value recommendations are recomputed after the quality gate.')
     return result

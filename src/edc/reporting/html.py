@@ -1,5 +1,5 @@
 """Readable offline presentation of recorded results; never recomputes judgments."""
-from collections import Counter, OrderedDict
+from collections import Counter
 import html
 import json
 from pathlib import Path
@@ -430,14 +430,14 @@ def architecture_panel():
         + '</div><p class="muted">处理状态与数据判断独立。各算法保留自己的评分，不生成跨算法总分；未完成的评估不能标为整体合格。</p></section>')
 
 
-def record_detail(root, record, profile):
+def record_detail(root, record, profile, *, record_ref=None):
     ident = record['algorithm']['id']
     items = reports(record)
     parts = []
     if record.get('input_scope'):
         parts.append('<p>本次输入范围：' + esc(json.dumps(record['input_scope'], ensure_ascii=False)) + '</p>')
-        if not record.get('scope_complete', True):
-            parts.append('<p class="notice">声明的机械臂输入不完整；已有结果不代表所选范围全部达标。</p>')
+    if not record.get('scope_complete', True):
+        parts.append('<p class="notice">声明的机械臂输入不完整；已有结果不代表所选范围全部达标。</p>')
     if record['status'] != 'completed':
         parts.append(f'<p class="notice">{esc(reason_text(record))}</p>')
     elif items:
@@ -505,8 +505,14 @@ def record_detail(root, record, profile):
         links.append(f'<a href="{esc(quote(ref, safe="/"))}">证据 {index+1} · {esc(Path(ref).name)}</a>')
     if links:
         parts.append('<nav class="evidence">' + ' '.join(links) + '</nav>')
-    parts.append('<details class="raw"><summary>开发者信息：原始记录 JSON</summary><pre>'
-                 + esc(json.dumps(record, ensure_ascii=False, indent=2)) + '</pre></details>')
+    raw = json.dumps(record, ensure_ascii=False, indent=2)
+    if record_ref:
+        safe_path(root, record_ref)
+        parts.append(f'<p>{"" if len(raw) <= 65536 else "完整原始记录较大，按需打开："}'
+                     f'<a href="{esc(quote(record_ref, safe="/"))}">原始算法记录 JSONL</a></p>')
+    if not record_ref or len(raw) <= 65536:
+        parts.append('<details class="raw"><summary>开发者信息：原始记录 JSON</summary><pre>'
+                     + esc(raw) + '</pre></details>')
     numeric_scores = [x.get('score') for x in items]
     score_label = ''
     if record['status'] == 'completed' and numeric_scores and all(type(x) in (int, float) for x in numeric_scores):
@@ -523,118 +529,14 @@ def record_detail(root, record, profile):
 
 
 def render_run(root, entry, index, latest):
-    snapshot = read_json(root, entry.get('run'))
-    selection = read_json(root, entry.get('selection'))
-    selections = {str(x['episode_id']): x for x in selection} if isinstance(selection, list) else {}
-    groups = OrderedDict()
-    for ref in entry['records']:
-        for line in safe_path(root, ref).read_text(encoding='utf-8').splitlines():
-            item = json.loads(line)
-            key = (item['object']['type'], str(item['object']['id']))
-            groups.setdefault(key, []).append(item)
-    counts = Counter(item['status'] for records in groups.values() for item in records)
-    total, done = sum(counts.values()), counts['completed']
-    incomplete = total - done
-    from edc.execution.completeness import record_complete
-    partial = sum(not record_complete(r)
-                  for records in groups.values() for r in records if r['status'] == 'completed')
-    dataset = snapshot.get('dataset') or {}
-    profile = snapshot.get('profile') or {}
-    notes = ('本次评估尚未完成。未执行的算法没有质量结论，不能将已完成项目的分数当作整体合格。'
-             if incomplete or partial else '所选算法均已执行。执行完成不等于数据合格，请查看各项数据判定。'
-             if total else '本次运行尚无算法记录。')
-    parts = [f'<div class="run-heading"><div><p class="eyebrow">{"最近一次运行" if latest else "历史运行"}</p>'
-             f'<h2>{esc(dataset.get("id") or "数据质量评估")}</h2></div>'
-             f'<span class="muted">运行 {esc(entry.get("run_id", index))}</span></div>',
-             '<div class="stats">' + ''.join(f'<div><span>{label}</span><strong>{number}</strong></div>' for label, number in (
-                 ('本次评估对象', len(groups)), ('已完成的算法记录', done), ('未完成的算法记录', incomplete),
-                 ('执行失败', counts['processing_error']))) + '</div>',
-             f'<p class="notice">{esc(notes)}</p>',
-             '<p class="muted">覆盖范围仅限本次列出的对象与算法，不代表源目录或整个数据集已完成评估。各算法独立报告，不生成总分。</p>']
-    pool_ref = entry.get('recommendations') or (snapshot.get('recommendations') or {}).get('path')
-    pool = read_json(root, pool_ref) if pool_ref else None
-    parts.append(configuration_panel(profile, snapshot.get('params') or {}, snapshot.get('unit_normalization'), pool))
-    parts.append(numeric_panel([r for records in groups.values() for r in records], root))
-    if dataset.get('source'):
-        parts.append(f'<details class="source"><summary>查看数据来源与配置</summary><p>{esc(dataset["source"])}</p>'
-                     f'<p>机器人配置：{esc(profile.get("id", "未提供"))} · 版本 {esc(profile.get("version", "未知"))}</p></details>')
-    for (object_type, object_id), records in groups.items():
-        note = ('数据集级结果单独报告，不据此生成逐轨迹筛选结论。' if object_type == 'dataset'
-                else selection_note(selections.get(object_id)))
-        parts.append(f'<section class="episode" data-section="algorithms"><h3>评估对象 <span>{esc(object_id)}</span></h3>'
-                     f'<p class="assessment">{esc(note)}</p>')
-        completed = [r for r in records if r['status'] == 'completed']
-        pending = [r for r in records if r['status'] != 'completed']
-        if completed:
-            parts.append('<h4>已有结果 <span>点击算法查看逐字段评分与证据</span></h4>')
-            parts.extend(record_detail(root, r, profile) for r in completed)
-        if pending:
-            parts.append('<h4>未完成的检查 <span>以下项目没有质量评分</span></h4><div class="scroll"><table>'
-                         '<tr><th>算法</th><th>处理状态</th><th>缺少什么／失败原因</th></tr>')
-            for r in pending:
-                ident = r['algorithm']['id']
-                parts.append(f'<tr><td>{esc(NAMES.get(ident, ident))}<span class="muted block">{esc(ident)}</span></td>'
-                             f'<td>{badge(r["status"])}</td><td>{esc(reason_text(r))}</td></tr>')
-            parts.append('</table></div><details class="subdetail"><summary>查看未完成项目的原始记录</summary>')
-            parts.extend(record_detail(root, r, profile) for r in pending)
-            parts.append('</details>')
-        parts.append('</section>')
-    for ref, title in ((entry.get('selection'), '筛选清单'), (entry.get('run'), '本次配置与版本'),
-                       (entry.get('media_manifest'), '本次媒体复用清单')):
-        if ref:
-            safe_path(root, ref)
-            parts.append(f'<a class="footer-link" href="{esc(quote(ref, safe="/"))}">{title}</a>')
-    body = ''.join(parts)
-    if latest:
-        return '<section class="run" data-section="overview">' + body + '</section>'
-    return f'<details class="history"><summary>历史运行 · {esc(entry.get("run_id", index))}</summary>{body}</details>'
-
-
-STYLE = '''
-:root{color-scheme:light;--ink:#192d3d;--muted:#586c7c;--line:#dce5eb;--brand:#216a72}
-*{box-sizing:border-box}body{margin:0;background:#f3f6f8;color:var(--ink);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:1200px;margin:36px auto;padding:0 24px 48px;overflow-wrap:anywhere}header{margin-bottom:28px}h1{font-size:30px;margin:0 0 6px}
-h2{font-size:23px;margin:0}h3{font-size:18px;margin:0 0 8px}h3 span{font-weight:500;overflow-wrap:anywhere}
-h4{margin:24px 0 10px;font-size:16px}h4 span{font-weight:400;font-size:13px;color:var(--muted);margin-left:12px}
-p{margin:10px 0}.muted{color:var(--muted);font-size:13px}.block{display:block}.eyebrow{text-transform:uppercase;color:var(--brand);font-weight:700;font-size:12px;margin:0 0 6px}
-.run{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px}.run-heading{display:flex;gap:20px;justify-content:space-between;align-items:center;flex-wrap:wrap}
-.run-heading>div{min-width:0;max-width:100%}.run-heading h2{overflow-wrap:anywhere}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:24px 0}.stats>div{padding:18px;background:#f4f8fa;border-radius:10px}.stats span{display:block;font-size:13px;color:var(--muted)}.stats strong{display:block;font-size:30px;font-weight:650;margin-top:4px}
-.notice{padding:14px 18px;border-left:4px solid #ba791c;background:#fff7e9;color:#684810;border-radius:4px}
-.episode{border-top:1px solid var(--line);margin-top:24px;padding-top:24px}.assessment{color:var(--muted)}
-.algorithm{border:1px solid var(--line);border-radius:10px;margin:10px 0;overflow:hidden}.algorithm>summary{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:16px 18px;background:#fafcfd;cursor:pointer;list-style:none}.algorithm>summary:before{content:'▸';color:var(--brand)}.algorithm[open]>summary:before{content:'▾'}.algorithm-id{margin-left:10px}.brief{flex-basis:100%;padding-left:24px;font-size:14px}
-.score-label{font-size:13px;font-weight:650;color:var(--ink)}
-.badge{display:inline-block;white-space:nowrap;font-size:12px;font-weight:600;padding:3px 9px;border-radius:5px}.done{background:#e6f3f2;color:#185e61}.pending{background:#fff0d9;color:#805210}.error{background:#fde8e7;color:#973737}.detail-body{padding:16px 18px}
-.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}td,th{padding:12px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{background:#f3f7f9;font-weight:600}td:first-child{max-width:380px}.number{font-variant-numeric:tabular-nums;font-weight:650}
-summary{cursor:pointer}summary:focus-visible,a:focus-visible{outline:3px solid #5098a8;outline-offset:3px}.subdetail,.raw,.source{margin-top:12px;font-size:13px}.subdetail>summary,.raw>summary,.source>summary{padding:7px 0;color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6f8;padding:14px;max-height:480px;overflow:auto;font-size:12px}
-a{color:#155f83;text-underline-offset:3px}.evidence{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px}.footer-link{display:inline-block;margin:24px 20px 0 0;font-size:13px}.history{margin-top:18px;padding:22px;background:white;border:1px solid var(--line);border-radius:12px}.history>summary{font-weight:600;margin-bottom:12px}
-@media(max-width:700px){main{margin:20px auto;padding:0 12px 24px}.run{padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.algorithm-id{display:block;margin-left:0}.detail-body{padding:12px}.run-heading{display:block}.run-heading>.muted{display:block;margin-top:8px;overflow-wrap:anywhere}}
-@media print{body{background:white}main{max-width:none;margin:0}.run{border:0;padding:0}.stats{break-inside:avoid}.algorithm{break-inside:avoid}.raw,.history{display:none}}
-.report-nav,.segments{display:flex;gap:12px;flex-wrap:wrap}.report-section{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
-.architecture-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}.architecture-flow article{border-top:3px solid var(--brand);padding:14px 0}.architecture-flow p{font-size:13px;color:var(--muted)}
-.media-channel{margin:20px 0}.media-channel>summary{padding:10px 0;font-weight:600}.media-viewer{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}.media-viewer>div{min-width:0}.media-viewer p{overflow-wrap:anywhere}video{width:100%;background:#15222a}.evidence-photos{display:grid;grid-template-columns:1fr 1fr;gap:12px}.evidence-photos figure{margin:0}.evidence-photos img{width:100%}figcaption{font-size:13px;color:var(--muted)}button{font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);cursor:pointer}
-@media(max-width:700px){.architecture-flow,.media-viewer{grid-template-columns:1fr}.numeric-fields{min-width:800px}}
-'''
+    """Compatibility helper; all runs now use the shared batch layout."""
+    from edc.reporting.catalog import run_page
+    body = run_page(root, entry, index, fragment=True)
+    return body if latest else (f'<details class="history"><summary>历史运行 · {esc(entry.get("run_id", index))}'
+                                '</summary>' + body + '</details>')
 
 
 def render(output, catalog):
-    entries = catalog.get('runs', [])
-    body = ''.join(render_run(output, entry, index, index == len(entries)-1)
-                   for index, entry in reversed(list(enumerate(entries))))
-    if not body:
-        body = '<p class="notice">暂无评估记录。请先运行所需算法。</p>'
-    return ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            '<meta name="edc-report-template" content="dqs_report_v2">'
-            '<title>数据质量评估报告</title><style>' + STYLE + '</style></head><body><main>'
-            '<header><p class="eyebrow">数据集 · 算法评估</p><h1>数据质量报告</h1>'
-            '<p class="muted">先看完成情况与主要发现，再展开算法查看细节。原始结果和证据完整保留。</p>'
-            '<nav class="report-nav"><a href="#runs">检查与参数确认</a><a href="#media">视频证据</a><a href="#architecture">框架流程</a></nav></header>'
-            + '<div id="runs">' + body + '</div>' + media_panel(output, catalog.get('presentation'))
-            + architecture_panel() + '</main><script data-edc-report="media">'
-            'document.addEventListener("click",event=>{const button=event.target.closest("button[data-video]");if(!button)return;'
-            'const video=document.getElementById(button.dataset.video),state=button.closest(".media-viewer").querySelector(".seek-state");'
-            'const apply=()=>{video.currentTime=Number(button.dataset.seconds);};'
-            'video.addEventListener("seeked",()=>{state.textContent="已定位到 "+video.currentTime.toFixed(3)+" 秒，点击播放器播放。";},{once:true});'
-            'if(video.readyState>=1)apply();else video.addEventListener("loadedmetadata",apply,{once:true});});'
-            '</script></body></html>')
+    """Compatibility forwarding for callers of the previous internal renderer."""
+    from edc.reporting.catalog import render as render_catalog
+    return render_catalog(output, catalog)

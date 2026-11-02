@@ -11,7 +11,7 @@ def validate_options(params):
     if mode in {'reference_channel', 'reference_rate'}:
         if not reference:
             raise ValueError(f'{mode} mode requires timeline.reference_channel')
-        if timeline.get('time_source', 'acquisition') != 'acquisition':
+        if mode == 'reference_rate' and timeline.get('time_source', 'acquisition') != 'acquisition':
             raise ValueError(f'{mode} mode requires acquisition time, not container/playback time')
     elif mode != 'native':
         raise ValueError(f'Unknown timeline mode: {mode}')
@@ -59,6 +59,21 @@ def _axis(channel, required=None):
     return values
 
 
+def _recorded_axis(episode, channel, required):
+    if required != 'container':
+        return _axis(channel, required), channel.clock, channel.time_source, None
+    from edc.data.ir.time_axis import time_axis
+    # The reference contributes time only and may be outside the pose selection.
+    view = episode
+    while channel.name not in view.channels and hasattr(view, '_episode'):
+        view = view._episode
+    axis = time_axis(view, channel.name, time_source='container')
+    values = axis.output
+    if len(values) < 4 or np.any(np.diff(values) <= 0):
+        raise ValueError(f'{channel.name}: container timeline must be strictly increasing with >=4 samples')
+    return values, axis.params['clock'], 'container', axis.describe()
+
+
 def timeline_plan(episode, channel, params):
     """Metadata-only gate shared by recommendation and actual execution."""
     validate_options(params)
@@ -79,7 +94,11 @@ def timeline_plan(episode, channel, params):
                              'source_mapping': copy.deepcopy(reference.source_mapping),
                              'time_evidence': copy.deepcopy(reference.time_evidence)}
     try:
-        source = _axis(channel, 'acquisition' if mode != 'native' else options.get('time_source'))
+        required = options.get('time_source', 'acquisition' if mode != 'native' else None)
+        source, source_clock, source_origin, source_axis = _recorded_axis(episode, channel, required)
+        plan.update(source_clock=source_clock, source_time_source=source_origin)
+        if source_axis is not None:
+            plan['source_time_axis'] = source_axis
         target = source
         plan['source_timestamps_s'] = source.tolist()
         plan['source_time_range_s'] = [float(source[0]), float(source[-1])]
@@ -101,20 +120,22 @@ def timeline_plan(episode, channel, params):
         if mode == 'reference_channel':
             if reference is None:
                 raise ValueError('Reference timeline channel is unavailable; no fallback allowed')
-            target = _axis(reference, 'acquisition')
-            plan.update(reference_clock=reference.clock, reference_time_source=reference.time_source,
+            target, reference_clock, reference_origin, reference_axis = _recorded_axis(episode, reference, required)
+            if reference_axis is not None:
+                plan['reference_time_axis'] = reference_axis
+            plan.update(reference_clock=reference_clock, reference_time_source=reference_origin,
                         reference_frames=reference.count,
                         reference_time_range_s=[float(target[0]), float(target[-1])],
                         reference_timestamps_s=target.tolist(), clock_status='unconfirmed')
             from edc.data.transforms import RobotTransforms
             try:
                 mapped = RobotTransforms(episode.profile).clock(
-                    source, channel.clock, reference.clock, time_source=channel.time_source)
+                    source, source_clock, reference_clock, time_source=source_origin)
             except ValueError as exc:
                 plan['issues'].append(f'共同 clock 或显式映射未确认：{exc}')
                 return plan
             source = mapped.output
-            plan.update(clock_status='common_clock' if channel.clock == reference.clock else 'explicit_mapping',
+            plan.update(clock_status='common_clock' if source_clock == reference_clock else 'explicit_mapping',
                         clock_transform=mapped.params, mapped_source_timestamps_s=source.tolist())
             # Only true reference rows inside source support are eligible; never extrapolate.
             rows = np.flatnonzero((target >= source[0]) & (target <= source[-1]))
@@ -124,6 +145,9 @@ def timeline_plan(episode, channel, params):
             target = target[rows]
             if len(target) < 4:
                 raise ValueError('Insufficient overlapping reference timestamps; extrapolation forbidden')
+            # Validate interpolation gaps before reading payloads or evaluating jerk.
+            from edc.data.transforms import resample
+            resample(np.zeros(len(source)), source, target, method='linear', max_gap=options.get('max_gap_s'))
         if len(target) < params.get('window_length', 11):
             raise ValueError('Evaluation rows are fewer than window_length; no silent filter-window change')
         dt = np.diff(target)
@@ -141,6 +165,9 @@ def timeline_plan(episode, channel, params):
         if not compatible:
             plan['issues'].append(f'实际中位频率 {rate:.3f} Hz 与标定 {expected:g} Hz 不匹配；'
                                   '诊断 jerk 不用于该阈值的质量结论，请选择参考时间轴或提供已标定参数')
+        if source_origin == 'container':
+            plan['assessment_scope'] = 'container_recording'
+            plan['time_scope_note'] = '本项使用容器记录时间；不证明设备采集同步或采集时间上的动作质量'
     except ValueError as exc:
         plan['issues'].append(str(exc))
     return plan
@@ -165,7 +192,8 @@ def assess(episode, channel, params, context):
         else:
             timestamps = np.asarray(plan['target_timestamps_s'])
             if plan['mode'] == 'reference_channel':
-                transformed = resample(positions, plan['mapped_source_timestamps_s'], timestamps, method='linear')
+                transformed = resample(positions, plan['mapped_source_timestamps_s'], timestamps,
+                                       method='linear', max_gap=(params.get('timeline') or {}).get('max_gap_s'))
                 positions = transformed.output
                 plan['source_mapping'] = transformed.source_mapping
                 plan['resampling_params'] = transformed.params
@@ -174,9 +202,9 @@ def assess(episode, channel, params, context):
                     source = source._episode
                 if hasattr(source, '_clock_evidence'):
                     source._clock_evidence.append({'channel': channel.name,
-                        'source_clock': channel.clock, 'target_clock': plan['reference_clock'],
-                        'params': plan['clock_transform'], 'original_timestamps_s': channel.timestamps,
-                        'time_source': channel.time_source, 'rows': 'identity',
+                        'source_clock': plan['source_clock'], 'target_clock': plan['reference_clock'],
+                        'params': plan['clock_transform'], 'original_timestamps_s': plan['source_timestamps_s'],
+                        'time_source': plan['source_time_source'], 'rows': 'identity',
                         'resampled': False, 'resampling_evidence': 'timeline.json'})
             elif plan['mode'] == 'reference_rate':
                 positions = positions[plan['source_rows']]  # Original samples only; no interpolation.
@@ -216,7 +244,7 @@ def assess(episode, channel, params, context):
     result['timeline'] = {k: v for k, v in plan.items() if k not in {
         'source_timestamps_s', 'mapped_source_timestamps_s', 'reference_timestamps_s',
         'target_timestamps_s', 'source_mapping', 'resampling_params', 'reference_rows', 'excluded_reference_rows',
-        'source_rows'}}
+        'source_rows', 'source_time_axis', 'reference_time_axis'}}
     result['timeline']['evidence'] = 'timeline.json'
     result.update(input_channel=channel.name, side=channel.side,
                   input=channel.source, num_poses=plan.get('evaluated_frames', 0))

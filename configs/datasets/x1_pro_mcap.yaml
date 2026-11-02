@@ -1,0 +1,18 @@
+path: /mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50
+id: x1_pro_mcap_reference
+version: '1'
+tasks: []
+backend: auto
+episodes:
+- id: x1_pro_reference_0001
+  path: testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap
+  format: mcap
+  selector: {}
+  metadata:
+    task_status: unconfirmed
+    source_sha256: 95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2
+metadata:
+  origin: Existing server capture; read-only, not distributed with repository
+  license: unknown
+  clock_relationship: unknown; no acquisition clock mapping
+  episode_boundary: Explicit one-file episode supplied by dataset owner

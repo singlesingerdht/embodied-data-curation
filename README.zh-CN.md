@@ -62,107 +62,84 @@ flowchart TD
 
 图中 GPU alignment 表示未来实现位置，当前公共包不依赖外部 GPU 算法或模型。默认运行当前可运行的质量方法；不可运行项保留原因，已执行范围之外不声称通过。价值评估通过显式添加 value 阶段选择。
 
-## 快速开始
+## 快速开始：X1 Pro MCAP
 
-以 X1 Pro 为例，数据是 04 格式：每条数据一个文件夹，里面有 1 个轨迹 JSON 和 3 个 MP4（样例见 `input_example/04_episode_json_mp4_x1pro`）。
+`data-platform` 分支基于 `leju-kuavo` 的 `87c5e6f`。本例直接读取服务器上的真实 MCAP，使用内嵌图像和原始数值信号；无需先导出 JSON 或 MP4。数据不随仓库发布，许可仍未知。
 
-### 第 1 步：准备环境（只做一次）
-
-需要 Python 3.10 或更新版本。在仓库根目录运行：
+需要 Python 3.10+，在本分支仓库根目录执行：
 
 ```bash
-python -m venv .venv                          # 建一个项目专用的 Python 环境
-.venv/bin/pip install -e '.[formats,test]'    # 把框架和要用的库装进去
+python -m venv .venv
+.venv/bin/pip install -e '.[formats]'
+. .venv/bin/activate
 ```
 
-服务器副本已经装好，跳过这一步。之后的命令都在仓库根目录运行：
+样例为一条显式登记的 Episode（`x1_pro_reference_0001`），保留全部 32 路源通道：
+
+```text
+/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap
+```
+
+其他环境将此文件放入本地目录后，只需修改 `configs/datasets/x1_pro_mcap.yaml` 的 `path`（文件所在目录）。若文件改名，同时修改 `episodes[0].path`。显式 ID 与 selector 保留；任务名称尚未确认，`tasks: []`，不会从目录名推断。
+
+依次检查配置、查看九项输入推荐、执行并打开报告：
 
 ```bash
-cd /mnt/public/rxs/code/embodied-data-curation
+edc config check configs/x1_pro.yaml
+edc config recommend configs/x1_pro.yaml
+edc config run configs/x1_pro.yaml --output results/x1-pro-mcap
+python -m http.server 8000 --directory results/x1-pro-mcap
 ```
 
-### 第 2 步：检查数据
+浏览器打开 <http://localhost:8000/report.html>；远程服务器可通过 VS Code Remote-SSH 的“端口”面板转发 8000 端口，打开转发后的本地地址并加上 `/report.html`。保留整个结果目录，避免证据链接失效。
 
-```bash
-.venv/bin/edc batch /mnt/public/datasets/x1pro/pen_in_cup --robot x1pro_episode --jobs 8 --output reports/pen_in_cup.html
-```
+**单条与多条轨迹共用 batch 报告样式**：`config run`、`edc run` 和 `edc batch` 都先展示整体结论、逐条算法表与按算法归类的问题。本例只有一条轨迹，表格显示一行；点击轨迹名称展开原版逐条详情。页面沿用 `leju-kuavo` 参考样例的四项结论说明与四个主体栏目，可判定项显示通过／复核／可救／排除，缺少判定条件的项显示不适用。完整记录与证据保存在 `_runs`，由 `catalog.json` 索引。原有 `report.html` 路径不变，已有输出可运行 `edc report results/x1-pro-mcap` 更新展示，无需重跑算法。
 
-- `/mnt/public/datasets/x1pro/pen_in_cup`：要检查的数据文件夹，会往里一层层找出每条数据。
-- `--robot x1pro_episode`：用 X1 Pro 的配置。
-- `--jobs 8`：同时检查 8 条。
-- `--output`：报告保存的位置。
+本样例的预期结果是**生成报告，但暂不放行**：九项都有状态记录，`Action_Smoothness` 分左右臂记录，`Sync_Check` 和 `Root_Cause` 显式使用记录时间执行诊断，采集同步及设备根因不据此判定。工作流 `delivery_status: suspended`，所以 `config run` 返回退出码 **1**；这表示未满足放行条件，具体执行错误须看各项状态，不能将退出码当成九项都运行失败。当前实测与验证命令见[验收记录](docs/validation/x1_pro_mcap_20261102/README.md)。
 
-### 第 3 步：看报告
-
-在自己电脑的终端里把报告下载下来，双击打开：
-
-```bash
-scp -P 40112 root@113.56.214.18:/mnt/public/rxs/code/embodied-data-curation/reports/pen_in_cup.html 桌面路径
-```
-
-每条数据一行，给出结论（建议保留、建议复核、可救、含建议排除项等）；九项检查各一格，点开能看到原因和该去看的时刻。
-
-## 真实数据批量质检（`edc batch`）
-
-一条命令检查一批真实数据：逐条运行九项质量算法，汇总成一份 HTML 报告（同名 `.json` 是数据版，便于统计）。以下命令在仓库根目录运行；`.venv/bin/edc` 是仓库自带环境里的 `edc` 程序，写全路径以免用到别处安装的版本。
-
-已配置并签名的机器人（每个机器人一份配置；限位、速度上限、Home 等都写在各自配置里，互不影响）：
-
-| 机器人 | `--robot` | 数据格式 | 配置 |
-|---|---|---|---|
-| 乐聚 KUAVO | `leju_kuavo` | ROS1 `.bag` | `configs/robots/leju_kuavo.yaml`，参数 `leju_kuavo/params.json`，签名 `leju_kuavo_signed.yaml` |
-| X1 Pro（自变量 Quanta X1 Pro） | `x1pro_episode` | 每条一个目录：轨迹 JSON（`robot-bridge-v260630`）＋ 3 路 MP4 | `configs/robots/x1pro_episode.yaml`，参数 `x1pro_episode/params.json`，签名 `x1pro_episode_signed.yaml` |
-
-```bash
-# 文件夹（递归查找 .bag 和单条数据目录；软链接解析后去重）或单个文件，可以给多个
-.venv/bin/edc batch /mnt/public/datasets/x1pro/pen_in_cup --robot x1pro_episode --jobs 8 --output reports/pen_in_cup.html
-
-# 按路径清单（每行一条数据）
-mapfile -t L < list.txt
-.venv/bin/edc batch "${L[@]}" --robot x1pro_episode --jobs 8 --output reports/sample.html
-```
-
-| 选项 | 含义 |
+| 配置文件 | 修改内容 |
 |---|---|
-| `--robot` | `configs/robots/` 下的机器人名；自动使用 `<名字>_signed.yaml` 和 `<名字>/params.json` |
-| `--jobs` | 同时检查几条数据（默认全部同时）；共享服务器建议 8–16 |
-| `--output` | 报告文件；旁边另存同名 `.json` |
-| `--keep` | 保留每条数据的完整运行结果（`edc run` 输出）到这个新文件夹，用于深挖 |
-| `--params` | 换一份算法参数文件（默认用机器人自己的 `params.json`） |
+| `configs/x1_pro.yaml` | 四类配置的统一入口 |
+| `configs/datasets/x1_pro_mcap.yaml` | 数据位置、稳定 Episode ID、来源、未确认任务 |
+| `configs/robots/x1_pro.yaml` | 双臂、32 路语义、单位、独立指令／反馈限位、复位标定及数值确认 |
+| `configs/algorithms/x1_pro_mcap.yaml` | 头部帧参考、0.1 秒最大插值跨度、物理字段范围、图像检查参数 |
+| `configs/workflows/x1_pro_mcap.yaml` | 显式选择九项 CPU 检查，保留缺输入项 |
 
-报告里每条数据的结论：建议保留／建议复核／可救（原因清楚能修：时钟固定偏差，或 X1 关节读数卡住、可用末端位姿逆运动学恢复）／含建议排除项／未评估完／运行失败。每一项都写明原因和该看的时刻。
+主臂关节是指令，从臂是反馈；位置 rad、速度 rad/s 已确认。主臂速度与位置求导不一致的诊断保留，不以求导替代用户确认。机械臂 effort 是电流，源单位未知，不进行力矩检查。物理数值检查限定四路主／从臂的 position、velocity 与左右反馈末端 XYZ，共 10 个字段；其他数值只做有限值诊断。阈值和字段范围绑定 `data-platform-owner` 确认，修改后原确认失效，须由配置负责人核对并重新确认。
 
-**X1 Pro 全量**（服务器，按任务目录各出一份报告，断了重跑同一命令会接着跑；只含软链接、指向其他目录数据的文件夹自动跳过）：
+头部 RGB 每帧的 MCAP `log_time` 是本例的中间参考时间。左右反馈 XYZ 按同一文件的容器时间线性插值，仅取重叠的真实头部帧，不外推，不跨越大于 0.1 秒的源间隔；图像直接读取原帧。**设备采集时钟关系未知，容器对齐不证明采集同步**。动作平滑度、同步与归因按所选记录时间输入保留原算法的评分和判定；同步与归因配置 `timeline: {time_source: container}`，检查记录覆盖、相对时序稳定性和关联断档。设备采集同步与设备故障根因仍未评估，不能把记录时序问题直接认定为采集故障。九项均有记录不意味着九项全部通过；原始采集／容器纳秒时间、源行、插值权重均保留。
 
-```bash
-tmux new -s x1run        # 离开：Ctrl+B 后按 D；回来：tmux attach -t x1run
-bash /mnt/public/rxs/code/edc_tools/x1pro_full_run.sh x1pro_full_v2 16   # 输出到 reports/x1pro_full_v2/
-```
+输出从 `results/x1-pro-mcap/catalog.json` 发现：`report.html` 展示结果，`_workflows/<id>/resolved-config.json` 保存工作流与生效配置，`_runs/<id>/run.json` 保存运行参数和版本，各算法目录保存 `records.jsonl`、`errors.jsonl` 与 `artifacts/`。动作插值证据在 `Action_Smoothness/artifacts/<id>/timeline.json`，同步／归因的源记录时间与行映射在各自 `artifacts/<id>/container_timeline.json`。源 MCAP 只读，输出写到独立目录。
 
-脚本副本也在 `input_example/tools/x1pro_full_run.sh`。约 1 万条不重复数据，16 条并行约 1.5 小时。
-
-**X1 Pro 配置要点**：所有数据和画面共用一条行时间（导出时已逐帧对齐），时间戳对齐只查跳帧，采集同步与时间异常归因记为不适用；复位检测用末端位置（容差 5 cm），数据集剪辑记录表明是切片时只查真正的录制开头；关节限位与速度上限来自厂家 URDF（GitHub `X-Square-Robot/sdk_arm_6a` 的 `zbl_arm_6a.urdf.xacro`）；动作平滑度只算原方法找出的真正慢下来的帧；关节读数卡住而末端在动判“可救”。
-
-**测试与重签**：
+可选导出独立配置（输出文件须尚不存在）：
 
 ```bash
-.venv/bin/python -m pytest -q -p no:cacheprovider tests/edc/test_x1pro_episode.py   # X1 专项
-.venv/bin/python -m pytest -q -p no:cacheprovider tests                             # 全套
-
-# 改了机器人配置里的阈值、通道或标定后，旧签名失效：先把旧签名改名留底，再用自己的名字重签
-mv configs/robots/x1pro_episode_signed.yaml configs/robots/x1pro_episode_signed_<日期>.yaml
-.venv/bin/edc robot confirm-numeric --profile configs/robots/x1pro_episode.yaml \
-    --params configs/robots/x1pro_episode/params.json --reviewer <名字> --output configs/robots/x1pro_episode_signed.yaml
+edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
 ```
+
+## 补充批处理：同一 MCAP
+
+以下示例复用 `x1_pro.yaml` 机器人和 `configs/robots/x1_pro/params.json` 算法参数（与统一配置的九项参数一致）。明确传入 MCAP 文件路径；当前目录递归发现不扫描 `.mcap`。
+
+```bash
+edc batch \
+  '/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap' \
+  --robot x1_pro --jobs 1 \
+  --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
+```
+
+批报告为 `results/x1-pro-batch.html` 和同名 `.json`；`--keep` 保存每条数据的完整结果及证据，目标目录须尚不存在。可以传入多个明确的 MCAP 文件路径。新批次须先核对单位、硬件、标定与时间声明的适用性；本例确认不能直接证明其他采集批次适用。批入口按文件名生成 Episode ID；需要自定义稳定 ID 时使用上面的统一配置。
+
+原有 JSON＋MP4 格式仍使用独立的 `x1pro_episode` 配置，与 MCAP 的时钟声明、复位容差不同，详见 [JSON＋MP4 配置](configs/robots/x1pro_episode.yaml)。无需真实数据的 SDK 演示仍可运行 `python examples/curation/make_example.py --output /tmp/edc-demo`，该数据明确为合成数据。
 
 ## 配置与机器人复用
 
 ```yaml
 schema_version: edc_config_v1
-dataset: {ref: datasets/microwave.yaml}
+dataset: {ref: datasets/x1_pro_mcap.yaml}
 robot: {ref: robots/x1_pro.yaml}
-algorithms: {ref: algorithms/quality.yaml}
-workflow: {ref: workflows/curation.yaml}
+algorithms: {ref: algorithms/x1_pro_mcap.yaml}
+workflow: {ref: workflows/x1_pro_mcap.yaml}
 ```
 
 | 配置 | 职责 |
@@ -186,8 +163,8 @@ X1 Pro 的 **32 路 topic、23 个逻辑名**合并在 [x1_pro.yaml](configs/rob
 | Numeric_Check | NaN／±Inf 与已配置物理子项 | 原值有限性可运行；物理子项需语义、SI、标定与确认 |
 | Action_Smoothness | 末端位置变化和平滑性 | 每条所选臂分别运行，米制反馈及有效记录时间 |
 | Check_Timestamp | 各路记录节奏及有条件的跨路对齐 | 相机低频不等于缺帧；跨路另需共同 clock |
-| Sync_Check | 独立采集时间轴之间的同步 | 至少两路及共同时钟或验证过的映射 |
-| Root_Cause | 时间异常关联和来源归因 | 不能从合成公共行时间推断采集根因 |
+| Sync_Check | 采集同步；显式容器模式检查记录时序 | 至少两路，共同采集或记录时钟；容器模式不证明采集同步 |
+| Root_Cause | 时间异常关联；显式容器模式关联记录断档 | 容器时间不能确定设备采集故障根因 |
 | Dedup_Check | 原始时间／序列号重复 | 不判断图像内容，不自动删除记录 |
 | Reset_Detection | 开头／结尾的关节反馈（或末端位置）与 Home 的接近情况 | 所选通道、Home、单位和容差明确；可按数据集剪辑记录只查真正的录制开头 |
 | Video_Integrity | 原视频或解码画面检查 | `auto/frames/video`，记录抽样及缩放；检查对象不同不混为同一结论 |

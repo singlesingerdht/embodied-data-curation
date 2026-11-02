@@ -1,0 +1,28 @@
+{
+  "installed_module": "/tmp/edc-report-unification-xev6qg7j/base/lib/python3.13/site-packages/edc/__init__.py",
+  "checks": [
+    {
+      "report": "/root/embodied-data-curation-data-platform/results/x1-pro-mcap/report.html",
+      "bytes": 1935946,
+      "immutable_files_checked": 181,
+      "relative_links_checked": 156,
+      "episode_anchors": [
+        "run2-bag0",
+        "run1-bag0",
+        "run0-bag0"
+      ]
+    },
+    {
+      "report": "/root/embodied-data-curation-data-platform/results/x1-pro-batch-runs/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0/report.html",
+      "bytes": 651084,
+      "immutable_files_checked": 58,
+      "relative_links_checked": 51,
+      "episode_anchors": [
+        "run0-bag0"
+      ]
+    }
+  ],
+  "source_sha256": "95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2",
+  "batch_decision": "unassessed",
+  "batch_summary_unchanged": true
+}

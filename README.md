@@ -12,19 +12,73 @@
 - Four reusable configuration components with standalone export; explicit single/dual arm scope; one robot across multiple task datasets.
 - Editing and augmentation create validated copies and return to quality checks. See [verified status and limits](docs/framework/STATUS.md).
 
-## Quick start
+## Quick start: X1 Pro MCAP
+
+The `data-platform` branch starts from `leju-kuavo` commit `87c5e6f`. This example reads a real MCAP directly, including embedded images and numeric signals. The source remains on the server; its redistribution license is unknown.
+
+Use Python 3.10+ and run from this branch's repository root:
 
 ```bash
-pip install -e '.[formats,test]'
-python examples/curation/make_example.py --output /tmp/edc-demo
-edc config check /tmp/edc-demo/curation.yaml
-edc config recommend /tmp/edc-demo/curation.yaml
-edc config export /tmp/edc-demo/curation.yaml --output /tmp/edc-complete.yaml
-edc config run /tmp/edc-complete.yaml --output /tmp/edc-results
-edc config run /tmp/edc-complete.yaml --output /tmp/edc-results --resume
+python -m venv .venv
+.venv/bin/pip install -e '.[formats]'
+. .venv/bin/activate
 ```
 
-This is an explicitly synthetic SDK demonstration, not a robot repair, valuation, or training-benefit claim. Output starts at `catalog.json`, `report.html`, `_runs`, and `_workflows`.
+The server sample is explicitly registered as one Episode (`x1_pro_reference_0001`), retaining all 32 source channels:
+
+```text
+/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap
+```
+
+On another machine, place this file in a local directory and edit `path` in `configs/datasets/x1_pro_mcap.yaml` to that directory. If renamed, also edit `episodes[0].path`. Keep the explicit ID and selector. The task is unconfirmed (`tasks: []`); directory names do not establish it.
+
+```bash
+edc config check configs/x1_pro.yaml
+edc config recommend configs/x1_pro.yaml
+edc config run configs/x1_pro.yaml --output results/x1-pro-mcap
+python -m http.server 8000 --directory results/x1-pro-mcap
+```
+
+Open [the report](http://localhost:8000/report.html). In VS Code Remote-SSH, forward port 8000 in the Ports panel, then append `/report.html` to the forwarded local address. Keep the whole output directory so evidence links work.
+
+**One episode and many episodes share the batch report layout.** `config run`, `edc run` and `edc batch` show decision counts, an episode-by-algorithm table and findings grouped by algorithm. This example has one row; click its episode name to expand the original per-episode detail table. The layout matches the `leju-kuavo` reference: four verdict explanations and four main sections. Checks use the existing pass/review/salvage/exclude verdicts; checks without the conditions needed for a judgment display not applicable. Full records and evidence remain in `_runs`, indexed by `catalog.json`. The `report.html` path is unchanged. Refresh an existing output with `edc report results/x1-pro-mcap` without rerunning algorithms.
+
+Expect a report with **delivery suspended**: all nine methods have status records, smoothness has separate left/right instances, and `Sync_Check` / `Root_Cause` explicitly run recording-time diagnostics; these do not establish acquisition synchronization or device root causes. Consequently `config run` returns exit code **1** for unmet release conditions; check individual records for actual processing failures. See the [measured acceptance results](docs/validation/x1_pro_mcap_20261102/README.md).
+
+| File | Purpose |
+|---|---|
+| `configs/x1_pro.yaml` | Unified entry referencing four components |
+| `configs/datasets/x1_pro_mcap.yaml` | Location, stable Episode ID, provenance and unknown task |
+| `configs/robots/x1_pro.yaml` | Dual arms, 32 channel semantics, units, separate command/feedback limits, reset calibration and numeric confirmation |
+| `configs/algorithms/x1_pro_mcap.yaml` | Head-frame reference, 0.1 s maximum interpolation span, physical field scope and image parameters |
+| `configs/workflows/x1_pro_mcap.yaml` | Nine explicit CPU checks, including blocked methods |
+
+Master joints are commands; follower joints are feedback. Arm positions and velocities are confirmed rad and rad/s. The master velocity/position derivative inconsistency remains a diagnostic; units rely on owner confirmation. Arm effort is current with unknown source units and never enters torque checks. Physical numeric checks cover the four arm position/velocity pairs and two follower XYZ fields (10 fields); other numeric fields retain finiteness diagnostics. The `data-platform-owner` attestation binds the thresholds and field scope. Changes require renewed owner review and confirmation.
+
+Each head RGB frame's MCAP `log_time` supplies the intermediate reference. Follower XYZ is linearly interpolated on the file's container clock, using overlapping real head frames, no extrapolation, and a maximum source bracket of 0.1 s. Images use original embedded frames. **Device clock relationships remain unknown: container alignment cannot prove acquisition synchronization.** Smoothness, sync and root-cause checks retain their original scores and judgments for the selected recording-time input. Sync and root-cause checks select `timeline: {time_source: container}` to inspect recording coverage, relative timing stability and correlated gaps. Acquisition synchronization and device fault causes remain unassessed; recording anomalies alone do not establish acquisition faults. Nine records do not imply nine passes. Original acquisition/container nanoseconds, source rows and interpolation weights remain available.
+
+`results/x1-pro-mcap/catalog.json` discovers outputs. `report.html` presents results; `_workflows/<id>/resolved-config.json` stores the workflow and effective configuration; `_runs/<id>/run.json` stores run parameters and versions. Algorithm directories contain `records.jsonl`, `errors.jsonl` and `artifacts/`; smoothness interpolation evidence is `Action_Smoothness/artifacts/<id>/timeline.json`; sync/root-cause recording timestamps and source rows are in their respective `artifacts/<id>/container_timeline.json`. Outputs never overwrite the source MCAP.
+
+Optional standalone configuration export (use a new output file):
+
+```bash
+edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
+```
+
+## Supplementary batch example
+
+This uses the same robot and the matching nine-method parameters in `configs/robots/x1_pro/params.json`. Supply explicit MCAP file paths: recursive directory discovery currently does not scan `.mcap`.
+
+```bash
+edc batch \
+  '/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap' \
+  --robot x1_pro --jobs 1 \
+  --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
+```
+
+The batch HTML has a companion JSON summary. `--keep` preserves per-file reports and evidence and requires a new directory. Multiple explicit MCAP paths are accepted. Verify hardware, units, calibration and clock declarations before using another capture. Batch IDs follow file names; use unified configuration for custom stable Episode IDs.
+
+The existing JSON + MP4 reader remains available through the separate `x1pro_episode` profile, whose clock declarations and reset tolerances differ from this MCAP profile. See the [JSON + MP4 configuration](configs/robots/x1pro_episode.yaml). For a synthetic SDK demonstration without real data, run `python examples/curation/make_example.py --output /tmp/edc-demo`.
 
 ## Contracts
 

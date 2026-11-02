@@ -39,16 +39,7 @@ def report(output):
     catalog = json.loads((output / "catalog.json").read_text())
     if catalog.get("schema_version") != "dqs_catalog_v1":
         raise ValueError("Unsupported catalog; legacy results use their original report tools")
-    from edc.reporting.html import render
+    from edc.reporting.catalog import render
     page = render(output, catalog)
-    if catalog.get('workflows'):
-        from edc.reporting.html import esc
-        links = []
-        for item in reversed(catalog['workflows']):
-            target = item.get('report', '')
-            if target and not Path(target).is_absolute() and (output / target).resolve().is_relative_to(output):
-                links.append('<li><a href="' + esc(target) + '">' + esc(item['workflow_id']) + ' · ' + esc(item['workflow_run_id']) + '</a></li>')
-        section = '<section class="run"><h2>数据整理工作流</h2><ul>' + ''.join(links) + '</ul></section>'
-        page = page.replace('</main>', section + '</main>')
     (output / "report.html").write_text(page, encoding="utf-8")
     return output / "report.html"

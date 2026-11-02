@@ -18,10 +18,8 @@ LEVEL = {'missing': ('未完成', 'bad', '算法没跑完，没有结论'),
          'SALVAGE': ('可救', 'fix', '问题原因清楚、能修：设备时钟差了一个固定值（程序已把时间挪齐，其它检查都按挪齐后的时间做了，要请采集方把时钟对准）；'
                                     '或关节读数卡住（末端位姿是对的，可用逆运动学反算出关节角，恢复前这段关节角不能用）'),
          'NEEDS_REVIEW': ('复核', 'warn', '建议复核：发现可疑之处，但也可能是正常情况，需要人看'),
-         'OBSERVATION': ('参考', 'info', '仅供参考：条件不够，算法只报告观察到的现象，不判好坏'),
          'ACCEPTABLE': ('通过', 'ok', '该项可接受（不需要做这项检查的字段也算通过；相机存成逐帧图片时没有视频容器可查，画面正常即算通过）'),
-         'NA': ('不适用', 'na', '这一项对这条数据没有东西可查：所有通道和画面共用一条时间（导出时已逐帧对齐），没有各自的原始时间可比；'
-                              '或这条是从长录制剪出来的切片（数据集自带剪辑记录），开头和结尾本来就不在初始位置，不查复位'),
+         'NA': ('不适用', 'na', '这一项不适用或缺少判定条件，原因见逐条详情；不表示质量通过'),
          'SKIPPED': ('不检查', 'na', '数据太短，已在结构完整性里排除，这一项不再检查'),
          None: ('无结论', 'na', '没有结论')}
 ORDER = list(LEVEL)
@@ -29,7 +27,7 @@ DECISION = {'exclude': ('含建议排除项', 'bad', '至少一项算法判为�
             'salvage': ('可救', 'fix', '只因能修的问题被排除：时钟固定偏差（按偏差平移时间后可重新检查），'
                                        '或关节读数卡住（用末端位姿逆运动学恢复关节角）'),
             'review': ('建议复核', 'warn', '没有排除项，但有需要人看的项'),
-            'unassessed': ('未评估完', 'info', '没有排除项，但有检查没评估完整（给了“参考”或只做了部分子项），框架不下“保留”结论'),
+            'unassessed': ('不适用', 'na', '当前检查条件不足，不能给出整条通过结论；原因见逐条详情'),
             'keep': ('建议保留', 'ok', '所选算法全部通过'),
             'failed': ('运行失败', 'bad', 'edc run 没有正常结束，见该条详情里的日志')}
 SIDE = {'left': '左臂', 'right': '右臂'}
@@ -58,12 +56,12 @@ GUIDE = {
                          '按 30 Hz 算；满分线 5 和零分线 15 是算法作者的设定。复核时回放所列手臂停下来的时候，看夹爪相机画面是否在抖：'
                          '画面稳就放过，明显抖动说明遥操作或控制有抖动。',
     'Root_Cause': '看所列时刻附近各路数据是否同时缺失：同时缺失说明整机卡顿，只缺一路说明是那一路设备的问题。',
-    'Reset_Detection': '开头或结尾的手臂姿态和初始位置差得多（超过本机型容差：乐聚按关节角 0.6 rad，约 34°；X1 Pro 按手末端位置 5 cm）。跳到所列时刻，和一条复位检测“通过”的数据的开头画面对比，看所列关节（或末端方向）：'
+    'Reset_Detection': '开头或结尾的手臂姿态和初始位置有偏差；单位、Home 和容差以本条记录的标定为准。跳到所列时刻，和一条复位检测“通过”的数据的开头画面对比，看所列关节（或末端方向）：'
                        '① 手臂明显不在初始姿态，而这批任务要求从初始姿态开始和结束：录早了或录晚了，开头或结尾不完整，排除或裁掉；'
-                       '② 手臂其实已在初始姿态，只是这个关节差一点：初始姿态或 0.6 rad 容差要改，告诉配置人；'
+                       '② 手臂其实已在初始姿态，只是某个分量有偏差：请配置负责人核对初始姿态与容差；'
                        '③ 任务本来就不要求复位：放过。',
-    'Video_Integrity': '每 5 帧抽 1 帧检查。某一类问题（如模糊、遮挡）占抽检帧的 30% 及以上判排除；'
-                       '不到 30% 判通过，格子里备注问题帧数。排除的可以看一眼所列相机，确认是不是真的成片模糊或被挡住。',
+    'Video_Integrity': '抽样步长、检查对象和阈值以本条记录为准；格子里备注已记录的问题帧数。'
+                       '排除的可以看一眼所列相机，确认是不是真的成片模糊或被挡住。',
 }
 
 
@@ -97,6 +95,10 @@ def verdict_of(item):
     if item.get('skipped') == 'too_short':
         return 'SKIPPED'
     verdict = item.get('verdict')
+    # Earlier recording wrappers replaced even completed method judgments.
+    # Read their preserved judgment without rewriting historical records.
+    if item.get('recording_diagnostic') and item.get('method_verdict'):
+        verdict = item['method_verdict']
     if verdict == 'NOT_APPLICABLE' and item.get('split_segment'):  # Cut-out segment: no real recording end to check.
         return 'NA'
     if item.get('supplemental_verdict') == 'DO_NOT_USE':  # The gate excludes on an adapter check's exclusion.
@@ -105,7 +107,9 @@ def verdict_of(item):
     if verdict == 'ACCEPTABLE' and has_review_candidate(item):
         return 'NEEDS_REVIEW'
     # Older outputs gave image-only cameras with clean frames OBSERVATION; adapters/video.py now says ACCEPTABLE.
-    return 'ACCEPTABLE' if verdict == 'NOT_APPLICABLE' or frames_only(item) and verdict == 'OBSERVATION' else verdict
+    if verdict == 'NOT_APPLICABLE' or frames_only(item) and verdict == 'OBSERVATION':
+        return 'ACCEPTABLE'
+    return 'NA' if verdict == 'OBSERVATION' else verdict
 
 
 def explain(algo, item, names=None):
@@ -115,6 +119,8 @@ def explain(algo, item, names=None):
 
 def _explain(algo, item, names):
     texts = [str(x) for x in (item.get('reasons') or [])] + [str(x) for x in (item.get('warnings') or [])]
+    if item.get('recording_diagnostic'):
+        return '；'.join(item.get('reasons') or [])
     if item.get('too_short'):
         short = item['too_short']
         return f"数据太短：只有 {short['seconds']:.1f} 秒，本机型要求至少 {short['min_duration_s']:g} 秒；其它 8 项不再检查"
@@ -332,13 +338,18 @@ def cell(algo, records, names=None):
         return {'worst': 'missing', 'note': '没有记录', 'problems': []}
     failed = [r for r in records if r['status'] != 'completed']
     if failed:
+        if all(r['status'] == 'missing_input' for r in failed):
+            return {'worst': 'NA', 'note': '', 'complete': False,
+                    'reason': str(failed[0].get('reason') or ''),
+                    'problems': [['', 'NA', str(r.get('reason') or '缺少本项检查所需输入')]
+                                 for r in failed]}
         return {'worst': 'missing', 'note': failed[0]['status'], 'reason': str(failed[0].get('reason') or ''),
                 'problems': [['', 'missing', str(failed[0].get('reason') or '算法没有完成')]]}
     items = [x for r in records for x in (reports(r) or [r.get('result') or {}])]
     verdicts = [verdict_of(x) for x in items]
     worst = min(verdicts, key=lambda v: ORDER.index(v) if v in ORDER else len(ORDER))
     problems = [[where(algo, x), verdict_of(x), explain(algo, x, names)] for x in items
-                if verdict_of(x) in ('DO_NOT_USE', 'SALVAGE', 'NEEDS_REVIEW', 'OBSERVATION')]
+                if verdict_of(x) in ('DO_NOT_USE', 'SALVAGE', 'NEEDS_REVIEW', 'NA')]
     if algo == 'Action_Smoothness':
         note = ' · '.join(f"{SIDE.get(x.get('side'), '')}{LEVEL.get(verdict_of(x), (verdict_of(x),))[0]}" for x in items)
     elif len(items) > 2:
@@ -366,6 +377,9 @@ def cell(algo, records, names=None):
     short = next((x['short_input'] for x in items if x.get('short_input') and verdict_of(x) == 'ACCEPTABLE'), None)
     if algo == 'Root_Cause' and short:
         note += ('；' if note else '') + f"数据只有 {short['seconds']:.1f} 秒，漂移和跳变不需要查"
+    recording = any(x.get('recording_diagnostic') for x in items)
+    if recording:
+        note = '记录时间诊断' + ('；' + note if note else '')
     if algo == 'Sync_Check' and salvage == 'fixed_offset' and worst == 'DO_NOT_USE':
         worst = 'SALVAGE'
         problems = [[w, 'SALVAGE' if v == 'DO_NOT_USE' else v, r] for w, v, r in problems]
@@ -379,8 +393,10 @@ def cell(algo, records, names=None):
                 + ('只查开头' if segment.get('checked_ends') else '不查复位'))
     return {'worst': worst, 'note': note, 'problems': problems, 'salvage': salvage,
             'shifted': any(x.get('clock_shift_s') for x in items),
-            'complete': all(report_complete(x, algo) for x in items),
-            'shared_rows': any(x.get('shared_row_intervals') for x in items)}
+            'complete': all(report_complete(x, algo) for x in items)
+                        and all(r.get('scope_complete', True) for r in records),
+            'shared_rows': any(x.get('shared_row_intervals') for x in items),
+            'recording': recording}
 
 
 def summarize(output, names=None):
@@ -390,21 +406,32 @@ def summarize(output, names=None):
         return None
     run = runs[-1]
     selection = json.loads((run / 'selection.json').read_text(encoding='utf-8'))[0]
-    algos = {}
+    records = []
     for algo in ALGOS:
         path = run / algo / 'records.jsonl'
-        records = ([json.loads(x) for x in path.read_text(encoding='utf-8').splitlines() if x]
-                   if path.exists() else [])  # Action_Smoothness writes one record per arm.
-        algos[algo] = cell(algo, records, names)
+        if path.exists():
+            records.extend(json.loads(x) for x in path.read_text(encoding='utf-8').splitlines() if x)
+    return summarize_records(records, selection['decision'], names, ALGOS)
+
+
+def summarize_records(records, framework, names=None, algorithms=ALGOS):
+    """Use the same recorded findings for CLI batch and catalog-backed reports."""
+    algos = {algo: cell(algo, [r for r in records if r['algorithm']['id'] == algo], names)
+             for algo in algorithms}
     short = any(c['worst'] == 'SKIPPED' for c in algos.values())
     if short or (algos.get('Check_Timestamp') or {}).get('shared_rows'):
         # One stored row time for every channel and video: there is no separate channel time to compare.
         # The framework does not even start these two, so a too-short episode shows them as not checked.
-        for algo in ('Sync_Check', 'Root_Cause'):
-            if algos[algo]['worst'] == 'missing' and '公共行时间' in algos[algo].get('reason', ''):
+        for algo in set(algos) & {'Sync_Check', 'Root_Cause'}:
+            if algos[algo]['worst'] in {'missing', 'NA'} and '公共行时间' in algos[algo].get('reason', ''):
                 algos[algo] = ({'worst': 'SKIPPED', 'note': '', 'problems': [], 'complete': True} if short else
                                {'worst': 'NA', 'note': '共用一条时间，无需检查', 'problems': [], 'complete': True})
-    return {'decision': decision(selection['decision'], algos), 'algos': algos}
+    verdict = decision(framework, algos)
+    # An old or inconsistent selection cannot turn a missing/partial result into keep.
+    if verdict == 'keep' and (not algos or any(not c.get('complete') for c in algos.values())
+                             or any(not r.get('scope_complete', True) for r in records)):
+        verdict = 'unassessed'
+    return {'decision': verdict, 'algos': algos}
 
 
 def decision(framework, algos):
@@ -428,11 +455,15 @@ def decision(framework, algos):
 
 
 def chip(verdict):
+    if verdict == 'OBSERVATION':
+        verdict = 'NA'
     word, tone, meaning = LEVEL.get(verdict, (str(verdict), 'na', ''))
     return f'<span class="chip {tone}" title="{esc(meaning)}">{esc(word)}</span>'
 
 
-def page(bags, info):
+def page(bags, info, *, fragment=False):
+    algorithms = info.get('algorithms', ALGOS)
+    prefix = info.get('anchor_prefix', '')
     rank = list(DECISION)
     bags = sorted(bags, key=lambda b: (rank.index(b['decision']) if b['decision'] in rank else 9, b['name']))
     decisions = Counter(b['decision'] for b in bags)
@@ -440,13 +471,14 @@ def page(bags, info):
                     f'<small>{DECISION[d][2]}</small></div>' for d in DECISION if decisions[d])
     legend = ''.join(f'<li>{chip(v)} {esc(LEVEL[v][2])}</li>'
                      for v in ('ACCEPTABLE', 'NEEDS_REVIEW', 'SALVAGE', 'DO_NOT_USE'))
-    head = ''.join(f'<th>{esc(NAMES.get(a, a))}</th>' for a in ALGOS)
-    rows, details, issues = [], [], {a: [] for a in ALGOS}
+    head = ''.join(f'<th>{esc(NAMES.get(a, a))}</th>' for a in algorithms)
+    rows, details, issues = [], [], {a: [] for a in algorithms}
     for i, b in enumerate(bags):
         word, tone, _ = DECISION.get(b['decision'], (b['decision'], 'na', ''))
-        name = f'<a href="#bag{i}">{esc(b["name"])}</a> <span class="chip {tone}">{esc(word)}</span>'
+        anchor = f'{prefix}bag{i}'
+        name = f'<a href="#{esc(anchor)}">{esc(b["name"])}</a> <span class="chip {tone}">{esc(word)}</span>'
         tds, lines = [], []
-        for algo in ALGOS:
+        for algo in algorithms:
             c = b['algos'].get(algo)
             if c is None:
                 tds.append('<td></td>')
@@ -461,23 +493,54 @@ def page(bags, info):
         rows.append(f'<tr><th>{name}</th>' + ''.join(tds) + '</tr>')
         extra = (f'<pre>{esc(b.get("log", ""))}</pre>' if b['decision'] == 'failed' else
                  f'<table class="detail">{"".join(lines)}</table>')
-        kept = f'<p class="muted">完整框架输出（含单条报告和视频证据）：{esc(b["kept"])}</p>' if b.get('kept') else ''
-        details.append(f'<details id="bag{i}"><summary>{esc(b["name"])} <span class="chip {tone}">{esc(word)}</span> '
-                       f'<span class="muted">{b["size_mb"]} MB · 用时 {b["seconds"]:.0f} 秒</span></summary>'
+        kept_label = esc(b.get('kept') or '')
+        if b.get('kept_url'):
+            from urllib.parse import quote
+            kept_label = f'<a href="{esc(quote(b["kept_url"], safe="/"))}">{kept_label}</a>'
+        kept = f'<p class="muted">完整框架输出（含单条报告和视频证据）：{kept_label}</p>' if b.get('kept') else ''
+        measured = (f'{b["size_mb"]} MB · 用时 {b["seconds"]:.0f} 秒' if b.get('seconds') is not None
+                    else '大小／耗时未记录')
+        details.append(f'<details id="{esc(anchor)}"><summary>{esc(b["name"])} <span class="chip {tone}">{esc(word)}</span> '
+                       f'<span class="muted">{esc(measured)}</span></summary>'
                        f'<p class="muted">{esc(b["source"])}</p>{kept}{extra}</details>')
     sections = []
-    for algo in ALGOS:
+    for algo in algorithms:
         found = issues[algo]
         tally = Counter(LEVEL[c['worst']][0] for _, _, c in found)
         summary = '，'.join(f'{k} {n} 条' for k, n in tally.items()) or '没有排除、可救或复核项'
-        body = ''.join(f'<li><a href="#bag{i}">{esc(b["name"])}</a> {chip(c["worst"])} <span class="muted">{esc(c["note"])}</span><ul>'
+        body = ''.join(f'<li><a href="#{esc(prefix)}bag{i}">{esc(b["name"])}</a> {chip(c["worst"])} <span class="muted">{esc(c["note"])}</span><ul>'
                        + ''.join(f'<li><b>{esc(w)}</b> {esc(r)}</li>' for w, v, r in c['problems']
                                  if v in ('DO_NOT_USE', 'SALVAGE', 'NEEDS_REVIEW', 'missing')) + '</ul></li>'
                        for i, b, c in found)
-        guide = f'<p class="guide">怎么复核：{esc(GUIDE[algo])}</p>' if found and algo in GUIDE else ''
+        guidance = GUIDE.get(algo)
+        if any(c.get('recording') for _, _, c in found):
+            guidance = '查看所列记录时刻附近的消息间隔和多路断档；可能涉及传输、排队或发布中断，具体原因需结合设备日志核对。'
+        guide = f'<p class="guide">怎么复核：{esc(guidance)}</p>' if found and guidance else ''
         sections.append(f'<details><summary>{esc(NAMES.get(algo, algo))} <span class="muted">{summary}</span></summary>'
                         f'{guide}<ul>{body}</ul></details>')
-    return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+    timing = info.get('timing_note')
+    if timing is None:
+        timing = f'{info["finished"]} 完成，用时 {info["seconds"]:.0f} 秒（同时 {info["jobs"]} 条）'
+    body = f'''<h1>批量质检报告 · {esc(info['robot'])}</h1>
+<p class="muted">{esc(info['inputs'])} · {len(bags)} 条 · {esc(timing)}<br>
+配置 {esc(info['profile'])} · 参数 {esc(info['params'] or '无')}<br>
+按本次所选算法展示处理状态、结论和原因；未完成项没有质量结论，不计算新分数、不做总分。</p>
+{info.get('header_html', '')}
+<div class="box"><b>结论怎么读</b><ul>{legend}</ul>
+<span class="muted">一个算法常有多个输出（例如数值检查每个字段一项、视频每路相机一项），表格格子里显示其中最差的一个，下方小字是数量。
+整条的结论：有一项“排除”就是“含建议排除项”；没有排除、但采集同步是“可救”的，整条就是“可救”；
+缺输入、失败或评估不完整时不能建议保留；所选检查完整通过才是“建议保留”。</span></div>
+<h2>整体结论</h2><div class="cards" data-section="overview">{cards}</div>
+<h2>逐条一览 <span class="muted">点名字看该条详情，鼠标停在格子上看原因</span></h2>
+<div class="scroll"><table><thead><tr><th>数据</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+<h2>按算法看问题 <span class="muted">只列排除和复核</span></h2>{''.join(sections)}
+<h2>逐条详情</h2>{''.join(details)}
+{info.get('footer_html', '')}
+'''
+    if fragment:
+        return body
+    document = f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="edc-report-template" content="edc_batch_report_v1">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>批量质检报告 · {esc(info['robot'])}</title><style>
 body{{margin:0;background:#f3f6f8;color:#192d3d;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}}
 main{{max-width:1400px;margin:24px auto;padding:0 16px}}h1{{margin:0 0 4px}}h2{{margin:28px 0 10px;font-size:18px}}
@@ -498,17 +561,16 @@ details{{background:#fff;border-radius:10px;margin:8px 0;padding:10px 16px}}summ
 details ul{{margin:6px 0;padding-left:18px}}details li{{margin:3px 0}}.detail td:first-child{{width:150px;white-space:nowrap}}
 pre{{white-space:pre-wrap;background:#f4f6f8;padding:10px;font-size:12px}}
 </style></head><body><main>
-<h1>批量质检报告 · {esc(info['robot'])}</h1>
-<p class="muted">{esc(info['inputs'])} · {len(bags)} 条 · {esc(info['finished'])} 完成，用时 {info['seconds']:.0f} 秒（同时 {info['jobs']} 条）<br>
-配置 {esc(info['profile'])} · 参数 {esc(info['params'] or '无')}<br>
-每条都由框架 <code>edc run</code> 跑完全部 9 个算法；本页只汇总算法写下的结论和原因，不计算新分数、不做总分。</p>
-<div class="box"><b>结论怎么读</b><ul>{legend}</ul>
-<span class="muted">一个算法常有多个输出（例如数值检查每个字段一项、视频每路相机一项），表格格子里显示其中最差的一个，下方小字是数量。
-整条的结论：有一项“排除”就是“含建议排除项”；没有排除、但采集同步是“可救”的，整条就是“可救”；
-都没有、但有“复核”就是“建议复核”；全部通过才是“建议保留”。</span></div>
-<h2>整体结论</h2><div class="cards">{cards}</div>
-<h2>逐条一览 <span class="muted">点名字看该条详情，鼠标停在格子上看原因</span></h2>
-<div class="scroll"><table><thead><tr><th>数据</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
-<h2>按算法看问题 <span class="muted">只列排除和复核</span></h2>{''.join(sections)}
-<h2>逐条详情</h2>{''.join(details)}
-</main></body></html>'''
+{body}
+</main><script data-edc-report="batch">
+document.addEventListener('click',event=>{{
+ const link=event.target.closest('a[href^="#"]');
+ if(link){{const target=document.getElementById(link.getAttribute('href').slice(1));
+ if(target&&target.tagName==='DETAILS')target.open=true;}}
+ const button=event.target.closest('button[data-video]');if(!button)return;
+ const video=document.getElementById(button.dataset.video);if(!video)return;
+ const apply=()=>{{video.currentTime=Number(button.dataset.seconds);}};
+ if(video.readyState>=1)apply();else video.addEventListener('loadedmetadata',apply,{{once:true}});
+}});
+</script></body></html>'''
+    return document

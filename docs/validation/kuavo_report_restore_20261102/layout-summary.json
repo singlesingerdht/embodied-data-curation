@@ -1,0 +1,80 @@
+[
+  {
+    "path": "results/x1-pro-mcap/report.html",
+    "bytes": 21681,
+    "css_matches_reference": true,
+    "headings_match_reference": true,
+    "legend_count": 4,
+    "chips": {
+      "通过": 11,
+      "复核": 12,
+      "可救": 1,
+      "排除": 5,
+      "含建议排除项": 2,
+      "不适用": 5
+    },
+    "missing_links": []
+  },
+  {
+    "path": "results/x1-pro-batch.html",
+    "bytes": 21988,
+    "css_matches_reference": true,
+    "headings_match_reference": true,
+    "legend_count": 4,
+    "chips": {
+      "通过": 11,
+      "复核": 12,
+      "可救": 1,
+      "排除": 5,
+      "含建议排除项": 2,
+      "不适用": 5
+    },
+    "missing_links": []
+  },
+  {
+    "path": "results/x1-pro-batch-kuavo-runs/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0/report.html",
+    "bytes": 21889,
+    "css_matches_reference": true,
+    "headings_match_reference": true,
+    "legend_count": 4,
+    "chips": {
+      "通过": 11,
+      "复核": 12,
+      "可救": 1,
+      "排除": 5,
+      "含建议排除项": 2,
+      "不适用": 5
+    },
+    "missing_links": []
+  },
+  {
+    "path": "results/x1-pro-batch-recording-runs/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0/report.html",
+    "bytes": 23538,
+    "css_matches_reference": true,
+    "headings_match_reference": true,
+    "legend_count": 4,
+    "chips": {
+      "通过": 9,
+      "复核": 17,
+      "可救": 1,
+      "排除": 5,
+      "不适用": 7
+    },
+    "missing_links": []
+  },
+  {
+    "path": "results/x1-pro-batch-runs/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0/report.html",
+    "bytes": 22901,
+    "css_matches_reference": true,
+    "headings_match_reference": true,
+    "legend_count": 4,
+    "chips": {
+      "通过": 7,
+      "复核": 17,
+      "可救": 1,
+      "排除": 1,
+      "不适用": 13
+    },
+    "missing_links": []
+  }
+]

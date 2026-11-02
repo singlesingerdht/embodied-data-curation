@@ -180,7 +180,7 @@ def test_native_250hz_does_not_silently_use_30hz_calibration(tmp_path, expected,
 
 @pytest.mark.parametrize('change', [
     {'timeline': {'mode': 'reference_channel'}},
-    {'timeline': {'mode': 'reference_channel', 'reference_channel': 'rgb/head', 'time_source': 'container'}},
+    {'timeline': {'mode': 'reference_rate', 'reference_channel': 'rgb/head', 'time_source': 'container'}},
     {'timeline': {'mode': 'reference_channel', 'reference_channel': '/absent'}},
     {'timeline': {'mode': 'native', 'reference_channel': 'rgb/head'}},
     {'timeline': {'mode': 'reference_channel', 'reference_channel': 'rgb/head', 'resample': 'nearest'}},
@@ -241,3 +241,43 @@ def test_short_overlap_does_not_change_filter_window(tmp_path):
             view = selected_inputs(ep, params, 'Action_Smoothness')
             plan = timeline_plan(view, selected_pose(view, params), params)
     assert 'target_timestamps_s' not in plan and any('window_length' in r for r in plan['issues'])
+
+
+def test_container_reference_keeps_method_pass_and_raw_axes_for_both_arms(tmp_path):
+    source, profile, params, ts, camera, _ = fixture(tmp_path, clock=None, arms=('left', 'right'))
+    params['timeline'].update(time_source='container', max_gap_s=.1)
+    before = hashlib.sha256(source.read_bytes()).hexdigest()
+    row, records, evidence = execute(tmp_path, source, profile, params)
+    assert row['availability'] == 'available'
+    assert {r['instance_id'] for r in records} == {'left', 'right'}
+    for record, plan in zip(records, evidence):
+        report = record['result']['reports'][0]
+        assert record['status'] == 'completed'
+        assert report['score'] is not None and report['verdict'] == 'ACCEPTABLE'
+        assert report['assessment_complete'] and 'diagnostic_result' not in report
+        assert plan['assessment_scope'] == 'container_recording' and not plan['proves_acquisition_sync']
+        assert not plan['issues'] and not plan['extrapolation']
+        assert plan['source_clock'] == plan['reference_clock']
+        assert plan['source_time_source'] == plan['reference_time_source'] == 'container'
+        assert plan['source_time_axis']['source_mapping']['timestamps_ns'][0] == 110_000_000_000
+        np.testing.assert_allclose(plan['target_timestamps_s'], (camera+100)[plan['reference_rows']])
+        assert plan['resampling_params']['max_gap'] == .1
+        assert plan['source_mapping']['rows']['right_weights']
+    with open_dataset(source, profile=profile) as ds:
+        with next(ds.iter_episodes()).opened() as ep:
+            np.testing.assert_allclose(ep.channels['/left/pose'].timestamps, ts)
+            assert ep.channels['/left/pose'].clock is None
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == before
+
+
+def test_interpolation_gap_is_rejected_before_jerk(tmp_path, monkeypatch):
+    source, profile, params, *_ = fixture(tmp_path)
+    params['timeline']['max_gap_s'] = .001  # Actual source interval is 4 ms.
+    from edc.algorithms.quality.algorithms.Action_Smoothness import run_check
+    monkeypatch.setattr(run_check, 'assess_arrays', lambda *a, **k: pytest.fail('gap gate bypassed'))
+    row, records, evidence = execute(tmp_path, source, profile, params)
+    assert row['availability'] == 'partial'
+    assert 'target_timestamps_s' not in evidence[0]
+    report = records[0]['result']['reports'][0]
+    assert report['score'] is None and not report['assessment_complete']
+    assert any('max_gap' in reason for reason in report['reasons'])

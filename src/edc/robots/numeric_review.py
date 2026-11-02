@@ -20,6 +20,7 @@ ADAPTER_TARGETS = {'joint_velocities': 'joint_velocity'}
 def method_settings(settings):
     """Settings for the original Numeric_Check method: adapter-only threshold groups removed."""
     result = copy.deepcopy(settings)
+    result.pop('physical_fields', None)
     for group in ADAPTER_GROUPS:
         result['thresholds'].pop(group, None)
     return result
@@ -67,6 +68,10 @@ def numeric_field_status(episode, channel, field, review):
     spec = channel.field_spec(field)
     target = numeric_target(channel, field, spec)
     reasons = []
+    scope = review['settings'].get('physical_fields')
+    in_scope = scope is None or f'{channel.name}.{field}' in scope
+    if not in_scope:
+        reasons.append('Outside configured physical_fields; recorded finiteness diagnostic only')
     if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
         quantity = (channel.representation or {}).get('quantity') or spec.get('quantity')
         _, unit_reason = joint_position_unit(spec, quantity=quantity)
@@ -91,7 +96,28 @@ def numeric_field_status(episode, channel, field, review):
     return {'channel': channel.name, 'field': field, 'source_unit': spec.get('source_unit', spec['unit']),
             'execution_unit': spec['unit'], 'required_unit': target[1] if target else None,
             'physical_checks_available': bool(target) and target[1] is not None and not reasons,
+            'in_physical_scope': in_scope,
             'reasons': reasons, 'target': target}
+
+
+def physical_field_scope(profile, fields):
+    """Normalize exact source/logical field addresses before attesting a scope."""
+    if not isinstance(fields, list) or not fields:
+        raise ValueError('physical_fields requires a nonempty list of channel.field addresses')
+    channels = profile.get('channels', {})
+    aliases = {c['logical_name']: name for name, c in channels.items() if c.get('logical_name')}
+    resolved = []
+    for address in fields:
+        if not isinstance(address, str) or '.' not in address:
+            raise ValueError('physical_fields requires channel.field addresses')
+        name, field = address.rsplit('.', 1)
+        name = aliases.get(name, name)
+        if name not in channels or field not in channels[name].get('fields', []):
+            raise ValueError(f'Unknown physical_fields address: {address}')
+        resolved.append(f'{name}.{field}')
+    if len(set(resolved)) != len(resolved):
+        raise ValueError('physical_fields resolves to duplicate fields')
+    return sorted(resolved)
 
 
 def numeric_settings(profile=None, params=None):
@@ -102,8 +128,8 @@ def numeric_settings(profile=None, params=None):
               if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s', 'joint_limits_pending',
                            'joint_stuck'}}
     for value in (configured, params):
-        if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
-            raise ValueError('Numeric_Check accepts thresholds and weights')
+        if not isinstance(value, dict) or set(value) - {'thresholds', 'weights', 'physical_fields'}:
+            raise ValueError('Numeric_Check accepts thresholds, weights and physical_fields')
     base = _thresholds(configured.get('thresholds'))
     overrides = params.get('thresholds', {})
     if not isinstance(overrides, dict):
@@ -118,7 +144,11 @@ def numeric_settings(profile=None, params=None):
     weights = params.get('weights', configured.get('weights'))
     if weights is not None and not isinstance(weights, dict):
         raise ValueError('Numeric_Check weights must be a mapping')
-    return {'thresholds': _thresholds(merged), 'weights': copy.deepcopy(weights)}
+    result = {'thresholds': _thresholds(merged), 'weights': copy.deepcopy(weights)}
+    if 'physical_fields' in params or 'physical_fields' in configured:
+        result['physical_fields'] = physical_field_scope(profile or {},
+            params.get('physical_fields', configured.get('physical_fields')))
+    return result
 
 
 def _thresholds(overrides):
@@ -220,10 +250,14 @@ def confirm_numeric_profile(profile, reviewer, params=None):
     profile = load_profile(profile)
     if not isinstance(reviewer, str) or not reviewer.strip():
         raise ValueError('A nonempty reviewer name is required')
+    settings = numeric_settings(profile, params)
+    scope = settings.get('physical_fields')
     eligible = 0
     for name, channel in profile.get('channels', {}).items():
         modality = normalize_modality(channel.get('modality', 'other'))
         for field in channel.get('fields', []):
+            if scope is not None and f'{name}.{field}' not in scope:
+                continue
             metadata = {**channel, **channel.get('field_metadata', {}).get(field, {})}
             semantic = {**channel.get('representation', {}),
                         **{key: metadata.get(key) for key in ('quantity', 'semantic_status')
@@ -240,6 +274,8 @@ def confirm_numeric_profile(profile, reviewer, params=None):
             else:
                 target = TARGETS.get((modality, field))
                 if not target:
+                    if scope is not None:
+                        raise ValueError(f'{name}.{field}: no supported physical check for this field')
                     continue
                 allowed = target[1]
             eligible += 1
@@ -260,7 +296,6 @@ def confirm_numeric_profile(profile, reviewer, params=None):
                 raise ValueError(f'{name}.{field}: explicitly declare command/feedback first')
     if not eligible:
         raise ValueError('No declared fields supported by Numeric_Check physical checks')
-    settings = numeric_settings(profile, params)
     profile['numeric_check'] = settings
     profile['numeric_review'] = {'status': 'confirmed', 'confirmed_by': reviewer.strip(),
         'confirmed_at': datetime.now(timezone.utc).isoformat(),

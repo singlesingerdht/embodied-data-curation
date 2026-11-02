@@ -1,7 +1,7 @@
 schema_version: 1
 id: x1_pro
-version: 1.0.0
-status: partial_units_and_calibration_pending
+version: 1.1.0
+status: scoped_mcap_example
 channels:
   /left_arm/wrench_ext_world:
     modality: other
@@ -27,7 +27,8 @@ channels:
     - velocity
     - effort
     unit: null
-    dimensions: null
+    dimensions:
+    - 6
     time_source: acquisition
     clock: null
     body_part: arm
@@ -35,23 +36,46 @@ channels:
     source_kind: feedback
     coordinate_frame: null
     calibration_status: unknown
-    joint_names: null
+    joint_names:
+    - right_arm_joint1
+    - right_arm_joint2
+    - right_arm_joint3
+    - right_arm_joint4
+    - right_arm_joint5
+    - right_arm_joint6
     field_metadata:
       position:
         unit: rad
+        quantity: angle
         source_kind: feedback
-        calibration_status: confirmed
-        confirmed_by: user
         unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
       velocity:
-        quantity: angular_velocity
         unit: rad/s
+        quantity: angular_velocity
         source_kind: feedback
-        calibration_status: confirmed
-        confirmed_by: user
         unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
+      effort:
+        quantity: current
+        unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
-    representation: {}
+    representation:
+      control_origin: follower
+      quantity: angle
+      semantic_status: confirmed
+      unit_confirmation: confirmed
     logical_name: joint/arm/right/feedback
     robot_part: right
   /left_gripper/joint_states:
@@ -66,18 +90,40 @@ channels:
     clock: null
     body_part: gripper
     side: left
-    source_kind: unknown
+    source_kind: feedback
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
-    field_metadata: {}
+    field_metadata:
+      position:
+        unit: m
+        quantity: length
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      velocity:
+        unit: m/s
+        quantity: linear_velocity
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
+        unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       device_type: gripper
       device_type_status: confirmed
       device_type_confirmed_by: user
-      control_origin: unknown
-    logical_name: joint/gripper/left/state
+      control_origin: follower
+    logical_name: joint/gripper/left/feedback
     robot_part: left_gripper
   /right_arm/wrench_ext_world:
     modality: other
@@ -142,8 +188,13 @@ channels:
         unit: m
         quantity: position
         semantic_status: confirmed
-        confirmed_by: user
-        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+        confirmed_by: data-platform-owner
+        confirmation_scope: XYZ unit and zero calibration confirmed for reference
+          MCAP; no orientation or shared-clock claim
+        calibration_status: confirmed
+        dimensions:
+        - 3
+        source_kind: feedback
     sensor_id: null
     representation: {}
     logical_name: pose/arm/right/feedback
@@ -321,28 +372,37 @@ channels:
     field_metadata:
       position:
         unit: rad
+        quantity: angle
         source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
         calibration_status: confirmed
+        semantic_status: confirmed
         dimensions:
         - 6
-        confirmed_by: user
-        unit_confirmation: confirmed
       velocity:
-        quantity: angular_velocity
         unit: rad/s
+        quantity: angular_velocity
         source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
         calibration_status: confirmed
+        semantic_status: confirmed
         dimensions:
         - 6
-        confirmed_by: user
-        unit_confirmation: confirmed
+      effort:
+        quantity: current
+        unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
-      quantity: joint_position
+      quantity: angle
       semantic_status: confirmed
       semantic_source: user confirmed actual left arm position feedback
-      unit_candidate: rad
-      unit_confirmation: pending
+      unit_confirmation: confirmed
+      control_origin: follower
     logical_name: joint/arm/left/feedback
     robot_part: left
   /whole_body/right_arm/end_pose:
@@ -391,8 +451,13 @@ channels:
         unit: m
         quantity: position
         semantic_status: confirmed
-        confirmed_by: user
-        confirmation_scope: XYZ only; no orientation/calibration/common-clock claim
+        confirmed_by: data-platform-owner
+        confirmation_scope: XYZ unit and zero calibration confirmed for reference
+          MCAP; no orientation or shared-clock claim
+        calibration_status: confirmed
+        dimensions:
+        - 3
+        source_kind: feedback
     sensor_id: null
     representation: {}
     logical_name: pose/arm/left/feedback
@@ -426,18 +491,40 @@ channels:
     clock: null
     body_part: gripper
     side: right
-    source_kind: unknown
+    source_kind: feedback
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
-    field_metadata: {}
+    field_metadata:
+      position:
+        unit: m
+        quantity: length
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      velocity:
+        unit: m/s
+        quantity: linear_velocity
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
+        unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       device_type: gripper
       device_type_status: confirmed
       device_type_confirmed_by: user
-      control_origin: unknown
-    logical_name: joint/gripper/right/state
+      control_origin: follower
+    logical_name: joint/gripper/right/feedback
     robot_part: right_gripper
   /left_arm/wrench_ext_local:
     modality: other
@@ -468,18 +555,37 @@ channels:
     clock: null
     body_part: lift
     side: unknown
-    source_kind: unknown
+    source_kind: feedback
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
     field_metadata:
       position:
+        unit: m
         quantity: length
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
         semantic_status: confirmed
+      velocity:
+        unit: m/s
+        quantity: linear_velocity
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
         unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
-    representation: {}
-    logical_name: joint/lift/state
+    representation:
+      control_origin: follower
+    logical_name: joint/lift/feedback
     robot_part: lift
   /head/joint_states:
     modality: joint_space
@@ -493,18 +599,37 @@ channels:
     clock: null
     body_part: head
     side: unknown
-    source_kind: unknown
+    source_kind: feedback
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
     field_metadata:
       position:
+        unit: rad
         quantity: angle
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
         semantic_status: confirmed
+      velocity:
+        unit: rad/s
+        quantity: angular_velocity
+        source_kind: feedback
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
         unit: null
+        source_kind: feedback
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
-    representation: {}
-    logical_name: joint/head/state
+    representation:
+      control_origin: follower
+    logical_name: joint/head/feedback
     robot_part: head
   /odom:
     modality: odometry
@@ -550,7 +675,8 @@ channels:
     - velocity
     - effort
     unit: null
-    dimensions: null
+    dimensions:
+    - 6
     time_source: acquisition
     clock: null
     body_part: arm
@@ -558,11 +684,48 @@ channels:
     source_kind: command
     coordinate_frame: null
     calibration_status: unknown
-    joint_names: null
-    field_metadata: {}
+    joint_names:
+    - right_arm_joint1
+    - right_arm_joint2
+    - right_arm_joint3
+    - right_arm_joint4
+    - right_arm_joint5
+    - right_arm_joint6
+    field_metadata:
+      position:
+        unit: rad
+        quantity: angle
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
+      velocity:
+        unit: rad/s
+        quantity: angular_velocity
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
+        diagnostic: Reported rad/s confirmed by owner; position derivative consistency
+          check did not establish equivalence.
+      effort:
+        quantity: current
+        unit: null
+        source_kind: command
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       control_origin: master
+      quantity: angle
+      semantic_status: confirmed
+      unit_confirmation: confirmed
     logical_name: joint/arm/right/command
     robot_part: right
   /master_right_arm/end_pose:
@@ -607,7 +770,29 @@ channels:
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
-    field_metadata: {}
+    field_metadata:
+      position:
+        unit: m
+        quantity: length
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      velocity:
+        unit: m/s
+        quantity: linear_velocity
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
+        unit: null
+        source_kind: command
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       device_type: gripper
@@ -632,7 +817,29 @@ channels:
     coordinate_frame: null
     calibration_status: unknown
     joint_names: null
-    field_metadata: {}
+    field_metadata:
+      position:
+        unit: m
+        quantity: length
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      velocity:
+        unit: m/s
+        quantity: linear_velocity
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: unknown
+        semantic_status: confirmed
+      effort:
+        quantity: unknown
+        unit: null
+        source_kind: command
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       device_type: gripper
@@ -648,7 +855,8 @@ channels:
     - velocity
     - effort
     unit: null
-    dimensions: null
+    dimensions:
+    - 6
     time_source: acquisition
     clock: null
     body_part: arm
@@ -656,11 +864,48 @@ channels:
     source_kind: command
     coordinate_frame: null
     calibration_status: unknown
-    joint_names: null
-    field_metadata: {}
+    joint_names:
+    - left_arm_joint1
+    - left_arm_joint2
+    - left_arm_joint3
+    - left_arm_joint4
+    - left_arm_joint5
+    - left_arm_joint6
+    field_metadata:
+      position:
+        unit: rad
+        quantity: angle
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
+      velocity:
+        unit: rad/s
+        quantity: angular_velocity
+        source_kind: command
+        unit_confirmation: confirmed
+        confirmed_by: data-platform-owner
+        calibration_status: confirmed
+        semantic_status: confirmed
+        dimensions:
+        - 6
+        diagnostic: Reported rad/s confirmed by owner; position derivative consistency
+          check did not establish equivalence.
+      effort:
+        quantity: current
+        unit: null
+        source_kind: command
+        calibration_status: unknown
+        unit_confirmation: unknown
     sensor_id: null
     representation:
       control_origin: master
+      quantity: angle
+      semantic_status: confirmed
+      unit_confirmation: confirmed
     logical_name: joint/arm/left/command
     robot_part: left
   /master_left_arm/end_pose:
@@ -746,41 +991,89 @@ calibration:
       pose/arm/left/feedback:
         field: position
         unit: m
-        home: [-0.007010698318481445, 0.0028152498416602617, 0.002762031741440296]
-        tolerance1: [0.006858067587018013, 0.013847109861671925, 0.007454946171492338]
-        tolerance2: [0.01028710138052702, 0.020770665258169174, 0.011182419024407864]
+        home:
+        - -0.007010698318481445
+        - 0.0028152498416602616
+        - 0.002762031741440296
+        tolerance1:
+        - 0.006858067587018013
+        - 0.013847109861671925
+        - 0.007454946171492338
+        tolerance2:
+        - 0.01028710138052702
+        - 0.020770665258169174
+        - 0.011182419024407864
       pose/arm/right/feedback:
         field: position
         unit: m
-        home: [-0.007658312562853098, 0.01540503278374672, -0.010580490343272686]
-        tolerance1: [0.006582316942512989, 0.014932308346033096, 0.0093833077698946]
-        tolerance2: [0.009873475879430771, 0.022398462519049644, 0.0140749616548419]
+        home:
+        - -0.007658312562853098
+        - 0.01540503278374672
+        - -0.010580490343272686
+        tolerance1:
+        - 0.006582316942512989
+        - 0.014932308346033096
+        - 0.0093833077698946
+        tolerance2:
+        - 0.009873475879430771
+        - 0.022398462519049644
+        - 0.0140749616548419
     deferred:
     - parameter: left_arm.joint_pos
-      reason: historical calibration has 7 components; current X1 Pro feedback has 6 and no confirmed joint order mapping
+      reason: historical calibration has 7 components; current X1 Pro feedback has
+        6 and no confirmed joint order mapping
     - parameter: right_arm.joint_pos
-      reason: historical calibration has 7 components; current X1 Pro feedback has 6 and no confirmed joint order mapping
+      reason: historical calibration has 7 components; current X1 Pro feedback has
+        6 and no confirmed joint order mapping
     - parameter: left_arm.rotation
-      reason: current pose orientation representation and source calibration are not confirmed
+      reason: current pose orientation representation and source calibration are not
+        confirmed
     - parameter: right_arm.rotation
-      reason: current pose orientation representation and source calibration are not confirmed
+      reason: current pose orientation representation and source calibration are not
+        confirmed
     - parameter: left_arm.gripper
-      reason: current gripper feedback field and physical unit are not confirmed
+      reason: Gripper position unit is m; reset reference and tolerance are not confirmed.
     - parameter: right_arm.gripper
-      reason: current gripper feedback field and physical unit are not confirmed
+      reason: Gripper position unit is m; reset reference and tolerance are not confirmed.
     - parameter: base
       reason: current odometry pose mapping and reset reference are not confirmed
     - parameter: lifting.lifting_mechanism_position
-      reason: current lift field and SI unit are not confirmed
+      reason: Lift position unit is m; reset reference and tolerance are not confirmed.
     - parameter: head.head_rotation
-      reason: current head tilt field and SI unit are not confirmed
+      reason: Head position unit is rad; reset reference and tolerance are not confirmed.
 numeric_check:
   thresholds:
     joint:
       vel_threshold: 1.0
       velocity_peak: 20.0
       reset_ratio: 0.6
-      limits: null
+      limits:
+        joint/arm/left/feedback:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
+        joint/arm/right/feedback:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
     imu:
       gyro_max: 10.0
       acc_max: 196.2
@@ -794,11 +1087,79 @@ numeric_check:
       lookback: 10
       vel_threshold: 0.01
       freeze_eps: 1.0e-06
+    command_limits:
+      limits:
+        joint/arm/left/command:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
+        joint/arm/right/command:
+        - - -2.8025
+          - 2.8025
+        - - -0.01
+          - 3.6752
+        - - -2.8025
+          - 0.01
+        - - -1.5808
+          - 1.5808
+        - - -1.5808
+          - 1.5808
+        - - -1.9299
+          - 1.9299
+    joint_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    cmd_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    gyro_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    accel_freeze:
+      min_run: 3
+      lookback: 10
+      freeze_eps: 1.0e-06
+      motion_threshold: 0.01
+    joint_velocity:
+      max_abs:
+      - 4.188
+      - 4.188
+      - 4.188
+      - 3.77
+      - 3.77
+      - 3.77
   weights: null
+  physical_fields:
+  - /left_arm/end_pose.position
+  - /left_arm/joint_states.position
+  - /left_arm/joint_states.velocity
+  - /master_left_arm/joint_states.position
+  - /master_left_arm/joint_states.velocity
+  - /master_right_arm/joint_states.position
+  - /master_right_arm/joint_states.velocity
+  - /right_arm/end_pose.position
+  - /right_arm/joint_states.position
+  - /right_arm/joint_states.velocity
 numeric_review:
-  status: pending
-  confirmed_by: null
-  configuration_sha256: null
+  status: confirmed
+  confirmed_by: data-platform-owner
+  confirmed_at: '2026-11-02T03:24:46.938191+00:00'
+  configuration_sha256: 6ddf022ff05fdfc88ee064b9fa1989e281125e383d8f1daf8a16d765429ece7e
 unit_system_suggestion: SI
 model: X1 Pro
 camera_requirements:
@@ -810,8 +1171,8 @@ camera_requirements:
   - rgb
   chest_front:
   - rgb
-native_timeline_note: User confirmed header generation time; common clock unknown.
-  No resampling or assumed clock relation.
+native_timeline_note: Acquisition headers retained; shared device clock unknown. Container
+  log_time is file-scoped and may be used for explicit diagnostic alignment only.
 instance_id: null
 parts:
   left:
@@ -839,5 +1200,15 @@ parts:
   base:
     type: base
     side: unknown
-confirmation_scope: User-confirmed topic semantics; per-capture units/calibration/clocks
-  must be checked for applicability.
+confirmation_scope: User confirmations apply to the reference MCAP capture and the
+  same Quanta X1 Pro six-axis hardware; clocks remain unknown.
+confirmation_evidence:
+  confirmed_by: data-platform-owner
+  capture_sha256: 95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2
+  hardware: Same Quanta X1 Pro six-axis arms and joint1..joint6 order as x1pro_episode;
+    user confirmed.
+  limits_source: configs/robots/x1pro_episode.yaml; manufacturer X-Square-Robot/sdk_arm_6a
+    URDF limits plus 0.01 rad margin; user confirmed applicability.
+  velocity_diagnostic: Follower velocity agrees with windowed position derivative;
+    master derivative is inconsistent due to bursty timestamps/position behavior.
+    rad/s is independently user-confirmed, not inferred by differentiation.

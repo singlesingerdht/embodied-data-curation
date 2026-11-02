@@ -1,0 +1,14 @@
+{
+  "directory": "/tmp/edc-report-unification-xev6qg7j",
+  "wheel": "/tmp/edc-report-unification-xev6qg7j/dist/embodied_data_curation-0.2.0a2-py3-none-any.whl",
+  "sdist": "/tmp/edc-report-unification-xev6qg7j/dist/embodied_data_curation-0.2.0a2.tar.gz",
+  "pip_check": "No broken requirements found.",
+  "base_smoke": {
+    "installed_module": "/tmp/edc-report-unification-xev6qg7j/base/lib/python3.13/site-packages/edc/__init__.py",
+    "report": "/tmp/edc-report-smoke-8gx5tpca/report.html",
+    "optional_dependencies_loaded": false
+  },
+  "python_files_match_source": 210,
+  "wheel_contract_tests": "16 passed",
+  "source_related_tests": "101 passed"
+}

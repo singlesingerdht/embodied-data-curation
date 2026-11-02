@@ -121,6 +121,22 @@ Action_Smoothness:
 
 这是 `methods` 下的单项配置，默认逐臂执行。原始位置换算为 m 后，映射到参考时钟并线性插值到真实参考时间点；只用重叠范围、不外推、不生成均匀 30 Hz。缺共同 clock 或显式映射时返回 `NEEDS_REVIEW`。`timeline: {mode: native}` 保留自身时间；频率与 30 Hz 标定不符时只保留诊断结果，不能据此给质量通过／不通过结论。`expected_rate_hz`、`rate_tolerance_ratio` 是标定检查声明，调整前需相应标定依据。源数据与配置不会被执行过程修改。完整参数、原残差 jerk 方法及行映射证据见[动作平滑度](../../src/edc/algorithms/quality/algorithms/Action_Smoothness/README.md)。
 
+`configs/x1_pro.yaml` 现为真实 MCAP 示例，引用独立的数据集、机器人、算法、九项工作流配置。
+其 `reference_channel` 模式显式选择 `time_source: container` 与 `max_gap_s: 0.1`，
+从同一 MCAP 的真实 `log_time` 对齐到头部帧；
+原方法的评分和判定用于本次记录时间范围。`Sync_Check` 和 `Root_Cause` 各自设置 `timeline: {time_source: container}`，显式消费同一记录 clock 上的原始容器时间；不平移时钟、不替换采集轴。沿用原算法的覆盖、相对时序稳定性与 gap 关联方法，`score/verdict/passed` 保留原算法结果，`method_*` 保留兼容快照；设备采集结论单独记为未评估。未填写该参数的旧配置保持原行为；容器模式不可同时指定 `target_clock`。
+`reference_rate` 模式继续只接受 acquisition 时间。`max_gap_s` 未填时保留旧的边界检查行为。
+
+Numeric_Check 可在机器人 `numeric_check` 或算法参数中配置 `physical_fields: [channel.field, ...]`，
+支持逻辑名和源名；地址必须存在、非空、不重复。仅范围内、语义／单位／标定明确且确认有效的字段
+进入物理检测。范围外仍读取原值做 NaN/Inf 诊断，不代表物理质量通过，不能用 `finiteness_only`
+将其提升为完整评估。确认摘要绑定规范化的字段范围、阈值与通道契约；更改范围或阈值会使确认失效。
+不配置 `physical_fields` 的旧配置保持既有范围和摘要行为。`joint.limits` 与
+`command_limits.limits` 分别登记反馈和指令限位；电流不作为力矩，未知单位不会自动补为 A。
+
+统一配置的推荐只查看该阶段实际选定的算法；通用 `edc recommend` 未限定算法时仍返回整个池。
+本次没有改变结果协议 `dqs_record_v1`，也不改写历史运行记录。
+
 ## 工作流端及交接
 
 默认 `configs/workflows/curation.yaml` 只有 quality 阶段，运行当前已安装且启用的可运行质量方法；不要求安装价值插件。CPU 方法和 GPU `Projection_Alignment` 都属于 quality，GPU 只影响预检可用性。真实 alignment 插件尚待接入验收；未执行不表示通过。
@@ -163,6 +179,14 @@ stages:
 阶段结果含数据引用、run ID、记录、质量放行、所选轨迹和证据；只读 `context.upstream` 提供上游信息。变换另返回 output/params/source_mapping，自动校验后才获得可供复检的引用。
 
 `status` 表示阶段处理是否完成；`delivery_status=ready/suspended` 表示是否可交付。`outputs` 给出终端数据引用、放行轨迹和质量状态，`pending` 给出挂起原因。编辑／增强新版本清除原版本质量资格，必须复检；复核后用 `--resume` 重算推荐与放行，并只复用身份、参数、版本和证据均匹配的运行。
+
+## 质检报告与已有结果迁移
+
+`edc run`、`edc config run` 和 `edc batch` 共用 batch 报告模板。一条轨迹也是表格中的一行，点击名称展开原版逐条详情。页面恢复 `leju-kuavo` 参考样例的四项结论说明及整体结论、逐条一览、按算法看问题、逐条详情四个主体栏目。新增的配置、流程、技术明细和历史面板已撤回；历史运行、字段范围、数据集级结果和完整证据继续由 `catalog.json` 与 `_runs` 保存，不据此虚构逐轨迹质量结论。
+
+页面使用通过／复核／可救／排除及原有不适用，不展示“参考”或“未评估完”标签。缺输入或没有质量判定的项显示不适用并保留原因；运行错误仍单独保留，不显示通过。历史记录中的 `OBSERVATION`、`unassessed` 原值不改写，报告按上述显示规则兼容读取；整条未完成的评估不能显示建议保留。显式选择记录时间的算法保留原方法的判定，不再仅因时间来源是容器而改判。
+
+统一入口仍生成 `<输出目录>/report.html`，`catalog.json`、`_runs` 与 `_workflows` 的协议及路径保持不变。已有输出执行 `edc report <输出目录>` 即可重新生成页面，无需重算算法；这只更新展示，不补全缺输入或未完成的评估。逐条详情中的完整框架输出链接指向本次运行目录，原始记录保存在各算法的 `records.jsonl`；完整输出目录应一起保留。`edc batch` 指定的 HTML 和同名 JSON 路径也不变。
 
 ## 中间层通道词表
 

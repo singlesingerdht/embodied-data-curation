@@ -17,6 +17,32 @@ def test_not_applicable_counts_as_pass_and_worst_wins():
     assert cell('Dedup_Check', [record({'verdict': 'NOT_APPLICABLE'})])['worst'] == 'ACCEPTABLE'
 
 
+def test_unjudged_observation_uses_existing_not_applicable_label_and_keeps_reason():
+    item = {'verdict': 'OBSERVATION', 'assessment_complete': False,
+            'reasons': ['缺少设备时钟映射，采集同步未评估']}
+    result = cell('Sync_Check', [record(item)])
+    assert result['worst'] == 'NA' and not result['complete']
+    assert result['problems'] == [['', 'NA', item['reasons'][0]]]
+    assert item['verdict'] == 'OBSERVATION'
+
+
+def test_missing_input_is_not_applicable_but_processing_failure_remains_failure():
+    missing = dict(record(status='missing_input'), reason='缺少设备时钟映射')
+    result = cell('Sync_Check', [missing])
+    assert result['worst'] == 'NA' and not result['complete']
+    assert result['problems'] == [['', 'NA', '缺少设备时钟映射']]
+    assert cell('Sync_Check', [record(status='processing_error')])['worst'] == 'missing'
+
+
+@pytest.mark.parametrize('verdict', ['ACCEPTABLE', 'NEEDS_REVIEW', 'DO_NOT_USE'])
+def test_old_recording_wrapper_displays_preserved_method_judgment(verdict):
+    item = {'verdict': 'OBSERVATION', 'assessment_complete': False,
+            'method_verdict': verdict, 'recording_diagnostic': {'status': 'completed'},
+            'reasons': ['记录时间诊断']}
+    assert cell('Sync_Check', [record(item)])['worst'] == verdict
+    assert item['verdict'] == 'OBSERVATION'
+
+
 def test_clock_reason_and_unfinished_record():
     text = '声明为同一时钟的话题实际分成 2 组：a；b。组间最多相差约 31.9 秒，疑似不同设备的时钟没有对准'
     c = cell('Sync_Check', [record({'verdict': 'DO_NOT_USE', 'reasons': ['score=0', text]})])
