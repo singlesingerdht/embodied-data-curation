@@ -27,7 +27,9 @@ def test_end_to_end_and_repeat_catalog(demo, tmp_path):
             for line in (output / ref).read_text().splitlines():
                 for artifact in json.loads(line)["artifacts"]:
                     assert (output / artifact).is_file()
-    assert "Numeric_Check" in (output / "report.html").read_text()
+    page = (output / "report.html").read_text()
+    assert 'content="edc_batch_report_v1"' in page and '数值检查' in page
+    assert all('Numeric_Check' in ref for ref in catalog['runs'][-1]['records'])
     choices = json.loads((output / catalog["runs"][0]["selection"]).read_text())
     assert choices[0]["decision"] == "unassessed"
 

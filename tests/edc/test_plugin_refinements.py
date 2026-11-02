@@ -43,7 +43,10 @@ def test_import_failure_visible_and_cpu_execution_continues(tmp_path, monkeypatc
     snapshot = json.loads(next((tmp_path/'out/_runs').glob('*/run.json')).read_text())
     assert snapshot['discovery_errors'] == registry.discovery_errors
     page = (tmp_path/'out/report.html').read_text()
-    assert '插件发现失败' in page and 'optional backend absent' in page
+    assert 'content="edc_batch_report_v1"' in page and '数值检查' in page
+    run_ref = next((tmp_path/'out/_runs').glob('*/run.json')).parent.relative_to(tmp_path/'out').as_posix()
+    assert f'href="{run_ref}/"' in page
+    assert any('optional backend absent' in str(row) for row in snapshot['discovery_errors'])
 
 
 def test_import_isolation_does_not_swallow_invalid_namespace_or_duplicate(monkeypatch):
@@ -190,7 +193,10 @@ def test_dataset_executes_once_with_si_and_raw_results_not_episode_filter(tmp_pa
     catalog = json.loads((output/'catalog.json').read_text())
     choices = json.loads((output/catalog['runs'][0]['selection']).read_text())
     assert all(row['decision'] == 'unassessed' for row in choices)
-    assert '数据集级结果单独报告' in (output/'report.html').read_text()
+    page = (output/'report.html').read_text()
+    assert ' · 2 条 · ' in page and '数据集级结果单独报告' not in page
+    dataset_ref = next(ref for ref in catalog['runs'][0]['records'] if ref.endswith('team__dataset/records.jsonl'))
+    assert [json.loads(line) for line in (output / dataset_ref).read_text().splitlines()] == records
 
 
 @pytest.mark.parametrize('mode,expected', [('params','missing_input'), ('preflight','missing_input'), ('run','processing_error')])

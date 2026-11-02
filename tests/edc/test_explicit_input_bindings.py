@@ -175,7 +175,9 @@ def test_topic_selection_does_not_invent_a_common_clock(tmp_path,ident):
     with open_dataset(p,profile=config) as ds:
         ep=next(ds.iter_episodes());ep.open()
         status,reason=preflight(plugin(ident),ep,{'channels':['right','left']})
-    assert status=='missing_input' and 'clock' in reason
+    assert status=='missing_input'
+    assert '缺少设备时钟映射' in reason and '未评估' in reason
+    assert 'timeline.time_source=container' in reason
 
 
 def test_materialized_original_video_keeps_evidence_and_frame_boundaries(tmp_path):

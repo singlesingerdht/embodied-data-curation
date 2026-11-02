@@ -22,8 +22,12 @@ SUFFIXES = ('.bag',)
 
 
 def repo_configs():
-    """configs/ of the source checkout this package is installed from (editable install)."""
-    return Path(edc.__file__).resolve().parents[2] / 'configs'
+    """Checkout configs for editable installs or commands run at the repository root."""
+    source = Path(edc.__file__).resolve().parents[2] / 'configs'
+    for candidate in (source, Path.cwd() / 'configs'):
+        if (candidate / 'robots').is_dir():
+            return candidate
+    return source
 
 
 def resolve_robot(name):

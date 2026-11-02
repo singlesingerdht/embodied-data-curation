@@ -183,7 +183,11 @@ def test_broken_plugin_preflight_is_isolated_and_snapshot_is_preserved(tmp_path,
     from edc.reporting.results import report
     monkeypatch.setattr('edc.algorithms.registry.algorithms', lambda: pytest.fail('historical report must not discover plugins'))
     page = report(tmp_path / 'out').read_text()
-    assert '推荐算法池' in page and '仅部分检查' in page and 'bad plugin hook' in page
+    assert 'content="edc_batch_report_v1"' in page and '结构完整性' in page
+    assert '推荐算法池' not in page
+    assert 'bad plugin hook' in entries(json.loads(before))['fixture__broken']['reason']
+    run_ref = snapshot.parent.relative_to(tmp_path / 'out').as_posix()
+    assert f'href="{run_ref}/"' in page
     assert snapshot.read_bytes() == before
 
 

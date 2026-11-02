@@ -63,14 +63,18 @@ def test_degree_and_radian_physical_results_are_equal_and_sources_unchanged(tmp_
         assert result['unit'] == 'rad' and result['source_unit'] == unit
         assert numeric_review(p)['status'] == 'confirmed'
         rule = evidence(out, item)['fields'][0]
+        assert rule['source_unit'] == unit and rule['target_unit'] == 'rad'
         assert rule['conversion_applied'] == (unit == 'deg')
         assert rule['si_read_count'] == 1
         outputs.append(result)
     for key in ('numeric', 'score', 'verdict', 'numeric_thresholds'):
         assert outputs[0][key] == outputs[1][key]
     page = (tmp_path / 'out-deg/report.html').read_text()
-    assert '源声明单位' in page and '算法执行单位' in page and '已自动换算' in page
-    assert '自动换算已启用' in page
+    assert 'content="edc_batch_report_v1"' in page and '数值检查' in page
+    snapshot = next((tmp_path / 'out-deg/_runs').glob('*/run.json'))
+    assert json.loads(snapshot.read_text())['unit_normalization']['policy'] == 'auto'
+    run_ref = snapshot.parent.relative_to(tmp_path / 'out-deg').as_posix()
+    assert f'href="{run_ref}/"' in page
 
 
 @pytest.mark.parametrize('unit', list(UNITS))
@@ -143,7 +147,12 @@ def test_manual_policy_never_forwards_non_si_to_physical_check(tmp_path, unit):
         assert result['input_scope'] == 'recorded_finiteness_only'
         assert 'disabled' in result['unit_normalization_reason']
     assert record(out, 'Structure_Check')['status'] == 'completed'
-    assert '自动换算已关闭' in (out / 'report.html').read_text()
+    assert record(out)['unit_normalization']['policy'] == 'manual'
+    rules = evidence(out, record(out))
+    assert rules['unit_policy'] == 'manual' and rules['source_unchanged']
+    assert not rules['fields'][0]['conversion_applied']
+    assert rules['fields'][0]['status'] == ('blocked' if unit == 'deg' else 'identity')
+    assert '数值检查' in (out / 'report.html').read_text()
 
 
 @pytest.mark.parametrize('unit', [None, 'unknown', 'ticks', 'A'])

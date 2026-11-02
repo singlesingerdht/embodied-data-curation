@@ -151,7 +151,11 @@ def test_mcap_imu_binding_reading_timeline_and_numeric_output(tmp_path, confirme
     else:
         selection = json.loads(next(output.glob('_runs/*/selection.json')).read_text())
         assert selection[0]['decision'] == 'unassessed'
-    assert '角速度冻结候选' in (output / 'report.html').read_text()
+    page = (output / 'report.html').read_text()
+    assert '数值检查' in page and '逐条详情' in page
+    run_ref = next(output.glob('_runs/*/run.json')).parent.relative_to(output).as_posix()
+    assert f'href="{run_ref}/"' in page
+    assert all((output / ref).is_file() for ref in record['artifacts'])
     assert (output / 'catalog.json').is_file()
     assert hashlib.sha256(source.read_bytes()).hexdigest() == before
 

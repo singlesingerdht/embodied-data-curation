@@ -1,6 +1,7 @@
 import pytest
+from pathlib import Path
 
-from edc.execution.batch import find_inputs, resolve_robot
+from edc.execution.batch import find_inputs, repo_configs, resolve_robot
 from edc.reporting.batch import cell, decision, page
 
 
@@ -180,7 +181,7 @@ def test_page_renders_every_episode():
     assert 'a.bag' in html and 'b.bag' in html and '运行失败' in html and 'bad &lt;x&gt;' in html
 
 
-def test_inputs_and_robot(tmp_path):
+def test_inputs_and_robot(tmp_path, monkeypatch):
     (tmp_path / 'x').mkdir()
     (tmp_path / 'x' / 'a.bag').write_bytes(b'')
     (tmp_path / 'b.bag').write_bytes(b'')
@@ -189,7 +190,42 @@ def test_inputs_and_robot(tmp_path):
     (tmp_path / 'y' / 'a.bag').write_bytes(b'')
     with pytest.raises(ValueError, match='同名'):
         find_inputs([tmp_path])
+    monkeypatch.setattr('edc.execution.batch.repo_configs', lambda: Path(__file__).resolve().parents[2] / 'configs')
     profile, params = resolve_robot('leju_kuavo')
     assert profile.name == 'leju_kuavo_signed.yaml' and params.name == 'params.json'
     with pytest.raises(ValueError, match='找不到机器人配置'):
         resolve_robot('no_such_robot')
+
+
+@pytest.mark.parametrize('editable', [False, True])
+def test_robot_shortcut_resolves_checkout_for_editable_and_wheel_installs(tmp_path, monkeypatch, editable):
+    checkout = tmp_path / 'checkout'
+    robots = checkout / 'configs/robots'
+    robots.mkdir(parents=True)
+    profile = robots / 'fixture.yaml'
+    profile.touch()
+    params = robots / 'fixture/params.json'
+    params.parent.mkdir()
+    params.write_text('{}')
+    package = (checkout / 'src/edc/__init__.py' if editable else
+               tmp_path / 'installed/lib/python/site-packages/edc/__init__.py')
+    monkeypatch.setattr('edc.__file__', str(package))
+    monkeypatch.chdir(checkout)
+    assert resolve_robot('fixture') == (profile, params)
+
+
+def test_editable_checkout_precedes_working_directory(tmp_path, monkeypatch):
+    source = tmp_path / 'source'
+    (source / 'configs/robots').mkdir(parents=True)
+    working = tmp_path / 'working'
+    (working / 'configs/robots').mkdir(parents=True)
+    monkeypatch.setattr('edc.__file__', str(source / 'src/edc/__init__.py'))
+    monkeypatch.chdir(working)
+    assert repo_configs() == source / 'configs'
+
+
+def test_robot_shortcut_without_checkout_requires_explicit_profile(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr('edc.__file__', str(tmp_path / 'installed/lib/python/site-packages/edc/__init__.py'))
+    with pytest.raises(ValueError, match='--profile'):
+        resolve_robot('fixture')

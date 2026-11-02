@@ -267,7 +267,8 @@ def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expecte
         assert checks(report)['command_limits']['events'][0]['value'] == pytest.approx(np.pi / 2)
         assert '独立限位' in brief(row)
         assert any(ref.endswith('.csv') and (output / ref).is_file() for ref in row['artifacts'])
-        assert '指令越界，筛选排除' in (output / 'report.html').read_text()
+        page = (output / 'report.html').read_text()
+        assert '含建议排除项' in page and '动作指令超出已确认的独立限位' in page
 
 
 def test_report_displays_observations_and_candidate_evidence(tmp_path):
