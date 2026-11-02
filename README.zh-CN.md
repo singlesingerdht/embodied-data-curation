@@ -74,13 +74,16 @@ python -m venv .venv
 . .venv/bin/activate
 ```
 
-样例为一条显式登记的 Episode（`x1_pro_reference_0001`），保留全部 32 路源通道：
+文档统一使用以下路径占位符。运行前，用实际值替换，并修改 `configs/datasets/x1_pro_mcap.yaml` 中的对应字段：
 
-```text
-/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap
-```
+| 占位符 | 含义 | 配置字段 |
+|---|---|---|
+| `<DATASET_DIR>` | MCAP 所在的数据集目录，使用绝对路径 | `path` |
+| `<MCAP_FILE>` | MCAP 文件名，包含 `.mcap` 后缀，不含目录 | `episodes[0].path` |
 
-其他环境将此文件放入本地目录后，只需修改 `configs/datasets/x1_pro_mcap.yaml` 的 `path`（文件所在目录）。若文件改名，同时修改 `episodes[0].path`。显式 ID 与 selector 保留；任务名称尚未确认，`tasks: []`，不会从目录名推断。
+完整输入路径为 `<DATASET_DIR>/<MCAP_FILE>`，下方批量检查命令沿用这两个占位符。
+
+本例配置显式登记一条 Episode（`x1_pro_reference_0001`），保留全部 32 路源通道。显式 ID 与 selector 保留；任务名称尚未确认，`tasks: []`，不会从目录名推断。
 
 依次检查配置、查看九项输入推荐、执行并打开报告：
 
@@ -117,13 +120,13 @@ python -m http.server 8000 --directory results/x1-pro-mcap
 edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
 ```
 
-## 补充批处理：同一 MCAP
+## 批量检查示例（可选）
 
-以下示例复用 `x1_pro.yaml` 机器人和 `configs/robots/x1_pro/params.json` 算法参数（与统一配置的九项参数一致）。明确传入 MCAP 文件路径；当前目录递归发现不扫描 `.mcap`。
+上面的快速开始已生成报告。需要通过 `edc batch` 检查一个或多个文件时，将下方路径占位符替换为实际值即可。此命令直接使用传入的文件路径，复用 `x1_pro.yaml` 机器人和 `configs/robots/x1_pro/params.json` 算法参数（与统一配置的九项参数一致）。当前目录递归发现不扫描 `.mcap`，须明确传入文件路径。
 
 ```bash
 edc batch \
-  '/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap' \
+  '<DATASET_DIR>/<MCAP_FILE>' \
   --robot x1_pro --jobs 1 \
   --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
 ```

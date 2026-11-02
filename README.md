@@ -24,13 +24,16 @@ python -m venv .venv
 . .venv/bin/activate
 ```
 
-The server sample is explicitly registered as one Episode (`x1_pro_reference_0001`), retaining all 32 source channels:
+The documentation uses the following path placeholders consistently. Before running, replace them with actual values and update the corresponding fields in `configs/datasets/x1_pro_mcap.yaml`:
 
-```text
-/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap
-```
+| Placeholder | Meaning | Configuration field |
+|---|---|---|
+| `<DATASET_DIR>` | Absolute path to the dataset directory containing the MCAP | `path` |
+| `<MCAP_FILE>` | MCAP filename including `.mcap`, without a directory | `episodes[0].path` |
 
-On another machine, place this file in a local directory and edit `path` in `configs/datasets/x1_pro_mcap.yaml` to that directory. If renamed, also edit `episodes[0].path`. Keep the explicit ID and selector. The task is unconfirmed (`tasks: []`); directory names do not establish it.
+The full input path is `<DATASET_DIR>/<MCAP_FILE>`; the batch command below uses the same placeholders.
+
+The example configuration explicitly registers one Episode (`x1_pro_reference_0001`), retaining all 32 source channels. Keep the explicit ID and selector. The task is unconfirmed (`tasks: []`); directory names do not establish it.
 
 ```bash
 edc config check configs/x1_pro.yaml
@@ -65,13 +68,13 @@ Optional standalone configuration export (use a new output file):
 edc config export configs/x1_pro.yaml --output results/x1-pro-resolved.yaml
 ```
 
-## Supplementary batch example
+## Batch inspection example (optional)
 
-This uses the same robot and the matching nine-method parameters in `configs/robots/x1_pro/params.json`. Supply explicit MCAP file paths: recursive directory discovery currently does not scan `.mcap`.
+The quick start above already generates a report. To inspect one or more files with `edc batch`, replace the path placeholders in the following command with actual values. This command uses the supplied file paths, the same robot and the matching nine-method parameters in `configs/robots/x1_pro/params.json`. Supply explicit MCAP file paths: recursive directory discovery currently does not scan `.mcap`.
 
 ```bash
 edc batch \
-  '/mnt/public/dht/microwave_0124_labled/microwave_0124@MASTER_SLAVE_MODE@2026_01_24_16_12_50/testlhy@MASTER_SLAVE_MODE@2026_04_20_22_19_30_0.mcap' \
+  '<DATASET_DIR>/<MCAP_FILE>' \
   --robot x1_pro --jobs 1 \
   --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
 ```
