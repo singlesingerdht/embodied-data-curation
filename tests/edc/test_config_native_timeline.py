@@ -60,6 +60,12 @@ def test_unconfigured_cameras_never_claim_configuration_pass(tmp_path):
     assert next(s for s in r['sub_indicators'] if s['name']=='相机通道配置一致性')['score'] is None
 
 
+def test_no_cameras_in_data_or_yaml_is_nothing_to_check():
+    t={'/joint_states':TopicInfo(name='/joint_states',modality='joint_state',count=10)}
+    result=check_camera_configuration(t,{},{})
+    assert result['severity']=='pass' and '没有相机' in result['reason']
+
+
 @pytest.mark.parametrize('requirements',[[],{'head':[]},{'head':['rgb','rgb']},{'head':['foo']}])
 def test_invalid_camera_requirement_rejected(requirements):
     p=profile();p['camera_requirements']=requirements

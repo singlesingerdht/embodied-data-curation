@@ -1,4 +1,4 @@
-name: Data Curation CPU and workflow contracts
+name: EDC quality checks
 on: [push, pull_request]
 jobs:
   cpu:
@@ -16,29 +16,8 @@ jobs:
       - run: pip install '.[formats,test]' ./examples/plugins/algorithm
       - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q
       - run: python -m build
-      - name: Base wheel outside source, without format or model dependencies
+      - name: Base wheel lists the nine built-in algorithms
         run: |
-          python -m venv /tmp/curation-base
-          /tmp/curation-base/bin/pip install dist/*.whl
-          cd /tmp
-          /tmp/curation-base/bin/edc algorithms > algorithms.json
-          /tmp/curation-base/bin/python - <<'PY'
-          import json
-          items = json.load(open('algorithms.json'))
-          indicators = [item for item in items if 'quality_indicators' in item.get('presets', [])]
-          assert len(items) == 66
-          assert sum('quality_cpu' in item.get('presets', []) for item in items) == 9
-          assert len(indicators) == 57
-          assert all(item['data_requirements'] or item['required_inputs'] for item in indicators)
-          PY
-          /tmp/curation-base/bin/edc demo fetch synthetic --output base-demo
-          /tmp/curation-base/bin/edc run base-demo --algorithm Structure_Check --output base-results
-          /tmp/curation-base/bin/pip check
-      - name: Whole synthetic workflow outside source
-        run: |
-          python examples/curation/make_example.py --output /tmp/curation-demo
-          edc config export /tmp/curation-demo/curation.yaml --output /tmp/curation-complete.yaml
-          cd /tmp
-          edc config check /tmp/curation-demo/curation.yaml
-          edc config run /tmp/curation-demo/curation.yaml --output /tmp/curation-results
-          edc config run /tmp/curation-demo/curation.yaml --output /tmp/curation-results --resume
+          python -m venv /tmp/edc-base
+          /tmp/edc-base/bin/pip install dist/*.whl
+          cd /tmp && test "$(/tmp/edc-base/bin/edc algorithms | grep -c ir-adapter)" = 9

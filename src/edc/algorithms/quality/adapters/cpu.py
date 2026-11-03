@@ -201,13 +201,6 @@ def selected_pose(episode, params=None):
 
 def selected_inputs(episode, params, ident):
     from .selection import select_episode
-    reference = None
-    if ident == 'Action_Smoothness':
-        from .action import validate_options
-        validate_options(params)
-        requested = (params.get('timeline') or {}).get('reference_channel')
-        if requested:
-            reference = episode.channels[requested]
     if ident == 'Action_Smoothness' and params.get('channel'):
         if 'channels' in params:
             raise ValueError('Use channel or channels, not both')
@@ -224,9 +217,6 @@ def selected_inputs(episode, params, ident):
         if 'side' in params and c.side != params['side']:
             raise ValueError('Explicit action topic conflicts with requested side; no fallback is allowed')
         view._explicit_pose_channel = c.name
-    if ident == 'Action_Smoothness':
-        # The pose scope stays exact; the reference contributes timestamps only.
-        view._smoothness_reference_channel = reference
     if ident == 'Dedup_Check' and params.get('channel') and 'channels' in params:
         raise ValueError('Use channel or channels, not both')
     if ident == 'Sync_Check' and params.get('primary') and params['primary'] not in view.channels:
@@ -328,10 +318,11 @@ def _preflight(plugin, episode, params=None):
     # Single-stream cadence is observable without a camera reference or a common clock.
     # The alignment score below still requires both.
     if spec.id == "Action_Smoothness":
+        from .action import nominal_frame_time
         pose = selected_pose(episode, params)
         require_si_field(episode, pose.name, 'position', 'm')
         if (pose.timestamps is None or len(pose.timestamps) != pose.count
-                or pose.time_source not in {'acquisition', 'container'}):
+                or pose.time_source not in {'acquisition', 'container'} and not nominal_frame_time(pose)):
             return "missing_input", "动作平滑度需要单位明确且来源已确认的有效时间轴；未知、播放或合成时间不可替代。"
     if spec.id == "Sync_Check":
         axes = [tuple(c.timestamps) for c in episode.channels.values() if c.time_source == "acquisition" and c.timestamps]
@@ -736,7 +727,7 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = {'Numeric_Check': 'ir-adapter-20', 'Action_Smoothness': 'ir-adapter-22',
+        version = {'Numeric_Check': 'ir-adapter-20', 'Action_Smoothness': 'ir-adapter-23',
                    'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-17',
                    'Root_Cause': 'ir-adapter-18', 'Check_Timestamp': 'ir-adapter-19',
                    'Video_Integrity': 'ir-adapter-16'}.get(ident, 'ir-adapter-15')
@@ -774,16 +765,9 @@ class LegacyAlgorithm:
                                for name, field in dedup_inputs(episode, params.get('channel'))]}
         if self.spec.id == 'Action_Smoothness':
             c = selected_pose(episode, params)
-            from .action import timeline_plan
-            plan = timeline_plan(episode, c, params)
-            inputs = [{'channel': c.name, 'field': 'position', 'unit': 'm',
-                       'side': c.side, 'time_source': c.time_source}]
-            if plan['reference_channel']:
-                inputs.append({'channel': plan['reference_channel'], 'role': 'reference_timeline',
-                               'time_source': 'acquisition', 'frames_required': False})
-            return {'availability': 'partial' if plan['issues'] else 'available',
-                    'reason': '; '.join(plan['issues']), 'inputs': inputs,
-                    'scope': 'residual_jerk_on_explicit_timeline'}
+            return {'availability': 'available', 'scope': 'band_shake_acceleration',
+                    'inputs': [{'channel': c.name, 'field': 'position', 'unit': 'm',
+                                'side': c.side, 'time_source': c.time_source}]}
         if self.spec.id == 'Check_Timestamp':
             if 'multi_timestamps' not in capabilities(episode) or not any(
                     c.modality == 'rgb' and c.timestamps for c in episode.channels.values()):
@@ -837,6 +821,12 @@ class LegacyAlgorithm:
         return 'runnable', ''
 
     def run(self, context, params):
+        """The algorithm's own report(s), each with the common Item attached (quality/shared/verdicts.py)."""
+        from edc.algorithms.quality.shared.verdicts import emit
+        labels = (getattr(context.episode, 'profile', None) or {}).get('labels') or {}
+        return emit(self.spec.id, self._assess(context, params), labels)
+
+    def _assess(self, context, params):
         legacy()
         short = too_short(context.episode)
         if short and self.spec.id != 'Structure_Check':
@@ -848,12 +838,10 @@ class LegacyAlgorithm:
         params = resolve_channel_parameters(context.episode, params)
         ep = selected_inputs(context.episode, params, self.spec.id)
         params = {k: v for k, v in params.items() if k not in {'channels', 'target_clock'}}
-        if self.spec.id == 'Action_Smoothness':
-            params.pop('channel', None)
         if self.spec.id == "Action_Smoothness":
-            channel = selected_pose(ep, params)
+            params.pop('channel', None)
             from .action import assess
-            return assess(ep, channel, params, context)
+            return assess(ep, selected_pose(ep, params), params, context)
         if self.spec.id == "Dedup_Check":
             return self._dedup(ep, params, context)
         if self.spec.id == "Reset_Detection":
@@ -882,7 +870,12 @@ class LegacyAlgorithm:
             cadence = cadence_report(ep)
             params = dict(params)
             row_gap = params.pop('shared_row_max_gap_s', None)
-            if row_gap is not None and shared_row_timeline(ep):
+            if shared_row_timeline(ep):
+                if row_gap is None:  # Default: a gap is an interval over 3 times the median row interval.
+                    import numpy as np
+                    times = np.asarray(next(c for c in ep.channels.values() if c.timestamps).timestamps, float)
+                    steps = np.diff(times)
+                    row_gap = 3 * float(np.median(steps[steps > 0])) if (steps > 0).any() else 1.0
                 return shared_row_intervals(ep, float(row_gap), cadence)
             has_camera = any(c.modality == 'rgb' and c.timestamps and
                              c.time_source in {'acquisition', 'container'} for c in ep.channels.values())
@@ -942,10 +935,7 @@ class LegacyAlgorithm:
             return result
         if self.spec.id == 'Root_Cause':
             return self._root_cause_on_one_clock(ep, module, info, reader, params)
-        result = fn(info, reader, **params)
-        if self.spec.id == 'Action_Smoothness' and getattr(ep, '_explicit_pose_channel', None):
-            result['side'] = ep.channels[ep._explicit_pose_channel].side
-        return result
+        return fn(info, reader, **params)
 
     def _root_cause_on_one_clock(self, ep, module, info, reader, params):
         """Root_Cause after shifting any clock offset out, so drift and jumps can be measured.
@@ -1222,9 +1212,13 @@ class LegacyAlgorithm:
                 result["calibration_status"] = spec["calibration_status"]
                 result["shape"] = list(values.shape)
                 from .numeric_supplements import supplements
+                ranges = params.get('ranges') or {}
+                value_range = next((ranges[f'{n}.{field}'] for n in (channel.name, getattr(channel, 'logical_name', None))
+                                    if f'{n}.{field}' in ranges), None)
                 extra_checks = supplements(values, ep, channel, field, target[0] if target else None,
                     settings['thresholds'], physical, getattr(context, 'workdir', None),
-                    freeze_min_duration_s=freeze_min_duration_s, joint_stuck_settings=params.get('joint_stuck'))
+                    freeze_min_duration_s=freeze_min_duration_s, joint_stuck_settings=params.get('joint_stuck'),
+                    value_range=value_range)
                 result['supplemental_checks'] = extra_checks
                 if result.get('adapter_check'):
                     check = next(c for c in extra_checks if c['id'] == 'joint_velocity_limit')
@@ -1380,9 +1374,3 @@ class LegacyAlgorithm:
 def builtins():
     """Return the stable nine-method CPU compatibility surface."""
     return [LegacyAlgorithm(*args) for args in SPECS]
-
-
-def indicator_builtins():
-    """Return the repository-owned modality indicator pool."""
-    from edc.algorithms.quality.algorithms.Indicator_Checks.plugins import plugins
-    return list(plugins())

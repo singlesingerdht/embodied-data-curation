@@ -1,0 +1,33 @@
+# ═══ 单臂机器人 yaml 模板 ═══（各项写法的详细说明见 dual_arm.yaml 开头）
+# 复制到 configs/robots/<机器人名>.yaml → edc robot check → edc batch
+# 实例：configs/robots/pepsi_sort.yaml（只有末端位姿、没有关节的单臂，LeRobot v3.0）
+
+robot:
+  name: my_single_arm          # 必填：英文名，和文件名一致
+  model: 某某单臂
+  confirmed_by: zhangsan       # 必填：确认单位和含义的人
+
+data:
+  min_duration_s: 3.0
+  # time: {source: source_timestamp, unit: s}     # 有原始采集时间列时写
+  # time_note: LeRobot 的 timestamp 按帧号生成，没有原始采集时间   # 没有时写原因，显示在“不适用”里
+
+arms:
+  main:                        # 单臂随便起名（main），side 不写
+    joints: {source: observation.state, index: 0-6, unit: rad}            # 有关节角就写；没有就删掉这行
+    eef_position: {source: observation.eef, index: 0-2, unit: m}          # 有末端位置就写；只有关节和 URDF 时写 fk
+    # eef_orientation: {source: observation.eef, index: 3-6, unit: quaternion, order: xyzw}
+    gripper: {source: observation.state, index: 7, unit: raw, range: [0, 1000]}   # 单位见 dual_arm.yaml 开头
+    # joint_command: {source: action, index: 0-6, unit: rad}
+    # eef_command: {source: action, index: 0-2, unit: m}
+    # ▼ URDF（厂家给了就一定要写）：用 edc robot urdf --urdf <文件> --base <起点> --tip <末端> 打印的 5 行替换下面几行；步骤见 dual_arm.yaml
+    # urdf:
+    #   file: my_single_arm/arm.urdf
+    #   joints: [joint1, joint2, joint3, joint4, joint5, joint6, joint7]
+    #   base_link: base_link
+    #   tip_link: link7
+    # home: {joints: [0, 0, 0, 0, 0, 0, 0], tolerance: 0.6}
+
+cameras:
+  wrist: {source: observation.images.wrist, mount: wrist, arm: main, label: 手腕相机}
+  # head: {source: observation.images.top, mount: head, label: 头部相机}

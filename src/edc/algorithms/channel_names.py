@@ -132,9 +132,6 @@ def resolve_channel_parameters(episode, params):
     for key in ('channel', 'primary', 'camera_channel'):
         if result.get(key) is not None:
             result[key] = resolve_channel(episode, result[key])
-    timeline = result.get('timeline') or {}
-    if timeline.get('reference_channel') is not None:
-        timeline['reference_channel'] = resolve_channel(episode, timeline['reference_channel'])
     poses = result.get('poses') or {}
     if not isinstance(poses, dict):
         raise ValueError('poses must map sides to explicit bindings')
@@ -194,9 +191,6 @@ def channel_parameter_bindings(episode, params):
     for key in ('channel', 'primary', 'camera_channel'):
         if params.get(key) is not None:
             append(key, params[key], resolved[key])
-    if (params.get('timeline') or {}).get('reference_channel') is not None:
-        append('timeline.reference_channel', params['timeline']['reference_channel'],
-               resolved['timeline']['reference_channel'])
     for side, binding in (params.get('poses') or {}).items():
         if isinstance(binding, dict) and 'channel' in binding:
             append(f'poses.{side}.channel', binding['channel'], resolved['poses'][side]['channel'])

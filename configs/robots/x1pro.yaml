@@ -1,0 +1,83 @@
+# X1 Pro（自变量 Quanta X1 Pro），单条轨迹目录：JSON 轨迹 + 3 路 MP4（robot-bridge 导出）
+# 依据：/mnt/public/datasets/x1pro 随机 200 条实测（input_example/tools/x1pro_survey.py、x1pro_values.py、x1pro_stats.py）
+robot:
+  name: x1pro
+  model: Quanta X1 Pro（robot-bridge 轨迹 JSON + MP4）
+  confirmed_by: renxiaoshu
+
+data:
+  # JSON 每行的 timestamp 是 Unix 秒（首行 = 目录名里的录制时刻），相邻行中位间隔 32 ms
+  time: {source: timestamp, unit: s}
+  # 3 路 MP4 每帧对应 JSON 一行（200 条里 599/600 路帧数 = 行数）
+  video_frame_time: rows
+  min_duration_s: 3.0
+
+arms:
+  left:
+    # follow_* 是机器人本体（从臂）；7 维里前 6 个是手臂关节，第 7 个和 follow_left_gripper 相同
+    joints: {source: follow_left_joint_position, index: 0-5, unit: rad}
+    joint_velocity: {source: follow_left_joint_velocity, index: 0-5, unit: rad/s}
+    # 机器人自己给的末端位置（开机零位附近为原点）；不卡住时和 URDF 算出的差 0.5–2 mm
+    eef_position: {source: follow_left_position, index: 0-2, unit: m}
+    # 姿态：3 个数，按 URDF 的 roll pitch yaw（弧度）解读和 URDF 算出的姿态差 0.1°（edc robot urdf 核对，2026-11-01）
+    eef_orientation: {source: follow_left_rotation, unit: rpy_rad}
+    # 夹爪：60 条实测 -0.04~1.55，单位未知（不是米）：只查有没有坏数
+    gripper: {source: follow_left_gripper, unit: unknown}
+    eef_command: {source: master_left_position, index: 0-2, unit: m}   # 主臂（遥操作）末端
+    gripper_command: {source: master_left_gripper, unit: unknown}
+    # 厂家 xacro 展开（input_example/tools/x1pro_expand_xacro.py）；限位和速度上限都从这里读
+    urdf:
+      file: x1pro/x1pro_left_arm.urdf
+      joints: [left_arm_joint1, left_arm_joint2, left_arm_joint3, left_arm_joint4, left_arm_joint5, left_arm_joint6]   # 数据 6 列依次对应的 URDF 关节
+      base_link: left_arm_base_link
+      tip_link: left_arm_link6
+    # 复位：开头和结尾末端离 Home 不超过 5 cm（200 条里 183 条两端都在 5 cm 内）
+    home: {eef_position: [-0.007010698318481445, 0.0028152498416602617, 0.002762031741440296], tolerance: 0.05}
+  right:
+    joints: {source: follow_right_joint_position, index: 0-5, unit: rad}
+    joint_velocity: {source: follow_right_joint_velocity, index: 0-5, unit: rad/s}
+    eef_position: {source: follow_right_position, index: 0-2, unit: m}
+    eef_orientation: {source: follow_right_rotation, unit: rpy_rad}
+    gripper: {source: follow_right_gripper, unit: unknown}
+    eef_command: {source: master_right_position, index: 0-2, unit: m}
+    gripper_command: {source: master_right_gripper, unit: unknown}
+    urdf:
+      file: x1pro/x1pro_right_arm.urdf
+      joints: [right_arm_joint1, right_arm_joint2, right_arm_joint3, right_arm_joint4, right_arm_joint5, right_arm_joint6]   # 数据 6 列依次对应的 URDF 关节
+      base_link: right_arm_base_link
+      tip_link: right_arm_link6
+    home: {eef_position: [-0.007658312562853098, 0.01540503278374672, -0.010580490343272686], tolerance: 0.05}
+
+cameras:
+  # 抽帧看过：faceImg 是头部俯视整张桌子，leftImg/rightImg 是左/右夹爪上的相机
+  head: {source: faceImg, mount: head, label: 头部相机}
+  left_wrist: {source: leftImg, mount: wrist, arm: left, label: 左夹爪相机}
+  right_wrist: {source: rightImg, mount: wrist, arm: right, label: 右夹爪相机}
+
+# 其他数值：只查有没有 NaN/无穷大。主臂关节 6 列全是 0（没录），不写就不检查
+# 单位：主臂姿态和从臂同一格式（rpy_rad）；其余没向厂家确认，写 unknown（括号里是 60 条实测范围）
+other:
+  - {source: follow_left_joint_effort, label: 左臂关节力矩, unit: unknown}
+  - {source: follow_right_joint_effort, label: 右臂关节力矩, unit: unknown}
+  - {source: master_left_rotation, label: 主臂左手姿态, unit: rpy_rad}
+  - {source: master_right_rotation, label: 主臂右手姿态, unit: rpy_rad}
+  - {source: head_rotation, label: 头部转角, unit: unknown}
+  - {source: head_pitch, label: 头部俯仰, unit: unknown}
+  - {source: head_yaw, label: 头部偏航, unit: unknown}
+  - {source: lifting_mechanism_position, label: 升降机构, unit: unknown}         # 0.38~0.43，像米
+  - {source: car_pose_odom, label: 底盘位姿, unit: unknown}
+  - {source: car_pose_odom_position, label: 底盘位置, unit: unknown}
+  - {source: car_pose_odom_rotation, label: 底盘朝向, unit: unknown}
+  - {source: velocity_decomposed_odom, label: 底盘速度, unit: unknown}         # 偶有 66.8、321.9 这样的离群值
+
+# 各算法参数，只写和默认值不同的（含义见 README“算法参数”一节）
+checks:
+  Numeric_Check:
+    freeze_min_duration_s: 5
+    joint_stuck: {min_move_m: 0.02, min_moving_s: 1.0, moving_speed_m_s: 0.02, verdict: DO_NOT_USE}
+  Check_Timestamp:
+    count_each_source_once: true
+    scoring: {absolute_error_floor_ms: 11.1, dt_cv_no_penalty: 0.3, dt_cv_zero: 0.6}
+    shared_row_max_gap_s: 0.1
+  Reset_Detection:
+    split_segments: true

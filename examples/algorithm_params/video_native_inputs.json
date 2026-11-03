@@ -1,8 +1,0 @@
-{
-  "Video_Integrity": {
-    "channels": ["rgb/head", "rgb/chest", "rgb/wrist/left", "rgb/wrist/right"],
-    "input_mode": "auto",
-    "sample_step": 1,
-    "downscale": 4
-  }
-}

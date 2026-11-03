@@ -1,0 +1,25 @@
+# pepsi_sort：单臂 + 夹爪，只记录末端位姿（没有关节角），LeRobot v3.0，60 Hz，1 路鱼眼手腕相机
+# 数据：/mnt/public/ljc/lerobot（测试用前 8 条：/mnt/public/rxs/data/Lerobotv30/pepsi_sort_8ep）
+# 依据（2026-10-31 实测前 8 条）：state 的 x/y/z 在 -0.55~0.14 之间，按米；qx..qw 的模长全是 1（四元数）；
+# clamp 在 608~1103，单位未知；action 和 state 完全相同；画面里能看到夹爪两指 → 手腕相机。
+robot:
+  name: pepsi_sort
+  model: 单臂夹爪（只有末端位姿）
+  confirmed_by: renxiaoshu
+
+data:
+  # 不写 time：用 LeRobot 标准的 timestamp（按帧号算，不是采集时间）；time_note 会显示在时间类检查“不适用”的原因里
+  time_note: LeRobot 的 timestamp 按帧号生成；另存的 source_timestamp 是 float32，Unix 秒精度只剩约 128 秒，不能当采集时间
+  min_duration_s: 3.0
+
+arms:
+  main:
+    eef_position: {source: observation.state, index: 0-2, unit: m}
+    eef_orientation: {source: observation.state, index: 3-6, unit: quaternion, order: xyzw}   # 特征名 qx qy qz qw，模长全是 1
+    gripper: {source: observation.state, index: 7, unit: unknown}                 # clamp，50 条 605~1104，单位未知
+    eef_command: {source: action, index: 0-2, unit: m}
+    gripper_command: {source: action, index: 7, unit: unknown}
+
+cameras:
+  wrist: {source: observation.images.main, mount: wrist, arm: main, label: 手腕鱼眼相机}
+

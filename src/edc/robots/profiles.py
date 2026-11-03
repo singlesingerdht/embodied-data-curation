@@ -14,7 +14,10 @@ def profile_dir():
 def load_profile(value=None, *, base=None):
     if value is None:
         return {}
-    profile = copy.deepcopy(value) if isinstance(value, dict) else read_unique_yaml(Path(value).read_text())
+    profile = copy.deepcopy(value) if isinstance(value, dict) else read_unique_yaml(Path(value).read_text(encoding='utf-8'))
+    from edc.robots.card import is_card, compile_card
+    if is_card(profile):  # The robot yaml a user writes, compiled in memory.
+        profile, _, _ = compile_card(profile, Path(value).resolve().parent if not isinstance(value, dict) else base)
     if not isinstance(profile, dict):
         raise ValueError("Robot profile must be a mapping")
     if profile.get("schema_version") != 1 or not profile.get("version"):

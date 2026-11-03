@@ -1,0 +1,92 @@
+# ═══ 双臂机器人 yaml 模板 ═══
+# 用法：复制到 configs/robots/<机器人名>.yaml，按注释改；改完运行
+#   edc robot check --robot configs/robots/<机器人名>.yaml --data <一条数据>      核对每一项都能从数据里读出来
+#   edc batch <数据目录> --robot configs/robots/<机器人名>.yaml                    质检，出 HTML 报告
+# 不知道数据里叫什么名字时运行：edc channels <一条数据>
+#
+# 每一项的写法：{source: 数据里的名字, field: 字段名, index: 下标, unit: 单位}
+#   source  必填。LeRobot 是特征名（observation.state）；HDF5 是数据集路径；ROS bag/MCAP 是话题名（/joint_states）；
+#           JSON 是列名。都用 edc channels 列出来的名字。
+#   field   只有 ROS 消息要写（如 joint_states 的 position）；表格数据（LeRobot、Parquet、HDF5、JSON）不写。
+#   index   这一项在数组里的位置：一个数（7）、一段（0-6，含两端）或列表（[0, 2, 4]）。整列就是这一项时不写。
+#   unit    每一项都必填，见每项的注释。几种特殊写法：
+#           unit: raw, range: [0, 255]       没有物理单位的原始数值（如 0~255 的夹爪读数），写清范围；超出范围判排除
+#           unit: unknown                    不清楚单位，只查有没有 NaN/无穷大（以后查清了再改）
+#           scale: {raw: [0, 4095], value: [-3.1416, 3.1416]}
+#                                            数据存的是原始数值、能线性换算成 unit 写的物理单位时写（两点定一条直线），
+#                                            如 12 位编码器 0~4095 对应 -π~π rad；关节、末端、夹爪等都可以写
+#   range   选填（夹爪、灵巧手、other 可写）：数值的正常范围 [最小, 最大]，超出判排除；unit 是 raw 时必填
+# 没写进本文件的数据不检查。
+
+robot:
+  name: my_dual_arm            # 必填：英文名，和文件名一致（configs/robots/my_dual_arm.yaml）
+  model: 某某双臂机器人          # 选填：报告里显示的型号
+  confirmed_by: zhangsan       # 必填：确认本文件里单位和含义的人；改了文件就等于此人重新确认
+
+data:
+  # 选填：原始采集时间列。不写时：LeRobot 用标准 timestamp（按帧号算出，时间类检查记“不适用”）；
+  #       ROS bag/MCAP 每个话题自带时间，也不用写。
+  # time: {source: source_timestamp, unit: s}        # unit：s / ms / us / ns
+  # 选填：没有原始采集时间时写一句原因，时间类检查“不适用”的格子里会显示它
+  # time_note: LeRobot 的 timestamp 按帧号生成，没有原始采集时间
+  # 选填：单条目录（JSON+MP4）里第 i 帧视频对应第 i 行数据时写 rows
+  # video_frame_time: rows
+  # 选填：一个 HDF5 文件里装了多条数据时，写装着它们的组名，每个子组算一条（如 robomimic 的 data/demo_0、demo_1……）；
+  #       写了之后 source 写子组里面的名字（obs/robot0_joint_pos），不带 data/demo_0/
+  # episode_group: data
+  min_duration_s: 3.0          # 选填：短于它的数据判排除，其余检查不做（默认 3 秒）
+
+arms:
+  left:                        # 手臂名：双臂用 left / right（单臂见 single_arm.yaml）
+    # ── 关节（建议有）：数值检查、复位检测、URDF 正运动学都用它 ──
+    joints: {source: observation.state, index: 0-5, unit: rad}            # unit：rad 或 deg；index 个数 = 关节数
+    # joint_velocity: {source: observation.velocity, index: 0-5, unit: rad/s}   # 选填；写了要有速度上限（URDF 或下面一项）
+    # max_joint_velocity: 3.0                                              # 选填：速度上限 rad/s，一个数或每关节一个
+    # joint_command: {source: action, index: 0-5, unit: rad}              # 选填：关节指令
+    # ── 末端（建议有）：动作平滑度、复位检测（按末端时）用它 ──
+    eef_position: {source: observation.eef, index: 0-2, unit: m}          # x y z 三个数；unit：m / cm / mm
+    # eef_position: fk                                                    # 数据没录末端时：用 URDF 从关节角算（要写 urdf）
+    # eef_orientation: {source: observation.eef, index: 3-6, unit: quaternion, order: xyzw}   # 选填：姿态
+    #   unit：quaternion（四元数，order 写 xyzw 或 wxyz）、rpy_rad / rpy_deg（URDF 的 roll pitch yaw）、unknown；
+    #   写清楚后 edc robot urdf 会用它验算 URDF 的姿态
+    # eef_command: {source: action, index: 0-2, unit: m}                  # 选填：末端指令
+    gripper: {source: observation.state, index: 6, unit: m}                              # 选填：夹爪开口
+    #   unit：m / cm / mm（开口宽度）、rad / deg（夹爪转角）、raw（原始数值，要写 range）、unknown
+    # gripper_command: {source: action, index: 6, unit: raw, range: [0, 1000]}
+    # ── ▼ URDF（厂家给了就一定要写；没有才不写）：用来检查关节限位、速度上限，数据没录末端时用 fk 算末端 ──
+    #   不写时：关节限位、速度上限两项记为不适用（速度上限可改写 max_joint_velocity），也不能写 eef_position: fk
+    # 第 0 步 把 .urdf 文件放到 configs/robots/<机型名>/ 下（只要这一个文件，meshes 不用）
+    # 第 1 步 查名字：edc robot urdf --urdf <URDF 文件>                      列出连杆树，选 base_link、tip_link
+    # 第 2 步 生成：  edc robot urdf --urdf <URDF 文件> --base <起点> --tip <末端>   打印 5 行 urdf:，
+    #               用打印的 5 行替换下面以 # urdf: 开头的几行（每条手臂各运行一次、各贴一段）
+    # 第 3 步 核对：  edc robot urdf --robot configs/robots/<名>.yaml --data <数据1> <数据2>（第一条求坐标系，第二条验证）；结论只有对得上/对不上/末端未验证
+    # urdf:
+    #   file: my_dual_arm/left_arm.urdf          # 相对本文件所在目录
+    #   joints: [l_joint1, l_joint2, l_joint3, l_joint4, l_joint5, l_joint6]   # 数据第 1、2……列各是 URDF 里哪个关节，按数据列顺序写
+    #   base_link: left_base_link                # 起点连杆：手臂装在身上的连杆（或数据里末端位置的坐标系）
+    #   tip_link: left_link6                     # 末端连杆：手的工作点
+    #   tip_offset: [0, 0, 0.1]                  # 选填：数据记录的末端点在 tip_link 坐标系里的位置（m），如两指中间比法兰往前 10 cm。
+    #                                            #   从数据说明里查（仿真器、SDK 文档里“末端”的定义），核对不会替你算
+    # ── 复位位置（选填）：开头和结尾离它超过 tolerance 就复核；两条手臂要用同一种写法和同一个 tolerance ──
+    # home: {joints: [0, 0, 0, 0, 0, 0], tolerance: 0.6}                  # 按关节角（rad）
+    # home: {eef_position: [0.3, 0.2, 0.4], tolerance: 0.05}              # 或按末端位置（m）
+  right:
+    joints: {source: observation.state, index: 7-12, unit: rad}
+    eef_position: {source: observation.eef, index: 7-9, unit: m}
+    gripper: {source: observation.state, index: 13, unit: m}
+
+cameras:                       # 彩色相机：名字随意；mount：head / chest / wrist / main；手腕相机写 arm
+  head: {source: observation.images.cam_high, mount: head, label: 头部相机}
+  left_wrist: {source: observation.images.cam_left_wrist, mount: wrist, arm: left, label: 左手腕相机}
+  right_wrist: {source: observation.images.cam_right_wrist, mount: wrist, arm: right, label: 右手腕相机}
+  # head_depth: {source: observation.images.cam_high_depth, mount: head, type: depth}   # 深度图：只参与时间检查
+
+# imu:                         # 选填：IMU（通常是 ROS 消息里的字段）
+#   main: {source: /imu, gyro: {field: angular_velocity, unit: rad/s}, accel: {field: linear_acceleration, unit: m/s^2},
+#          orientation: {field: orientation, order: xyzw}}
+
+# other:                       # 选填：其他数值（腰、头、底盘、力矩……）：查有没有 NaN/无穷大，写了 range 再查范围
+#   - {source: observation.waist, label: 腰, unit: m}       # unit 同上，可用 m、rad、N*m、raw（要写 range）、unknown 等
+
+# checks:                      # 选填：算法参数，只写和默认值不同的（见 README“算法参数”）
+#   Numeric_Check: {freeze_min_duration_s: 5}

@@ -11,7 +11,7 @@ INPUT_DESCRIPTIONS = {
                         '跨通道对齐评分另需独立时间轴、共同 clock、有效时间以及相机参考。'),
     'Sync_Check': ('至少两条独立原始采集时间轴、有效秒制时间和共同 clock；公共行时间或合成时间不可替代。',),
     'Root_Cause': ('至少两条可比较的独立记录时间轴及共同 clock；公共行时间不能用于跨通道归因。',),
-    'Action_Smoothness': ('末端反馈 position 换算为 m；native 使用自身时间，reference_channel 使用指定通道真实 acquisition 时间并要求共同 clock 或显式映射，reference_rate 只借参考通道帧间隔、在自身时间上取原始行。频率仅作标定检查，不生成时间。',),
+    'Action_Smoothness': ('末端反馈 position 换算为 m，用该通道自身的时间（采集时间、容器时间或格式规定的帧时间）；采样率低于 min_rate_hz 时不适用。',),
     'Reset_Detection': ('关节 position；已确认的复位 reference、单位与正 tolerance，且与实际输入量纲一致。',),
     'Video_Integrity': ('可解码 RGB 或原视频；默认auto按读取器声明选择图像或视频入口；frames无需编码；video物化另需显式 FPS 或有效时间轴。',
                         '采样间隔和空间缩小比例单独记录；派生视频结果不能证明原编码或采集同步。'),
@@ -23,9 +23,9 @@ def cpu_parameters(ident):
         'description': '选择源 topic/Channel 名称或机器人配置的 logical_name；支持多个，缺失或解析后重复拒绝，不猜测或回退。不填按 arms 与声明的输入要求选择。'}}
     properties['arms'] = {'type': ['string', 'array'], 'items': {'type': 'string'},
                           'description': 'all 或已声明的机械臂部件 ID 列表；默认按机器人拓扑选择全部臂'}
-    if ident != 'Reset_Detection':
+    if ident not in ('Reset_Detection', 'Action_Smoothness'):
         properties['weights'] = {'type': ['object', 'null'], 'description': '原方法的子项权重；未提供时沿用原默认值'}
-    else:
+    if ident == 'Reset_Detection':
         properties['split_segments'] = {'type': 'boolean', 'default': False,
             'description': '数据集自带剪辑记录（数据目录里的 anno/source_segment.json，或上级目录 split_manifest.json 列出本条）时，'
                            '这条是从长录制剪出来的切片：只查真正的录制开头（从原始第 0 帧剪起时查开头），其余端不查；两端都不查时记为不适用'}
@@ -39,30 +39,21 @@ def cpu_parameters(ident):
         properties['channel'] = {'type': 'string', 'description': '精确绑定实际末端 position topic；与 channels 二选一，不自动改为同侧另一通道'}
         properties['side'] = {'type': 'string', 'enum': ['left', 'right'],
                               'description': '显式绑定的侧别校验；统一配置使用 arms 选择机械臂并逐臂绑定，禁止另一侧回退'}
+        from edc.algorithms.quality.algorithms.Action_Smoothness.shake import DEFAULTS
+        number = lambda key, text: {'type': 'number', 'exclusiveMinimum': 0, 'default': DEFAULTS[key], 'description': text}
         properties.update(
-            timeline={'type': 'object', 'additionalProperties': False, 'default': {'mode': 'native'},
-                'properties': {
-                    'mode': {'type': 'string', 'enum': ['native', 'reference_channel', 'reference_rate'], 'default': 'native',
-                             'description': 'reference_rate：只借参考通道自身时间轴上的帧间隔，在源自身时间轴上每隔 k 行取 1 行原始样本；不比较两个钟，不插值'},
-                    'reference_channel': {'type': 'string', 'description': '参考通道的源 topic 或逻辑名；使用真实时间点'},
-                    'time_source': {'type': 'string', 'enum': ['acquisition', 'container']},
-                    'resample': {'type': 'string', 'enum': ['linear', 'keep_every_kth_row'], 'default': 'linear'},
-                    'clock_policy': {'type': 'string', 'enum': ['require_common_or_explicit_mapping'],
-                                     'default': 'require_common_or_explicit_mapping'}},
-                'description': '算法输入时间轴；参考模式仅接受 acquisition，不外推。缺共同 clock 或映射时 NEEDS_REVIEW'},
-            expected_rate_hz={'type': 'number', 'exclusiveMinimum': 0, 'default': 30,
-                'description': '滤波与阈值的标定频率，只检查真实时间轴，不生成均匀时间'},
-            rate_tolerance_ratio={'type': 'number', 'minimum': 0, 'maximum': 1, 'default': .2,
-                'description': '实测中位频率相对标定频率的允许偏差，超出只保留诊断值并待复核'},
-            window_length={'type': 'integer', 'minimum': 5, 'default': 11,
-                'description': 'Savitzky-Golay 窗口帧数，必须为奇数；三阶多项式保持不变'},
-            vel_threshold_factor={'type': 'number', 'exclusiveMinimum': 0, 'default': .1,
-                'description': '静止分段速度门限与全局峰值之比'},
-            jerk_threshold_m_s3={'type': 'number', 'exclusiveMinimum': 5, 'default': 15,
-                'description': 'SI 残差 jerk 阈值；大于保留的 5 m/s³ 满分基线'},
-            jerk_frames={'type': 'string', 'enum': ['method', 'slow_only'], 'default': 'method',
-                'description': 'method 沿用原方法（静止段两侧补帧后算抖动）；slow_only 只用原方法自己找出的真正慢下来的帧'
-                               '（原方法已输出的 raw_stationary_jerk_rms），同一指标、同一阈值，原分数保留为 method_score'})
+            band_hz={'type': 'array', 'items': {'type': 'number'}, 'minItems': 2, 'default': DEFAULTS['band_hz'],
+                     'description': '抖动的运动频率范围（Hz，每秒来回几次）：低于下限算有意动作，上限还受 band_rate_ratio 限制'},
+            band_rate_ratio=number('band_rate_ratio', '上限最多取采样率的这个倍数（30 Hz 采样 → 10 Hz，15 Hz 采样 → 6 Hz）'),
+            min_rate_hz=number('min_rate_hz', '采样率低于这个值时不检查平滑度（记为不适用）'),
+            still_speed_m_s=number('still_speed_m_s', '有意动作的速度低于这个值（米/秒）算停住'),
+            still_min_s=number('still_min_s', '低速至少持续这么多秒才算停住'),
+            still_review_m_s2=number('still_review_m_s2', '停住时抖动加速度（均方根，米/秒²）超过这个值进复核；运动时只列数值不判断'),
+            freeze_min_s=number('freeze_min_s', '运动中位置读数完全不变至少这么多秒，算读数冻结（复核）'),
+            freeze_speed_m_s=number('freeze_speed_m_s', '冻结前 0.1 秒的速度至少这么快（米/秒），才算“运动中”冻结'),
+            gap_factor=number('gap_factor', '相邻两行相隔超过中位间隔的这个倍数，算时间断档，两边分开算'),
+            edge_s=number('edge_s', '每段开头结尾各舍弃这么多秒（滤波在两端不准）'),
+            min_piece_s=number('min_piece_s', '断档之间短于这么多秒的数据段不算'))
     if ident == 'Numeric_Check':
         properties['thresholds'] = {'type': 'object', 'description': '覆盖 robot.yaml 的 numeric_check.thresholds；变更后 Numeric 配置确认失效'}
         properties['freeze_min_duration_s'] = {'type': 'number', 'exclusiveMinimum': 0,
@@ -75,6 +66,8 @@ def cpu_parameters(ident):
             'description': '本机型还没有关节限位来源（如没有 URDF）时写明原因：关节限位子项记为不适用并显示原因；已填 joint.limits 时不起作用'}
         properties['finiteness_only'] = {'type': 'array', 'items': {'type': 'string'},
             'description': '“通道.字段”列表：本机型只查 NaN/Inf、视为检查完成；只允许没有物理检查项的字段'}
+        properties['ranges'] = {'type': 'object',
+            'description': '{“通道.字段”: {range: [最小, 最大], unit}}：机器人 yaml 写了 range 的项，超出范围判排除（由 yaml 自动生成）'}
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:
         properties['target_clock'] = {'type': 'string',
             'description': '执行时使用的共同clock；仅应用配置中明确的仿射映射，不重采样、不修改原时间或时间来源'}
@@ -84,7 +77,7 @@ def cpu_parameters(ident):
         properties['count_each_source_once'] = {'type': 'boolean', 'default': False,
             'description': '拆分或推算出来的通道（与源话题同一时间轴）不重复计分'}
         properties['shared_row_max_gap_s'] = {'type': 'number', 'exclusiveMinimum': 0,
-            'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填则只做观察'}
+            'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填按中位行间隔的 3 倍'}
     if ident == 'Root_Cause':
         properties['families'] = {'type': ['object', 'null'], 'description': '显式消息源分组，用于关联异常；未填沿用原方法分组'}
     if ident == 'Sync_Check':

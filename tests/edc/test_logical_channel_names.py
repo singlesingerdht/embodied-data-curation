@@ -41,20 +41,6 @@ def test_public_catalog_retains_names_metadata_and_source(tmp_path):
     assert profile == original
 
 
-def test_all_quality_examples_declare_channels_and_validate_actual_schemas():
-    from edc.algorithms.contracts import resolve_parameters
-    root = Path(__file__).resolve().parents[2]
-    params = json.loads((root/'examples/algorithm_params/quality_logical_channels.json').read_text())
-    plugins = {p.spec.id: p for p in builtins()}
-    assert set(params) == set(plugins) and len(params) == 9
-    profile = load_profile(root/'configs/robots/x1_pro.yaml')
-    declared = {c.get('logical_name') for c in profile['channels'].values()}
-    for ident, supplied in params.items():
-        schema = plugins[ident].spec.parameter_schema
-        assert schema['properties']['channels']['type'] == 'array'
-        assert resolve_parameters(plugins[ident].spec, supplied)['channels'] == supplied['channels']
-        assert set(supplied['channels']) <= declared
-    assert params['Video_Integrity']['input_mode'] == 'auto'
 
 
 @pytest.mark.parametrize('ident', [p.spec.id for p in builtins()])

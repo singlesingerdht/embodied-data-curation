@@ -3,14 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "edc-example-algorithm"
-version = "0.1.0"
-dependencies = ["embodied-data-curation>=0.2.0a1"]
+version = "0.2.0"
+dependencies = ["embodied-data-curation>=0.3.0a1"]
 [project.entry-points."edc.algorithms"]
-team_example__signal_summary = "signal_summary:plugin"
-team_example__finite_check = "signal_summary:finite_plugin"
-team_example__configured_position = "configured_position:plugin"
-team_example__dataset_inventory = "dataset_inventory:plugin"
-team_example__image_edit = "image_transform:editing_plugin"
-team_example__image_augment = "image_transform:augmentation_plugin"
+team_example__joint_jump = "joint_jump:plugin"
 [tool.setuptools]
-py-modules = ["signal_summary", "configured_position", "dataset_inventory", "image_transform"]
+py-modules = ["joint_jump"]

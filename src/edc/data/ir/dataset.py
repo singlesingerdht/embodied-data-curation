@@ -259,8 +259,11 @@ class Episode:
     def read_values(self, channel, indices=None):
         self.open()
         if 'fields' in self.channels[channel].selection:
-            from edc.robots.mapping import select_field_rows
+            from edc.robots.mapping import select_field_rows, scaled
             rows = select_field_rows(self, channel)
+            spec = self.profile['channels'][channel]
+            if any('scale' in (m or {}) for m in (spec.get('field_metadata') or {}).values()):
+                rows = [{k: scaled(spec, k, np.asarray(v, dtype=float)) for k, v in row.items()} for row in rows]
             return rows if indices is None else [rows[i] for i in indices]
         if self.channels[channel].selection:
             from edc.robots.mapping import select_values, check_joint_shape
@@ -446,7 +449,17 @@ def _set_episode_backend(episode, backend):
         raise ValueError("The official backend requires a LeRobot dataset")
     version = episode.selector.get("info", {}).get("codebase_version")
     episode.backend = ("official" if episode.format == "lerobot" and
-        (backend == "official" or backend == "auto" and version == "v3.0") else "compat")
+        (backend == "official" or backend == "auto" and version == "v3.0" and _official_installed()) else "compat")
+
+
+def _official_installed():
+    """auto uses the official LeRobot reader only when the validated version is installed."""
+    from importlib.metadata import version, PackageNotFoundError
+    from edc.data.readers.lerobot_official import OFFICIAL_VERSION
+    try:
+        return version('lerobot') == OFFICIAL_VERSION
+    except PackageNotFoundError:
+        return False
 
 
 def open_dataset(path, profile=None, robot=None, *, backend="auto"):

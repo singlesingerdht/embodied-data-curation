@@ -1,12 +1,9 @@
-include README.md README.zh-CN.md CONTRIBUTING.md AGENTS.md FRIEND_VALIDATION.md
+include README.md README.zh-CN.md CONTRIBUTING.md AGENTS.md
 recursive-include src/edc *.py *.yaml *.md
-recursive-include configs *.yaml *.json
-recursive-include examples *.py *.yaml *.json *.toml *.md
+recursive-include configs *.yaml *.json *.urdf
+recursive-include examples *.py *.toml
+recursive-include tests *.yaml
 recursive-include tests *.py
-recursive-include scripts *.py
-recursive-include docs *.md *.json
-recursive-include docs/validation *.log
-prune docs/framework/evidence
 recursive-include .github *.yml
 global-exclude *.pyc *.pyo
 prune build
@@ -14,4 +11,3 @@ prune dist
 prune examples/plugins/algorithm/build
 prune examples/plugins/reader/build
 global-exclude *.egg-info
-recursive-include scripts *.sh

@@ -1,7 +1,0 @@
-schema_version: 1
-id: protobuf_mcap_container_intake
-version: '1'
-channels:
-  '*':
-    clock: mcap_log_time
-    time_source: container

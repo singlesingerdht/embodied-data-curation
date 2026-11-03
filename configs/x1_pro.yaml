@@ -1,5 +1,0 @@
-schema_version: edc_config_v1
-dataset: {ref: datasets/microwave.yaml}
-robot: {ref: robots/x1_pro.yaml}
-algorithms: {ref: algorithms/quality.yaml}
-workflow: {ref: workflows/curation.yaml}

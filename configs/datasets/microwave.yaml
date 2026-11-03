@@ -1,6 +1,0 @@
-path: ../../data/microwave
-id: microwave
-version: '1'
-tasks:
-- microwave
-backend: auto

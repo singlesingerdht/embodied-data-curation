@@ -1,6 +1,0 @@
-path: ../../data/open_drawer
-id: open_drawer
-version: '1'
-tasks:
-- open_drawer
-backend: auto

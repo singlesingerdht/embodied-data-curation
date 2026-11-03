@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import uuid
 from edc.algorithms.registry import algorithms
-from edc.reporting.results import write_json, append_record, report
+from edc.reporting.results import write_json, append_record
 from edc.algorithms.recommendations import recommend_episode, recommend_dataset
 
 
@@ -233,6 +233,9 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             'discovery_errors': registry.discovery_errors})
         summary = {"run_id": run_id, "episodes": len(selection), "status_counts": counts,
             "status": "partial_success" if any(k != "completed" for k in counts) else "completed"}
+        from edc.algorithms.quality.adapters.results import write_quality
+        write_quality(root, [s["episode_id"] for s in selection],  # Common PASS/REVIEW/SALVAGE/EXCLUDE result.
+                      (dataset.profile or {}).get('notes'))
         write_json(root / "summary.json", summary)
         catalog["runs"].append({"run_id": run_id, "records": records_paths,
             **({'media_manifest': (media_cache.root / 'manifest.json').relative_to(output).as_posix()}
@@ -242,7 +245,6 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             "recommendations": (root / "recommendations.json").relative_to(output).as_posix(),
             "selection": (root / "selection.json").relative_to(output).as_posix()})
         write_json(catalog_path, catalog)
-        report(output)
         return summary
     finally:
         lock.unlink(missing_ok=True)

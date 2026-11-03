@@ -1,0 +1,194 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Expanded from zbl_arm_6a.urdf.xacro (sha256 ed0bdb271ea2cec8f282f58cd575068cfc6bba16229b0b0a2c53ccc2c441d536) by input_example/tools/x1pro_expand_xacro.py: prefix=left_, use_geometry_collision=false. Vendor source: GitHub X-Square-Robot/sdk_arm_6a. Do not edit by hand. -->
+<robot name="x1pro_left_arm">
+  <link name="left_arm_base_link">
+    <inertial>
+      <origin xyz="0.000238 0.00013244931 0.034204173" rpy="0 0 0" />
+      <mass value="0.79593333" />
+      <inertia ixx="0.00059303627" ixy="-4.87e-06" ixz="-5.43e-06" iyy="0.000545589" iyz="-2.11e-05" izz="0.00069653281" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_base_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_arm_link1">
+    <inertial>
+      <origin xyz="0.0077801115 0.0011 0.024247234" rpy="0 0 0" />
+      <mass value="0.25095599" />
+      <inertia ixx="0.00042473252" ixy="1.0170293e-05" ixz="-5.97e-05" iyy="0.00026135136" iyz="9.9551252e-06" izz="0.00041200036" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link1.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_link1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_arm_joint1" type="revolute">
+    <origin xyz="0 0 0.0625" rpy="0 0 0" />
+    <parent link="left_arm_base_link" />
+    <child link="left_arm_link1" />
+    <axis xyz="0 0 1" />
+    <limit lower="-2.7925" upper="2.7925" effort="30" velocity="4.188" />
+  </joint>
+  <link name="left_arm_link2">
+    <inertial>
+      <origin xyz="-0.13 -0.000606 0.000237" rpy="0 0 0" />
+      <mass value="1.7820561" />
+      <inertia ixx="0.0013819665" ixy="2.6738803e-05" ixz="5.5255488e-05" iyy="0.02794504" iyz="-2.03e-05" izz="0.027984446" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link2.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_link2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_arm_joint2" type="revolute">
+    <origin xyz="0.025 0 0.053" rpy="0 0 0" />
+    <parent link="left_arm_link1" />
+    <child link="left_arm_link2" />
+    <axis xyz="0 1 0" />
+    <limit lower="0" upper="3.6652" effort="30" velocity="4.188" />
+  </joint>
+  <link name="left_arm_link3">
+    <inertial>
+      <origin xyz="0.14782054 -0.000129 0.062962389" rpy="0 0 0" />
+      <mass value="0.95066681" />
+      <inertia ixx="0.0014673156" ixy="-2.26e-05" ixz="-0.00169" iyy="0.0096501987" iyz="-2.6e-05" izz="0.0094658463" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link3.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_link3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_arm_joint3" type="revolute">
+    <origin xyz="-0.26 0 0" rpy="0 0 0" />
+    <parent link="left_arm_link2" />
+    <child link="left_arm_link3" />
+    <axis xyz="0 1 0" />
+    <limit lower="-2.7925" upper="0" effort="30" velocity="4.188" />
+  </joint>
+  <link name="left_arm_link4">
+    <inertial>
+      <origin xyz="0.042726184 0.00075 0.029630038" rpy="0 0 0" />
+      <mass value="0.31026611" />
+      <inertia ixx="0.00069136961" ixy="6.7251028e-06" ixz="-0.000259" iyy="0.00078979445" iyz="1.1044079e-05" izz="0.00049992566" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link4.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_link4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_arm_joint4" type="revolute">
+    <origin xyz="0.2315 0 0.075" rpy="0 0 0" />
+    <parent link="left_arm_link3" />
+    <child link="left_arm_link4" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.5708" upper="1.5708" effort="9" velocity="3.77" />
+  </joint>
+  <link name="left_arm_link5">
+    <inertial>
+      <origin xyz="-0.00542 6.403716e-05 -0.0629" rpy="0 0 0" />
+      <mass value="0.86779315" />
+      <inertia ixx="0.0012604475" ixy="-7.97e-07" ixz="-0.00013" iyy="0.001316245" iyz="3.46e-07" izz="0.00045145372" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link5.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/collision/arm_link5.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_arm_joint5" type="revolute">
+    <origin xyz="0.0825 0.0025 0.085" rpy="0 0 0" />
+    <parent link="left_arm_link4" />
+    <child link="left_arm_link5" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.5708" upper="1.5708" effort="9" velocity="3.77" />
+  </joint>
+  <link name="left_arm_link6">
+    <inertial>
+      <origin xyz="-0.000962809 -1.55e-10 4.4346104566273e-10" rpy="0 0 0" />
+      <mass value="0.0013330466180461" />
+      <inertia ixx="2.63548606720418e-07" ixy="1.75100585101028e-16" ixz="-4.97e-16" iyy="1.32055461589096e-07" iyz="-1.85e-15" izz="1.32055453220639e-07" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://zbl_arm_6a_description/mesh/zbl_arm_6a/arm_link6.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="1 1 1 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="left_arm_joint6" type="revolute">
+    <origin xyz="0.0395 0 -0.0945" rpy="0 0 0" />
+    <parent link="left_arm_link5" />
+    <child link="left_arm_link6" />
+    <axis xyz="1 0 0" />
+    <limit lower="-1.9199" upper="1.9199" effort="9" velocity="3.77" />
+  </joint>
+</robot>

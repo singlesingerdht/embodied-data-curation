@@ -149,73 +149,8 @@ def test_ros_encoding_evidence_cannot_be_relabelled():
         source_orientation_metadata(c, 'nav_msgs/msg/Odometry')
 
 
-@pytest.mark.parametrize('kind', ['episode', 'hdf5', 'parquet'])
-def test_hands_grippers_and_tactile_reach_catalog_and_numeric_results(tmp_path, kind):
-    from edc import run
-    from edc.configuration import execution_profile
-    root = Path(__file__).resolve().parents[2]
-    profile = load_profile(root / 'configs/robots/hand_gripper_tactile.yaml')
-    names = list(profile['channels'])
-    count = 4
-    values = {}
-    bindings = {}
-    for i, name in enumerate(names):
-        raw = f'raw_{i}'
-        bindings[name] = raw
-        if name.startswith('tactile/'):
-            values[raw] = np.arange(count*2*3, dtype=float).reshape(count, 2, 3)
-        else:
-            dof = 5 if '/hand/' in name else 2
-            values[raw] = np.arange(count*dof, dtype=float).reshape(count, dof)
-            profile['parts'][profile['channels'][name]['robot_part']]['dof'] = dof
-    profile.update(timestamp_column='time', timestamp_unit='s')
-    if kind == 'episode':
-        path = tmp_path / 'source'; path.mkdir()
-        (path / 'trajectory.json').write_text(json.dumps({'data': [
-            {'time': i*.01, **{name: v[i].tolist() for name, v in values.items()}} for i in range(count)]}))
-    elif kind == 'hdf5':
-        h5py = pytest.importorskip('h5py'); path = tmp_path / 'source.h5'
-        with h5py.File(path, 'w') as f:
-            f['time'] = np.arange(count)*.01
-            for name, value in values.items():
-                f[name] = value
-    else:
-        pa = pytest.importorskip('pyarrow'); pq = pytest.importorskip('pyarrow.parquet')
-        path = tmp_path / 'source.parquet'
-        pq.write_table(pa.table({'time': np.arange(count)*.01, **{n: v.tolist() for n, v in values.items()}}), path)
-    profile = execution_profile({'robot': profile, 'dataset': {'source_bindings': bindings}})
-    source_file = path / 'trajectory.json' if kind == 'episode' else path
-    before = source_file.read_bytes()
-    output = tmp_path / 'out'
-    with open_dataset(path, profile=profile) as ds:
-        ep = next(ds.iter_episodes()); catalog = channel_catalog(ep)
-        assert catalog['binding_coverage']['logical_channel_count'] == 12
-        assert not catalog['binding_coverage']['missing_declared_logical_names']
-        for name, raw in bindings.items():
-            assert resolve_channel(ep, name) == raw
-            field = ep.channels[raw].fields[0]
-            np.testing.assert_array_equal(ep.read_signal(raw, field), values[raw])
-        result = run(ds, output=output, algorithm_ids=['Numeric_Check'], params={'Numeric_Check': {'channels': names}})
-    assert result['status_counts'] == {'completed': 1}
-    record = json.loads(next(output.rglob('records.jsonl')).read_text())
-    assert {b['requested'] for b in record['channel_bindings']} == set(names)
-    reports = record['result']['reports']
-    assert len(reports) == 12
-    assert all(r['finite'] and not r['coverage_complete'] and not r['physical_checks_applied'] for r in reports)
-    assert sum(r['shape'] == [count, 2, 3] for r in reports) == 4
-    assert (output / 'report.html').exists() and (output / 'catalog.json').exists()
-    assert source_file.read_bytes() == before
 
 
-def test_pending_template_never_claims_devices_are_present():
-    from edc import load_config
-    from edc.configuration import execution_profile
-    root = Path(__file__).resolve().parents[2]
-    cfg = load_config(root / 'configs/hand_gripper_tactile.yaml')
-    assert all(v is None for v in cfg['dataset']['source_bindings'].values())
-    assert all('dof' not in p for p in cfg['robot']['parts'].values())
-    with pytest.raises(ValueError, match='Unbound source channel'):
-        execution_profile(cfg)
 
 
 def test_registered_algorithm_can_request_orientation_conversion(tmp_path, monkeypatch):

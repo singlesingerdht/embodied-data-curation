@@ -177,7 +177,7 @@ def test_ros_clocks_values_and_images(tmp_path,backend):
 def test_all_cpu_adapters_execute_without_gpu(tmp_path):
     pytest.importorskip('av');pytest.importorskip('scipy');pytest.importorskip('cv2');pytest.importorskip('xxhash')
     from edc.data.readers.video import encode_frames
-    rows=[{'timestamp':i*.05,'joint_pos':[.01*np.sin(i/5),.02*np.sin(i/5)],'pose':[i*.001,0,.2]} for i in range(60)]
+    rows=[{'timestamp':i*.05,'joint_pos':[.01*np.sin(i/5),.02*np.sin(i/5)],'pose':[min(i,30)*.001,0,.2]} for i in range(60)]  # Moves, then holds (smoothness judges holds)
     from edc.robots.numeric_review import confirm_numeric_profile
     mapping=profile({'joint_pos':{'modality':'joint_state','fields':['position'],'unit':'rad','time_source':'acquisition','clock':'robot',
                                 'calibration_status':'confirmed','source_kind':'feedback', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}},
@@ -264,14 +264,6 @@ def test_missing_field_fails_without_dropping_row(tmp_path):
         ep.read_signal('imu','lin_acc')
 
 
-def test_value_multi_episode_requires_selector(tmp_path):
-    from edc.execution.examples import generate
-    open_value_input = pytest.importorskip('Value_Assessment._shared.value_input', reason='Legacy value bridge stays in research repository').open_value_input
-    root=generate(tmp_path/'dataset')
-    with pytest.raises(ValueError,match='exactly one episode'):
-        open_value_input(str(root))
-    with open_value_input(str(root),episode_id='episode_001') as context:
-        assert context.reader.episode.id=='episode_001'
 
 
 def test_parquet_embedded_images_and_reference_escape(tmp_path):

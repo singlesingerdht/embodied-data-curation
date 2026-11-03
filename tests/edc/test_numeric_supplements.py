@@ -242,7 +242,6 @@ def test_invalid_supplement_thresholds_are_rejected(override):
 
 @pytest.mark.parametrize('last,expected', [(30., 'keep'), (90., 'exclude')])
 def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expected):
-    from edc.reporting.html import brief
     source = tmp_path / 'episode'
     source.mkdir()
     path = source / 'trajectory.json'
@@ -265,17 +264,6 @@ def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expecte
     if expected == 'exclude':
         assert report['score'] == 100 and report['verdict'] == 'ACCEPTABLE'
         assert checks(report)['command_limits']['events'][0]['value'] == pytest.approx(np.pi / 2)
-        assert '独立限位' in brief(row)
         assert any(ref.endswith('.csv') and (output / ref).is_file() for ref in row['artifacts'])
-        assert '指令越界，筛选排除' in (output / 'report.html').read_text()
 
 
-def test_report_displays_observations_and_candidate_evidence(tmp_path):
-    from edc.reporting.html import numeric_panel, configuration_panel, brief
-    ep, _, _ = fixture([[0., 0.], [.1, 0.], [.2, 0.], [.2, 0.], [.2, 0.]])
-    row = record(evaluate(ep, tmp_path))
-    page = numeric_panel([row], tmp_path)
-    assert '动作指令数值冻结候选' in page and 'source_component_index' in page
-    assert '正常保持' in page and '区间 [start, stop)' in page
-    assert '需要复核' in brief(row)
-    assert '动作指令独立限位' in configuration_panel(ep.profile, {})

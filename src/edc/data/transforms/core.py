@@ -83,12 +83,13 @@ class RobotTransforms:
         self.cameras=named_mapping(self.config.get('cameras',{}),'cameras')
         for name, chain in list(self.chains.items()):
             if 'urdf' in chain:
-                if set(chain) - {'urdf', 'base_frame', 'tip_frame', 'inputs', 'limit_margin'}:
-                    raise ValueError('URDF chains accept urdf/base_frame/tip_frame/inputs/limit_margin only')
+                if set(chain) - {'urdf', 'base_frame', 'tip_frame', 'inputs', 'limit_margin', 'tip_offset'}:
+                    raise ValueError('URDF chains accept urdf/base_frame/tip_frame/inputs/limit_margin/tip_offset only')
                 from .urdf import import_urdf_chain
                 self.chains[name] = import_urdf_chain(chain['urdf'], chain['base_frame'], chain['tip_frame'],
                                                      inputs=chain.get('inputs'),
-                                                     limit_margin=chain.get('limit_margin', 0.0))
+                                                     limit_margin=chain.get('limit_margin', 0.0),
+                                                     tip_offset=chain.get('tip_offset'))
         self._validate()
 
     def _validate(self):
@@ -214,7 +215,9 @@ class RobotTransforms:
         return TransformResult(output,{'operation':'coordinates','kind':kind,'source':source,'target':target,
             'input_unit':unit,'output_unit':output_unit,'path':path}, {'rows':'identity'})
 
-    def fk(self, chain_name, positions):
+    def fk(self, chain_name, positions, *, check_limits=True):
+        """Tip poses for {moving joint: values}; check_limits=False computes them for values outside the
+        joint limits too (`edc robot urdf` checks recorded angles against a URDF that may be wrong)."""
         chain=self.chains[chain_name]
         moving=[j for j in chain['joints'] if j['type']!='fixed']
         if set(positions)!={j['name'] for j in moving}: raise ValueError('FK requires exactly the named moving joints')
@@ -229,7 +232,7 @@ class RobotTransforms:
             output=output@origin
             if joint['type']=='fixed': continue
             values=arrays[joint['name']]
-            if 'limits' in joint and np.any((values<joint['limits'][0])|(values>joint['limits'][1])):
+            if check_limits and 'limits' in joint and np.any((values<joint['limits'][0])|(values>joint['limits'][1])):
                 raise ValueError(f"Joint limits exceeded: {joint['name']}")
             values=convert_units(values,joint['unit'],'rad' if joint['type']=='revolute' else 'm').output
             motion=np.broadcast_to(np.eye(4),shape+(4,4)).copy()

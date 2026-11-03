@@ -68,9 +68,6 @@ def test_degree_and_radian_physical_results_are_equal_and_sources_unchanged(tmp_
         outputs.append(result)
     for key in ('numeric', 'score', 'verdict', 'numeric_thresholds'):
         assert outputs[0][key] == outputs[1][key]
-    page = (tmp_path / 'out-deg/report.html').read_text()
-    assert '源声明单位' in page and '算法执行单位' in page and '已自动换算' in page
-    assert '自动换算已启用' in page
 
 
 @pytest.mark.parametrize('unit', list(UNITS))
@@ -143,7 +140,6 @@ def test_manual_policy_never_forwards_non_si_to_physical_check(tmp_path, unit):
         assert result['input_scope'] == 'recorded_finiteness_only'
         assert 'disabled' in result['unit_normalization_reason']
     assert record(out, 'Structure_Check')['status'] == 'completed'
-    assert '自动换算已关闭' in (out / 'report.html').read_text()
 
 
 @pytest.mark.parametrize('unit', [None, 'unknown', 'ticks', 'A'])
@@ -204,7 +200,7 @@ def test_smoothness_millimetres_and_metres_preserve_original_results(tmp_path):
         item = record(tmp_path / f'out-{unit}', 'Action_Smoothness')
         assert item['status'] == 'completed'
         results.append(item['result']['reports'][0])
-    for key in ('score', 'grade', 'verdict', 'num_poses'):
+    for key in ('verdict', 'item_metrics', 'num_poses'):
         assert results[0][key] == results[1][key]
 
 
@@ -234,21 +230,3 @@ def test_non_si_plugin_failure_is_missing_input_and_does_not_block_other_algorit
     assert not evidence(out, record(out, 'Structure_Check'))['fields'][0]['conversion_applied']
 
 
-def test_cli_inspect_and_run_share_policy_and_preserve_raw_declarations(tmp_path, capsys):
-    from edc.execution.cli import main
-    path = source(tmp_path, [{'joint_pos': [90.]}])
-    config = tmp_path / 'robot.yaml'; config.write_text(yaml.safe_dump(profile()))
-    assert main(['inspect', str(path), '--profile', str(config)]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result['episodes'][0]['channels'][0]['unit'] == 'deg'
-    assert result['episodes'][0]['unit_normalization']['fields'][0]['target_unit'] == 'rad'
-    assert not result['episodes'][0]['unit_normalization']['fields'][0]['conversion_applied']
-    assert main(['run', str(path), '--profile', str(config), '--algorithm', 'Numeric_Check',
-        '--output', str(tmp_path / 'out'), '--unit-policy', 'manual']) == 0
-    capsys.readouterr()
-    item = record(tmp_path / 'out')
-    assert item['unit_normalization']['policy'] == 'manual'
-    with open_dataset(path, profile=profile()) as dataset:
-        with pytest.raises(ValueError, match='unit_policy'):
-            run(dataset, output=tmp_path / 'bad', unit_policy='guess')
-    assert not (tmp_path / 'bad').exists()

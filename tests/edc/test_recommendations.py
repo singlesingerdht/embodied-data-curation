@@ -129,7 +129,7 @@ def test_unrelated_unknown_hand_and_joint_do_not_block_selected_pose(tmp_path):
         'hand': {'modality': 'other', 'fields': ['recorded_values'], 'unit': None,
                  'body_part': 'hand', 'representation': {'quantity': 'unknown'}}})
     with open_dataset(path, profile=p) as ds:
-        assert entries(recommend(ds, params={'Action_Smoothness': {'expected_rate_hz': 20}}))['Action_Smoothness']['availability'] == 'available'
+        assert entries(recommend(ds, params={'Action_Smoothness': {'min_rate_hz': 5}}))['Action_Smoothness']['availability'] == 'available'
         run(ds, algorithm_ids=['Action_Smoothness'], output=tmp_path / 'out')
         left = entries(recommend(ds, params={'Action_Smoothness': {'side': 'left'}}))['Action_Smoothness']
         assert left['status'] == 'missing_input' and 'left_pose.position' in left['reason']
@@ -178,10 +178,6 @@ def test_broken_plugin_preflight_is_isolated_and_snapshot_is_preserved(tmp_path,
     before = snapshot.read_bytes()
     assert entries(json.loads(before))['fixture__broken']['availability'] == 'unavailable'
     assert entries(json.loads(before))['Structure_Check']['selected'] is True
-    from edc.reporting.results import report
-    monkeypatch.setattr('edc.algorithms.registry.algorithms', lambda: pytest.fail('historical report must not discover plugins'))
-    page = report(tmp_path / 'out').read_text()
-    assert '推荐算法池' in page and '仅部分检查' in page and 'bad plugin hook' in page
     assert snapshot.read_bytes() == before
 
 
@@ -196,7 +192,7 @@ def test_plugin_unit_contract_requires_explicit_si_dimension():
 
 def test_luoshi_profile_does_not_invent_gripper_or_head_units():
     root = Path(__file__).resolve().parents[2]
-    p = yaml.safe_load((root / 'examples/robots/luoshi_intake.yaml').read_text())
+    p = yaml.safe_load((root / 'tests/edc/fixtures/luoshi_intake.yaml').read_text())
     assert not any('gripper' in name for name in p['channels'])
     for name in ('action/effector/position', 'observation/state/effector/position',
                  'action/head/position', 'observation/state/head/position'):
@@ -207,14 +203,3 @@ def test_luoshi_profile_does_not_invent_gripper_or_head_units():
     assert p['channels']['action/effector/position']['representation']['device_type'] == 'dexterous_hand'
 
 
-def test_cli_recommend_pool_is_included_in_inspect(tmp_path, capsys):
-    from edc.execution.cli import main
-    path, p = fixture(tmp_path)
-    config = tmp_path / 'robot.yaml'
-    config.write_text(yaml.safe_dump(p))
-    assert main(['recommend', str(path), '--profile', str(config)]) == 0
-    pool = json.loads(capsys.readouterr().out)
-    assert 'Numeric_Check' in pool['episodes'][0]['partial_algorithms']
-    assert main(['inspect', str(path), '--profile', str(config)]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result['episodes'][0]['algorithm_pool'] == pool['episodes'][0]

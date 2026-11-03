@@ -1,5 +1,0 @@
-....................................................s.s..............    [100%]
-=========================== short test summary info ============================
-SKIPPED [1] ../root/embodied-data-curation/tests/edc/test_logical_channel_names.py:187: Real robot registration evidence remains in the research repository
-SKIPPED [1] ../root/embodied-data-curation/tests/edc/test_logical_channel_names.py:236: GPU extension is outside CPU distribution
-67 passed, 2 skipped in 14.47s

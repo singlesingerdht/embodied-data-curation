@@ -1,6 +1,0 @@
-id: curation
-stages:
-  - {id: quality, kind: quality, input: source, algorithms: recommended}
-# CPU and optional GPU quality plugins share this stage; preflight selects runnable methods.
-# Add a value stage only when requested and a real value plugin is installed.
-# Every editing/augmentation output must feed a quality recheck stage.

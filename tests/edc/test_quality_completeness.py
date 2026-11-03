@@ -130,4 +130,4 @@ def test_direct_run_and_recommendation_use_subcheck_coverage(tmp_path, limits, e
     assert selected['assessment_complete'] is (limits is not None)
     assert selected['policy_version'] == 'episode_filter_v3'
     if limits is None:
-        assert '本次评估尚未完成' in (tmp_path / 'out/report.html').read_text()
+        assert json.loads(next((tmp_path / 'out/_runs').glob('*/quality.json')).read_text())[0]['decision'] != 'keep'

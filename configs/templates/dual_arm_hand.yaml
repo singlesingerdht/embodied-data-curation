@@ -1,0 +1,46 @@
+# ═══ 双臂 + 灵巧手 yaml 模板 ═══（各项写法的详细说明见 dual_arm.yaml 开头）
+# 实例：configs/robots/leju_kuavo.yaml（ROS1 bag，双臂 7 关节 + 灵巧手 + IMU + URDF）
+# 灵巧手的单位通常没有统一标准：多是 0~100、0~1000 这样的原始数值，写 unit: raw 和 range（超出范围判排除）；
+# 完全不清楚时写 unit: unknown，只查有没有坏数。
+
+robot:
+  name: my_dual_arm_hand
+  model: 某某双臂灵巧手
+  confirmed_by: zhangsan
+
+data:
+  min_duration_s: 3.0
+
+arms:
+  left:
+    joints: {source: /joint_states, field: position, index: 0-6, unit: rad}       # ROS 消息要写 field
+    joint_velocity: {source: /joint_states, field: velocity, index: 0-6, unit: rad/s}
+    max_joint_velocity: 3.0
+    eef_position: fk                                                              # 数据没录末端：用 URDF 算
+    # ▼ URDF：下面 5 行由 edc robot urdf --urdf <文件> --base <起点> --tip <末端> 打印，原样粘贴替换；步骤见 dual_arm.yaml
+    urdf:
+      file: my_dual_arm_hand/robot.urdf
+      joints: [l_arm_joint1, l_arm_joint2, l_arm_joint3, l_arm_joint4, l_arm_joint5, l_arm_joint6, l_arm_joint7]
+      base_link: base_link
+      tip_link: left_hand_link
+    hand: {source: /hand_states, field: position, index: 0-5, unit: raw, range: [0, 100]}       # 灵巧手 6 维
+    # hand_command: {source: /hand_cmd, field: position, index: 0-5, unit: raw, range: [0, 100]}
+    home: {joints: [0, 0, 0, 0, 0, 0, 0], tolerance: 0.6}
+  right:
+    joints: {source: /joint_states, field: position, index: 7-13, unit: rad}
+    joint_velocity: {source: /joint_states, field: velocity, index: 7-13, unit: rad/s}
+    max_joint_velocity: 3.0
+    eef_position: fk
+    # ▼ URDF：同上，右臂换成右臂的起点、末端再运行一次
+    urdf:
+      file: my_dual_arm_hand/robot.urdf
+      joints: [r_arm_joint1, r_arm_joint2, r_arm_joint3, r_arm_joint4, r_arm_joint5, r_arm_joint6, r_arm_joint7]
+      base_link: base_link
+      tip_link: right_hand_link
+    hand: {source: /hand_states, field: position, index: 6-11, unit: raw, range: [0, 100]}
+    home: {joints: [0, 0, 0, 0, 0, 0, 0], tolerance: 0.6}
+
+cameras:
+  head: {source: /camera_head/color/image_raw/compressed, mount: head, label: 头部相机}
+  left_wrist: {source: /camera_left/color/image_raw/compressed, mount: wrist, arm: left, label: 左手腕相机}
+  right_wrist: {source: /camera_right/color/image_raw/compressed, mount: wrist, arm: right, label: 右手腕相机}

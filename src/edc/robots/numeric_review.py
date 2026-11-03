@@ -65,7 +65,7 @@ def numeric_settings(profile=None, params=None):
     # Topic scope and the finiteness-only declaration change no threshold or configuration confirmation.
     params = {k: v for k, v in params.items()
               if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s', 'joint_limits_pending',
-                           'joint_stuck'}}
+                           'joint_stuck', 'ranges'}}
     for value in (configured, params):
         if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
             raise ValueError('Numeric_Check accepts thresholds and weights')
@@ -103,8 +103,10 @@ def _thresholds(overrides):
             values = overrides.pop(group)
             if not isinstance(values, dict) or set(values) != names:
                 raise ValueError(f'{group} requires exactly {sorted(names)}')
-            # One number for every joint, or one per joint (e.g. the URDF <limit velocity>).
-            numbers = [x for v in values.values() for x in (v if isinstance(v, list) and v else [v])]
+            # One number for every joint, or one per joint (e.g. the URDF <limit velocity>);
+            # or {channel or logical_name: either of these}, one table per arm.
+            tables = [t for v in values.values() for t in (v.values() if isinstance(v, dict) and v else [v])]
+            numbers = [x for t in tables for x in (t if isinstance(t, list) and t else [t])]
             if any(type(x) not in (int, float) or not math.isfinite(x) or x <= 0 for x in numbers):
                 raise ValueError(f'{group} thresholds must be finite and positive (a number or a list of numbers)')
             adapter[group] = dict(values)
@@ -137,14 +139,16 @@ def _method_thresholds(overrides, thresholds):
 
 def channel_settings(settings, channel):
     """Settings for one input channel; a channel without its own limits table stays unconfigured."""
-    tables = [g for g in LIMIT_GROUPS if isinstance(settings['thresholds'][g]['limits'], dict)]
-    if not tables:
+    found = [(g, 'limits') for g in LIMIT_GROUPS if isinstance(settings['thresholds'][g]['limits'], dict)]
+    if isinstance(settings['thresholds'].get('joint_velocity', {}).get('max_abs'), dict):
+        found.append(('joint_velocity', 'max_abs'))  # One speed table per arm.
+    if not found:
         return settings
     result = copy.deepcopy(settings)
     names = (channel.name, getattr(channel, 'logical_name', None))
-    for group in tables:
-        limits = settings['thresholds'][group]['limits']
-        result['thresholds'][group]['limits'] = next((limits[n] for n in names if n in limits), None)
+    for group, key in found:
+        tables = settings['thresholds'][group][key]
+        result['thresholds'][group][key] = next((tables[n] for n in names if n in tables), None)
     return result
 
 

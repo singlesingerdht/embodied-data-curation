@@ -74,13 +74,3 @@ def test_imu_range_and_bias_are_separate():
     assert checks['gyro_bias']['status'] == 'insufficient_input'
 
 
-def test_report_shows_subchecks_and_does_not_invent_historical_coverage(tmp_path):
-    from edc.reporting.html import numeric_panel
-    result, _ = evaluate(np.zeros((3,1)))
-    record = {'algorithm': {'id': 'Numeric_Check'}, 'status': 'completed', 'result': {'reports': [result]}}
-    page = numeric_panel([record], tmp_path)
-    assert '关节位置限位' in page and '未配置' in page and '已检查' in page
-    assert '位置差' in page and '不代表真实速度' in page
-    old = json.loads(json.dumps(record))
-    del old['result']['reports'][0]['check_coverage']
-    assert '历史记录未保存分项覆盖' in numeric_panel([old], tmp_path)

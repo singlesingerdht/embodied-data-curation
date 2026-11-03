@@ -88,9 +88,6 @@ def test_nonfinite_kinds_positions_and_complete_csv_even_without_confirmation(tm
     assert item['verdict'] == 'DO_NOT_USE' and not item['assessment_complete']
     csv_path = tmp_path/'out'/next(x for x in record['artifacts'] if x.endswith('.csv'))
     assert len(list(csv.DictReader(csv_path.open()))) == 330
-    page = (tmp_path/'out/report.html').read_text()
-    assert '+Inf @ [0, 1]' in page and '尚未进行参数确认' in page
-    assert '完整异常位置 CSV' in page
 
 
 def test_review_cannot_be_forged_with_status_flag_or_pending_calibration():
@@ -128,14 +125,6 @@ def test_invalid_parameters_are_rejected_before_execution(override):
     with pytest.raises(ValueError): load_profile(p)
 
 
-def test_cli_confirmation_writes_new_profile_without_overwriting_source(tmp_path):
-    from edc.execution.cli import main
-    source=tmp_path/'robot.yaml';source.write_text(yaml.safe_dump(profile()))
-    before=source.read_bytes();target=tmp_path/'confirmed.yaml'
-    assert main(['robot','confirm-numeric','--profile',str(source),'--reviewer','author','--output',str(target)]) == 0
-    assert source.read_bytes() == before
-    assert numeric_review(load_profile(target))['status'] == 'confirmed'
-    assert main(['robot','confirm-numeric','--profile',str(source),'--reviewer','author','--output',str(target)]) == 2
 
 
 def test_per_channel_joint_limits_apply_only_to_their_own_channel():

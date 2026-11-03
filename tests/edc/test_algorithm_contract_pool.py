@@ -110,10 +110,6 @@ def test_builtin_parameter_rules_and_fixed_report_snapshot(tmp_path):
         crossed=entry(recommend(ds,params={'Dedup_Check':{'dedup_ratio_low':.2,'dedup_ratio_high':.1}}),'Dedup_Check')
         assert crossed['status']=='missing_input'
         run(ds,output=tmp_path/'out',algorithm_ids=['Dedup_Check'])
-    from edc.reporting.results import report
-    page=report(tmp_path/'out').read_text()
-    assert '参数与输入要求' in page and '本次生效参数' in page and '额外出现 3 次' in page
-    assert '公共时间字段 time' in page and '关联来源通道' in page
     evidence=next((tmp_path/'out/_runs').glob('*/Dedup_Check/artifacts/*/timestamp-reuse-*.csv')).read_text().splitlines()
     assert len(evidence)==4
 

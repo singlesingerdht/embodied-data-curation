@@ -283,9 +283,38 @@ def joint_stuck(values, episode, channel, field, settings, physical, min_duratio
     return check
 
 
+def declared_range(values, episode, channel, field, declared):
+    """Values outside the range the robot yaml declares (`range`, e.g. a raw 0-255 gripper reading)."""
+    low, high = declared['range']
+    check = {'id': 'declared_range', 'name': '超出 yaml 写的范围', 'status': 'evaluated',
+             'threshold': [low, high], 'unit': declared.get('unit'), 'reason': '', 'outcome': None, 'events': [],
+             'source_mapping': source_mapping(episode, channel, field), 'changes_score': False, 'verdict': None}
+    if not values.size or not np.isfinite(values).all():
+        check.update(status='blocked_nonfinite' if values.size else 'insufficient_input',
+                     reason='没有数据或含 NaN/无穷大，未查范围。')
+        return check
+    table = values.reshape(len(values), -1)
+    bad = (table < low) | (table > high)
+    rows = np.flatnonzero(bad.any(axis=1))
+    for j in range(table.shape[1]):
+        hit = np.flatnonzero(bad[:, j])
+        if len(hit):
+            worst = hit[np.argmax(np.maximum(low - table[hit, j], table[hit, j] - high))]
+            check['events'].append({'type': 'value_out_of_declared_range', **_component(channel, field, j),
+                                    'rows': int(len(hit)), 'first_row': int(hit[0]), 'worst_row': int(worst),
+                                    'value': float(table[worst, j]), 'lower': low, 'upper': high})
+    check.update(outcome='finding' if len(rows) else 'no_finding', rows_over=int(len(rows)), rows=int(len(table)),
+                 verdict='DO_NOT_USE' if len(rows) else 'ACCEPTABLE',
+                 reason=f'{len(rows)}/{len(table)} 行超出 yaml 写的范围 [{low:g}, {high:g}]' if len(rows) else
+                        f'全部在 yaml 写的范围 [{low:g}, {high:g}] 内')
+    return check
+
+
 def supplements(values, episode, channel, field, target, settings, physical, workdir=None, freeze_min_duration_s=None,
-                joint_stuck_settings=None):
+                joint_stuck_settings=None, value_range=None):
     checks = []
+    if value_range is not None:
+        checks.append(declared_range(values, episode, channel, field, value_range))
     if target == 'cmd_positions':
         checks.append(command_limits(values, episode, channel, field, settings['command_limits'], physical))
     if target == 'joint_velocities':
