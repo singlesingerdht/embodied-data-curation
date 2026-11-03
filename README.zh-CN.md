@@ -228,6 +228,28 @@ URDF 写进 yaml 后，框架自动从 URDF 读关节限位（上下各放宽 0.
 
 ---
 
+## 根据报告重生成数据集（`edc regenerate`）
+
+`edc batch` 会给每条数据一个结论（建议保留／可救／建议复核／…）。想只把结论好的数据留下来训练，用 `edc regenerate` 按报告复制（或软链接）成一个新数据集：
+
+```bash
+# 默认只留“建议保留”，复制成独立新目录
+edc regenerate reports/x1pro_report.json --output /mnt/out/good_only
+
+# 先预览：看会选几条、源路径、目标路径和操作方式，不写任何东西
+edc regenerate reports/x1pro_report.json --output /mnt/out/good_only --preview
+
+# 软链接（省空间，依赖源数据持续存在）
+edc regenerate reports/x1pro_report.json --output /mnt/out/good_only --mode link
+
+# 显式多选状态（原结论原样保留，不会改成“通过”）
+edc regenerate reports/x1pro_report.json --output /mnt/out/mixed --include keep,salvage,review
+```
+
+它只搬运数据和写 `manifest.json`（记录报告来源、筛选条件、每条的原结论、源→目标映射、Episode ID／selector 和失败原因），不重新算任何算法、不改结论。复制模式另写 `dataset.yaml` 让框架能重新读。独立 episode（JSON+MP4 目录、MCAP）整体复制/软链接；一个文件里多条 episode 的共享源，复制模式下整份复制一次、用 `dataset.yaml` 的 selector 保留选择范围，软链接模式会明确报错。
+
+---
+
 ## 算法参数（yaml 的 `checks` 部分，只写要改的）
 
 | 算法 | 参数 | 默认 | 含义 |

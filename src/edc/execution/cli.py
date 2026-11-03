@@ -63,6 +63,14 @@ def main(argv=None):
     p.add_argument('--algorithm', action='append', help='Only these algorithms')
     p.add_argument('--episode', type=int, help='Only the k-th episode (0-based) found in the input')
     p.add_argument('--backend', choices=['auto', 'official', 'compat'], default='auto')
+    p = sub.add_parser('regenerate', help='根据质检 JSON 报告筛选并重生成数据集（复制或软链接）')
+    p.add_argument('report', help='edc batch 写出的 JSON 报告')
+    p.add_argument('--output', required=True, help='新数据集目录（必须为空或不存在）')
+    p.add_argument('--mode', choices=['copy', 'link'], default='copy',
+                   help='copy=复制（可独立使用）；link=软链接（依赖源数据持续存在）')
+    p.add_argument('--include', help='要选择的状态，逗号分隔（默认 keep；可显式选其它状态，原结论保留）')
+    p.add_argument('--profile', help='解析 episode 身份/selector 用的机器人 yaml（可选）')
+    p.add_argument('--preview', action='store_true', help='只展示选择数量、源路径、目标路径和操作方式，不写入')
     args = parser.parse_args(argv)
     try:
         if args.command == 'channels':
@@ -92,6 +100,13 @@ def main(argv=None):
                 print(f'{spec.id:24} {spec.version:8} {spec.name}')
         elif args.command == 'run':
             return run_one(args)
+        elif args.command == 'regenerate':
+            from edc.data.regenerate import regenerate
+            include = tuple(x.strip() for x in args.include.split(',')) if args.include else ('keep',)
+            result = regenerate(args.report, args.output, mode=args.mode, include=include,
+                                profile=args.profile, dry_run=args.preview,
+                                log=lambda text: print(text, flush=True))
+            return 1 if result.get('failed') else 0
         return 0
     except Exception as exc:
         print(f'edc: {type(exc).__name__}: {exc}', file=sys.stderr)

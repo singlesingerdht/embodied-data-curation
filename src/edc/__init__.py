@@ -9,6 +9,7 @@ _EXPORTS = {'open_dataset': 'edc.data.ir.canonical', 'run': 'edc.execution.runne
             'recommend': 'edc.algorithms.recommendations', 'channel_catalog': 'edc.algorithms.channel_names',
             'resolve_channel': 'edc.algorithms.channel_names', 'load_channel_registry': 'edc.data.channel_registry',
             'convert_orientation': 'edc.data.transforms.orientation', 'dataset_reference': 'edc.workflows.references',
+            'regenerate': 'edc.data.regenerate',
             'open_source_dataset': 'edc.data.ir.canonical', 'open_dataset_reference': 'edc.data.ir.canonical',
             'OrientationInputError': 'edc.data.ir.canonical'}
 __all__ = list(_EXPORTS) + ["__version__"]
