@@ -11,3 +11,6 @@ prune dist
 prune examples/plugins/algorithm/build
 prune examples/plugins/reader/build
 global-exclude *.egg-info
+
+recursive-include docs *.md *.svg *.json
+prune examples/plugins/quality_base/build

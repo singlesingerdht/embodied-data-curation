@@ -16,7 +16,6 @@ Rows are split at time gaps (> gap_factor x median interval and > half the short
 median interval (no upsampling) and edge_s is dropped at both ends, where filters are unreliable.
 """
 import numpy as np
-from scipy.signal import butter, sosfiltfilt, sosfreqz
 
 DEFAULTS = {'band_hz': [2.0, 10.0], 'band_rate_ratio': 0.4, 'min_rate_hz': 10.0,
             'still_speed_m_s': 0.01, 'still_min_s': 0.3,
@@ -41,6 +40,7 @@ def pieces(t, gap_factor, high):
 
 def band_acceleration(x, rate, low, high):
     """Zero-phase band part of x (N x 3), differentiated twice: |Butterworth|^2 x (2 pi f)^2, via FFT."""
+    from scipy.signal import butter, sosfreqz
     pad = min(len(x) - 1, int(rate))
     trend = np.linspace(x[0], x[-1], len(x))
     y = np.pad(x - trend, ((pad, pad), (0, 0)), mode='reflect', reflect_type='odd')
@@ -88,6 +88,7 @@ def freezes(positions, t, p):
 
 def assess_arrays(positions, timestamps, params=None):
     """positions N x 3 in metres, timestamps N in seconds (strictly increasing) -> report."""
+    from scipy.signal import butter, sosfiltfilt
     p = {**DEFAULTS, **(params or {})}
     x, t = np.asarray(positions, float), np.asarray(timestamps, float)
     rate = float(1 / np.median(np.diff(t)))

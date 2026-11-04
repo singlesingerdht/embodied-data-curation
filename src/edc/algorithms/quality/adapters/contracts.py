@@ -69,6 +69,8 @@ def cpu_parameters(ident):
         properties['ranges'] = {'type': 'object',
             'description': '{“通道.字段”: {range: [最小, 最大], unit}}：机器人 yaml 写了 range 的项，超出范围判排除（由 yaml 自动生成）'}
     if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}:
+        properties['record_header_deviation_threshold_ms'] = {'type': ['number', 'null'], 'minimum': 0, 'default': None,
+            'description': '记录时间减header原值，列中位差与最大偏离；仅显式填写时列绝对偏离超限项（明细最多20条），不改变评分或判断'}
         properties['target_clock'] = {'type': 'string',
             'description': '执行时使用的共同clock；仅应用配置中明确的仿射映射，不重采样、不修改原时间或时间来源'}
     if ident == 'Check_Timestamp':
@@ -83,6 +85,9 @@ def cpu_parameters(ident):
     if ident == 'Sync_Check':
         properties['primary'] = {'type': ['string', 'null'], 'description': '参考采集通道；不填沿用原方法的参考选择'}
     if ident == 'Video_Integrity':
+        properties['freeze_motion_review'] = {'type': 'object', 'default': {},
+            'additionalProperties': True,
+            'description': '相机逻辑名 → position运动反馈通道列表；候选重复区间附SI运动曲线、图片与来源。共同clock或显式映射不足时说明不可用，不改评分或判断'}
         properties.update(
             input_mode={'type': 'string', 'enum': ['auto', 'video', 'frames'], 'default': 'auto',
                 'description': 'auto按原生存储选择：内嵌图像走frames，原编码视频走video；video按需物化；frames不编码MP4，容器子项不适用且不能配置视频综合weights'},

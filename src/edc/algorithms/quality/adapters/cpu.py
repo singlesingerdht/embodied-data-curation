@@ -5,6 +5,7 @@ import shutil
 from edc.algorithms.registry import AlgorithmSpec
 from edc.data.compat import legacy
 from .contracts import cpu_parameters, INPUT_DESCRIPTIONS
+from edc.robots.scope import numeric_fields
 from edc.algorithms.channel_names import resolve_channel_parameters, channel_parameter_bindings
 
 # IDs are the official repository directory names. Historical short aliases are resolved by CLI.
@@ -727,12 +728,13 @@ class LegacyAlgorithm:
         return instances(episode, params, modes.get(self.spec.id, 'channels'))
 
     def __init__(self, ident, inputs, dependencies):
-        version = {'Numeric_Check': 'ir-adapter-20', 'Action_Smoothness': 'ir-adapter-23',
-                   'Reset_Detection': 'ir-adapter-17', 'Sync_Check': 'ir-adapter-17',
-                   'Root_Cause': 'ir-adapter-18', 'Check_Timestamp': 'ir-adapter-19',
-                   'Video_Integrity': 'ir-adapter-16'}.get(ident, 'ir-adapter-15')
+        version = {'Numeric_Check': 'ir-adapter-21', 'Action_Smoothness': 'ir-adapter-24',
+                   'Reset_Detection': 'ir-adapter-18', 'Sync_Check': 'ir-adapter-18',
+                   'Root_Cause': 'ir-adapter-19', 'Check_Timestamp': 'ir-adapter-20',
+                   'Video_Integrity': 'ir-adapter-17'}.get(ident, 'ir-adapter-16')
         descriptions, schema = cpu_parameters(ident)
-        self.spec = AlgorithmSpec(ident, version, ident, "Repository contributors",
+        evidence_version = '-evidence-scope3' if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'} else '-evidence-scope2'
+        self.spec = AlgorithmSpec(ident, version + evidence_version, ident, "Repository contributors",
             "Existing CPU implementation; see edc.algorithms.quality/algorithms/" + ident,
             required_inputs=inputs, dependencies=dependencies, calibration=ident == "Reset_Detection",
             presets=("quality_cpu", "quality"),
@@ -781,7 +783,7 @@ class LegacyAlgorithm:
         review = numeric_review(episode.profile, params)
         fields = [numeric_field_status(episode, channel, field, review)
                   for channel in episode.channels.values() if channel.value_available
-                  for field in channel.fields]
+                  for field in numeric_fields(episode, channel)]
         for item in fields:
             target = item.pop('target')
             channel = episode.channels[item['channel']]
@@ -827,6 +829,22 @@ class LegacyAlgorithm:
         return emit(self.spec.id, self._assess(context, params), labels)
 
     def _assess(self, context, params):
+        timed = self.spec.id in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'}
+        params = dict(params)
+        threshold = params.pop('record_header_deviation_threshold_ms', None) if timed else None
+        evidence = None
+        if timed:
+            from edc.algorithms.quality.shared.record_header import paired_time_evidence
+            resolved = resolve_channel_parameters(context.episode, params)
+            # Raw integer evidence survives the execution clock view unchanged.
+            evidence = paired_time_evidence(selected_inputs(context.episode, resolved, self.spec.id), threshold)
+        result = self._assess_core(context, params)
+        if evidence is not None:
+            for report in result if isinstance(result, list) else [result]:
+                report['record_header_differences'] = evidence
+        return result
+
+    def _assess_core(self, context, params):
         legacy()
         short = too_short(context.episode)
         if short and self.spec.id != 'Structure_Check':
@@ -1116,7 +1134,7 @@ class LegacyAlgorithm:
             if not channel.value_available:
                 continue
             settings = channel_settings(review['settings'], channel)
-            for field in channel.fields:
+            for field in numeric_fields(ep, channel):
                 unit_reason = None
                 recorded_orientation = field == 'orientation' and callable(getattr(ep, 'inspect_recorded_signal', None))
                 try:
@@ -1201,6 +1219,7 @@ class LegacyAlgorithm:
                                   'field': selection.get('field', field), 'selection': selection,
                                   'episode_selector': getattr(ep, 'selector', {})})
                 result["input_channel"] = channel.name
+                result["robot_part"], result["side"] = channel.robot_part, channel.side
                 result["input_field"] = field
                 result["unit"] = unit
                 result["source_unit"] = spec.get("source_unit", unit)

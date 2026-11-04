@@ -148,6 +148,28 @@ def resolve_channel_parameters(episode, params):
                 raise ValueError(f'Duplicate camera_types binding: {source}')
             resolved[source] = kind
         result['camera_types'] = resolved
+    if result.get('freeze_motion_review') is not None:
+        mapping = result['freeze_motion_review']
+        if not isinstance(mapping, dict):
+            raise ValueError('freeze_motion_review must map cameras to lists of motion feedback channels')
+        resolved = {}
+        for camera, motions in mapping.items():
+            source = resolve_channel(episode, camera)
+            if source in resolved:
+                raise ValueError(f'Duplicate freeze_motion_review camera binding: {source}')
+            if not isinstance(motions, list) or any(not isinstance(n, str) or not n for n in motions):
+                raise ValueError('freeze_motion_review values must be lists of channel names')
+            names = []
+            for motion in motions:
+                try:
+                    name = resolve_channel(episode, motion)
+                except ValueError:
+                    name = motion  # Optional evidence shortage must not block the image assessment.
+                if name in names:
+                    raise ValueError(f'Duplicate freeze_motion_review motion binding: {name}')
+                names.append(name)
+            resolved[source] = names
+        result['freeze_motion_review'] = resolved
     if result.get('field_map') is not None:
         if not isinstance(result['field_map'], dict):
             raise ValueError('field_map must map channel names to fields')
@@ -197,4 +219,14 @@ def channel_parameter_bindings(episode, params):
     for key in ('camera_types', 'families', 'field_map'):
         for requested in (params.get(key) or {}):
             append(f'{key}.{requested}', requested, resolve_channel(episode, requested))
+    for camera, motions in (params.get('freeze_motion_review') or {}).items():
+        source = resolve_channel(episode, camera)
+        append(f'freeze_motion_review.{camera}', camera, source)
+        for i, motion in enumerate(motions):
+            name = resolved['freeze_motion_review'][source][i]
+            if name in episode.channels:
+                append(f'freeze_motion_review.{camera}[{i}]', motion, name)
+            else:
+                rows.append({'parameter': f'freeze_motion_review.{camera}[{i}]',
+                             'requested': motion, 'status': 'unavailable', 'reason': 'Optional channel missing'})
     return rows

@@ -1,6 +1,7 @@
 """Text helpers shared by the result translation and the batch report: readable algorithm names, HTML escaping,
 an algorithm's reports and the findings it wrote. Judges nothing."""
 import html
+import re
 
 NAMES = {
     'Structure_Check': '结构完整性', 'Numeric_Check': '数值检查',
@@ -15,13 +16,19 @@ def esc(value):
     return html.escape(str(value), quote=True)
 
 
+def clean_reason(text):
+    """Remove adjacent sentence/list separators without changing the recorded facts."""
+    return re.sub(r'[。；;]\s*[；;]+', '；', str(text)).strip()
+
+
 def reports(record):
     items = (record.get('result') or {}).get('reports', [])
     return [x for x in items if isinstance(x, dict)] if isinstance(items, list) else []
 
 
-def findings(item):
-    result = []
+def findings(item, *, include_time_evidence=True):
+    from edc.algorithms.quality.shared.record_header import evidence_sentences
+    result = evidence_sentences(item.get('record_header_differences')) if include_time_evidence else []
     if item.get('supplemental_verdict') == 'DO_NOT_USE':
         result.append('动作指令超出已确认的独立限位：筛选建议排除，原算法评分保留。')
     if any(candidate.get('check') in {'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'}

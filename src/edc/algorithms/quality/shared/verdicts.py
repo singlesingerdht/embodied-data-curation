@@ -17,7 +17,7 @@ REMEDY = {'joint_ik': '整条手臂的关节读数卡住、末端在动：末端
                       '恢复之前，用关节角训练时这段不能用',
           'fixed_offset': '两组设备的时钟差一个固定值：程序已按这个偏差把时间挪齐，其它检查按挪齐后的时间做；'
                           '请采集方把时钟对准'}
-SIDE = {'left': '左臂', 'right': '右臂'}
+SIDE = {'left': '左臂', 'right': '右臂', 'main': '主臂'}
 BOILERPLATE = ('reference topic 为', '共评价', '个非采样', '原始解码画面已检查')
 
 
@@ -96,12 +96,57 @@ def target_of(algo, report, labels):
     return labels.get(name, name) or '本条'
 
 
+def unfinished_reason(algo, report, reason=''):
+    """Explain missing evaluation conditions, without inventing a data-review finding."""
+    if algo == 'Numeric_Check':
+        checks = (report.get('check_coverage') or {}).get('checks') or []
+        blockers = ' '.join([str(report.get('unit_normalization_reason') or ''),
+                             *map(str, report.get('physical_check_blockers') or [])])
+        missing = []
+        if (report.get('configuration_review') or {}).get('status') in ('pending', 'stale'):
+            missing.append('阈值配置待确认')
+        if 'source_unit' in report and report['source_unit'] in (None, '', 'unknown'):
+            missing.append('源单位未确认')
+        if 'physical quantity' in blockers or 'semantic_status' in blockers:
+            missing.append('物理含义未确认')
+        if 'calibration_status' in report and report['calibration_status'] != 'confirmed':
+            missing.append('标定状态未确认')
+        if 'source_kind' in blockers or 'command/feedback' in blockers:
+            missing.append('指令／反馈未声明')
+        known_pending = bool(missing)
+        suffix = {'unconfigured': '未配置', 'insufficient_input': '输入不足',
+                  'unsupported': '尚未实现', 'pending_confirmation': '待确认',
+                  'blocked_nonfinite': '被非有限值阻断'}
+        for check in checks:
+            state = check.get('status')
+            if state in suffix and not (state == 'pending_confirmation' and known_pending):
+                missing.append(check.get('name', check.get('id', '子项')) + suffix[state])
+        prefix = 'NaN/Inf 检查通过；' if report.get('finite') is True else ''
+        return prefix + '物理检查未完成：' + '、'.join(dict.fromkeys(missing or ['缺少完整执行记录']))
+    if algo == 'Check_Timestamp' and (report.get('cross_channel_alignment') or {}).get('status') == 'missing_input':
+        return '已检查可用通道的时间间隔；缺少有效时间轴或共同 clock，跨通道对齐未执行'
+    return '检查未完成：' + (reason or '缺少完整执行记录，请查看运行记录中的输入条件和执行原因')
+
+
+def dedup_missing_inputs(report):
+    """The adapter places whole-scope omissions on its first per-channel report."""
+    return (report.get('unavailable_inputs') or []) if any(
+        '未完成全通道时间重复检查' in str(t) for t in report.get('reasons') or []) else []
+
+
 def to_item(algo, report, explain, labels):
     """One built-in report -> Item."""
     from edc.execution.completeness import report_complete
-    from edc.reporting.text import findings
+    from edc.reporting.text import clean_reason, findings
     old = recorded_verdict(report)
     target = target_of(algo, report, labels)
+    own_dedup_complete = (algo == 'Dedup_Check' and bool(dedup_missing_inputs(report))
+                          and bool(report.get('dedup')) and report.get('score') is not None
+                          and not (report['dedup'].get('timestamp_dedup') or {}).get('observation_only_extra_count'))
+    if own_dedup_complete and old == 'OBSERVATION':
+        old = 'ACCEPTABLE'  # Missing sibling channels receive their own unchecked items in aggregation.
+    if algo == 'Dedup_Check' and 'At least two recorded samples are required' in texts(report):
+        return Item(target, NOT_APPLICABLE, reason='少于2条记录，无法检查时间或序列重复')
     if old == 'SKIPPED':
         short = report.get('duration') or {}
         return Item(target, NOT_APPLICABLE, reason='数据太短，已在结构完整性里排除，这一项不再检查'
@@ -113,7 +158,8 @@ def to_item(algo, report, explain, labels):
         reason = '时钟有固定偏差（见采集同步），要先平移时间才能评价对齐；本项暂不判定'
     else:
         reason = (clock_sentence(algo, report) or explain(report, labels)
-                  or next((t for t in findings(report) if not t.startswith(BOILERPLATE)), ''))
+                  or next((t for t in findings(report, include_time_evidence=False)
+                           if not t.startswith(BOILERPLATE)), ''))
     if old == 'NA':
         return Item(target, NOT_APPLICABLE, reason=reason or '从长录制剪出来的切片，两端本来就不在初始位置，不查复位')
     salvage = salvage_of(report)
@@ -122,15 +168,22 @@ def to_item(algo, report, explain, labels):
     verdict = TO_VERDICT.get(old)
     if verdict is None:
         return Item(target, FAILED, reason=f'算法没有给出结论（{old}）')
-    if verdict == PASS and not report_complete(report, algo):
-        verdict, reason = REVIEW, (reason + '；' if reason else '') + '有子项没评估完，需要人看'
+    metrics = {k: report[k] for k in ('score', 'clock_shift_s') if report.get(k) is not None}
+    metrics.update(report.get('item_metrics') or {})
+    if not own_dedup_complete and not report_complete(report, algo):
+        rows = (report.get('cadence') or {}).get('channels') or []
+        observed_problem = any(r.get('backward_interval_count') or r.get('zero_interval_count')
+                               or r.get('anomaly_examples') for r in rows)
+        missing_alignment = (old == 'OBSERVATION' and algo == 'Check_Timestamp'
+                             and (report.get('cross_channel_alignment') or {}).get('status') == 'missing_input'
+                             and not observed_problem and not report.get('review_candidates'))
+        if verdict == PASS or missing_alignment:
+            return Item(target, FAILED, reason=clean_reason(unfinished_reason(algo, report, reason)), metrics=metrics)
     if verdict != PASS and not reason.strip():  # Every verdict but PASS says why; never leave the cell blank.
         score = f"，分数 {report['score']}" if report.get('score') is not None else ''
         reason = f'算法判为{VERDICTS[verdict]}（原始结论 {old}{score}），但没有写出具体原因；请用 --keep 看这条的详细输出'
     remedy = REMEDY['joint_ik' if salvage == 'joint_ik' else 'fixed_offset'] if verdict == SALVAGE else ''
-    metrics = {k: report[k] for k in ('score', 'clock_shift_s') if report.get(k) is not None}
-    metrics.update(report.get('item_metrics') or {})  # Numbers an algorithm wants shown with its item.
-    return Item(target, CHECKED, verdict, reason, remedy, metrics=metrics)
+    return Item(target, CHECKED, verdict, clean_reason(reason), remedy, metrics=metrics)
 
 
 def common_note(algo, reports, items):
@@ -162,6 +215,19 @@ def emit(algo, raw, labels):
     reports = raw if isinstance(raw, list) else [raw]
     items = [to_item(algo, r, module.explain, labels) for r in reports]
     note = module.note(reports, items, labels, common_note(algo, reports, items))
+    evidence = []
+    for r, item in zip(reports, items):
+        paired = r.get('record_header_differences')
+        if paired is not None:
+            # Informational evidence belongs in details, not in the verdict's reason or cell note.
+            item.evidence.append({'type': 'record_header_differences', 'data': paired})
+        review = r.get('freeze_motion_review')
+        if review is not None:
+            count = sum(s.get('status') == 'available' for s in review.get('segments', []))
+            evidence.append(f"画面冻结联合证据：{count} 个区间可关联运动；{review.get('reason', '')}"
+                            '（仅供人工复核，不改变画面判断）')
+    if evidence:
+        note = '；'.join(filter(None, [note, *evidence]))
     for report, item in zip(reports, items):
         report['edc_item'] = item.__dict__.copy()
     reports[0]['edc_note'] = note

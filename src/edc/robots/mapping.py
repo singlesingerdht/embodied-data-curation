@@ -57,7 +57,7 @@ def validate_mapping_config(profile):
             raise ValueError(f'{name}: selection rule is shadowed by an earlier channel pattern')
         if binding['channel'] == name or source.get('select') is not None:
             raise ValueError('Selected channels must refer directly to an original channel')
-        if part and parts[part].get('dof') and len(indices) != parts[part]['dof']:
+        if spec.get('modality') == 'joint_space' and part and parts[part].get('dof') and len(indices) != parts[part]['dof']:
             raise ValueError(f'{name}: selected indices do not match {part} dof')
 
 

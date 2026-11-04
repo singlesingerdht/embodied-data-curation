@@ -71,6 +71,13 @@ def main(argv=None):
     p.add_argument('--include', help='要选择的状态，逗号分隔（默认 keep；可显式选其它状态，原结论保留）')
     p.add_argument('--profile', help='解析 episode 身份/selector 用的机器人 yaml（可选）')
     p.add_argument('--preview', action='store_true', help='只展示选择数量、源路径、目标路径和操作方式，不写入')
+    workflow = sub.add_parser('workflow', help='Finite quality, editing, value and augmentation stages').add_subparsers(dest='action', required=True)
+    p = workflow.add_parser('check', help='Validate stage order, methods and mandatory quality rechecks')
+    p.add_argument('config')
+    p = workflow.add_parser('run', help='Execute configured stages and save release decisions')
+    p.add_argument('config')
+    p.add_argument('--output', required=True)
+    p.add_argument('--resume', action='store_true')
     args = parser.parse_args(argv)
     try:
         if args.command == 'channels':
@@ -107,6 +114,15 @@ def main(argv=None):
                                 profile=args.profile, dry_run=args.preview,
                                 log=lambda text: print(text, flush=True))
             return 1 if result.get('failed') else 0
+        elif args.command == 'workflow':
+            if args.action == 'check':
+                from edc.workflows.validation import validate_workflow
+                emit(validate_workflow(args.config))
+                return 0
+            from edc.workflows.engine import run_workflow
+            result = run_workflow(args.config, args.output, resume=args.resume)
+            emit(result)
+            return 0 if result['delivery_status'] == 'ready' else 1
         return 0
     except Exception as exc:
         print(f'edc: {type(exc).__name__}: {exc}', file=sys.stderr)

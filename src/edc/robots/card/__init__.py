@@ -65,6 +65,13 @@ def compile_card(card, base=None):
         if source in channels:
             raise CardError(f'{source} 既是相机又是数值数据')
         channels[source] = {'modality': 'other', 'fields': spec['fields'], 'time_source': 'acquisition', 'clock': clock}
+        # Preserve explicit ownership on raw sources as well as their selected views.
+        from edc.robots.scope import source_fields
+        owners = {v.get('robot_part') for v in channels.values()
+                  if v.get('robot_part') and any(n == source for n, _ in source_fields(v.get('select')))}
+        if len(owners) == 1:
+            channels[source]['robot_part'] = owners.pop()
+
         build.finite_only += [f'{source}.{f}' for f in spec['fields']]
         build.names.setdefault(source, source)
     # Data the yaml does not mention is not checked.

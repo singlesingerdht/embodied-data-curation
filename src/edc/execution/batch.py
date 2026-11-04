@@ -67,6 +67,11 @@ def find_items(paths, profile):
     return items
 
 
+def _algorithm_errors(summary):
+    """An error can coexist with a more severe data verdict in the same algorithm."""
+    return any(i['status'] == 'failed' for r in summary['algos'].values() for i in r['items'])
+
+
 def check_one(item, profile, params, keep, tmp):
     path, episode = item
     label = f'{path.name}:{episode}' if episode is not None else path.name
@@ -81,9 +86,22 @@ def check_one(item, profile, params, keep, tmp):
         if episode is not None:
             cmd += ['--episode', str(episode)]
         done = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors='replace')
-        summary = summarize(target)
-        if summary is None or done.returncode:
-            summary = {'decision': 'failed', 'algos': {}, 'log': '\n'.join(done.stdout.splitlines()[-25:])}
+        error = ''
+        try:
+            summary = summarize(target)
+            if summary is None:
+                error = '没有找到 quality.json 结果'
+        except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+            summary = None
+            error = f'无法读取 quality.json：{type(exc).__name__}: {exc}'
+        if summary is None:
+            summary = {'decision': 'failed', 'algos': {}}
+        elif done.returncode and not _algorithm_errors(summary):
+            summary['decision'] = 'failed'
+            error = f'edc run 异常退出（退出码 {done.returncode}），已有算法结果保留'
+        summary['returncode'] = done.returncode
+        if error or done.returncode:
+            summary['log'] = '\n'.join(filter(None, [error, '\n'.join(done.stdout.splitlines()[-25:])]))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     summary.update(name=label, source=str(path) + (f' 第 {episode} 条' if episode is not None else ''),
@@ -136,4 +154,5 @@ def run_batch(inputs, *, profile=None, robot=None, params=None, jobs=None, outpu
     log(f'\n全部完成，用时 {info["seconds"]:.0f} 秒。' + '，'.join(f'{k} {n} 个' for k, n in counts.items()))
     log(f'报告：{output.resolve()}')
     return {'report': str(output.resolve()), 'files': len(items),
-            'failed': sum(r['decision'] == 'failed' for r in results)}
+            'failed': sum(bool(r['decision'] == 'failed' or r.get('returncode') or _algorithm_errors(r))
+                          for r in results)}

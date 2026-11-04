@@ -24,11 +24,29 @@ def explain(report, labels):
 
     def side(channel):
         parts = channel.split('/')
-        key = parts[2] if len(parts) >= 3 else next((k for k in SIDE if k in channel), '')
+        key = parts[2] if len(parts) >= 3 else ''
+        if key not in SIDE:
+            key = next((k for k in SIDE if k in channel), '')
         return SIDE.get(key, labels.get(channel, channel))
 
     def amount(value):
         return f'{value * 100:.1f} cm' if metres else f'{value:.2f} rad'
+
+    if report.get('method') == 'calibrated_home_reference_v2':
+        findings = []
+        for e in report.get('evidence') or []:
+            for key, label in (('start', '开头'), ('end', '结尾')):
+                if key not in report.get('checked_ends', ('start', 'end')):
+                    continue
+                for index, (error, limit) in enumerate(zip(e.get(f'{key}_error') or [], e.get('tolerance2') or [])):
+                    if error < limit:
+                        continue
+                    unit = e.get('unit', '')
+                    component = 'XYZ'[index] + ' 方向' if unit == 'm' and index < 3 else f'第 {index + 1} 分量'
+                    offset, upper = (f'{error * 100:.2f} cm', f'{limit * 100:.2f} cm') if unit == 'm' else (
+                        f'{error:.3g} {unit}', f'{limit:.3g} {unit}')
+                    findings.append(f"{side(e['channel'])}{label} {component}偏离初始位置 {offset}，达到或超过阈值 {upper}")
+        return '；'.join(findings[:3]) + (f'（另有 {len(findings) - 3} 项）' if len(findings) > 3 else '')
 
     return '；'.join(f"{side(e['channel'])}{label}和初始位置不同"
                     f"（{'末端' if metres else ''}偏离 {amount(e[f'{key}_error'])}{where(e, key)}），{GUESS[key]}"

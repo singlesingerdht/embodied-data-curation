@@ -4,6 +4,10 @@ from edc.execution.completeness import report_complete
 
 
 def has_review_candidate(report):
+    if (report.get('edc_item', {}).get('verdict') == 'REVIEW' or
+            any(item.get('verdict') == 'REVIEW' for item in
+                report.get('edc_result', {}).get('items', []))):
+        return True
     if report.get('verdict') == 'NEEDS_REVIEW' or report.get('review_candidates'):
         return True
     for key, value in report.items():
@@ -35,6 +39,31 @@ def quality_gate(records, episode_ids, run_id, reviews=(), required_algorithms=N
                 if state != 'exclude': state = 'unassessed'
                 reasons.append('Declared arm coverage incomplete: ' + str(record.get('input_scope', {})))
             for index, result in enumerate(record['result']['reports']):
+                if 'edc_result' in result or 'edc_item' in result:
+                    from edc.algorithms.base import AlgorithmResult, Item
+                    items = (AlgorithmResult.from_dict(result['edc_result']).items
+                             if 'edc_result' in result else [Item(**result['edc_item'])])
+                    if 'edc_item' in result and not report_complete(result, record['algorithm']['id']):
+                        if state != 'exclude': state = 'unassessed'
+                        reasons.append('Required assessment coverage incomplete')
+                    if not items or any(item.status != 'checked' for item in items):
+                        if state != 'exclude': state = 'unassessed'
+                        reasons.append('Selected quality scope contains unevaluated items')
+                    levels = {item.verdict for item in items if item.status == 'checked'}
+                    if levels & {'EXCLUDE', 'SALVAGE'}:
+                        state = 'exclude'
+                        reasons.append('Selected item requires handling before release')
+                    elif 'REVIEW' in levels:
+                        latest = [r for r in reviews if r['run_id'] == run_id and
+                                  r['subject_id'] == subject_id(record, index)]
+                        action = latest[-1]['action'] if latest else None
+                        if action == 'confirmed':
+                            state = 'exclude'
+                            reasons.append('Human confirmed a selected violation')
+                        elif action != 'dismissed':
+                            if state == 'keep': state = 'review'
+                            reasons.append('Human review pending')
+                    continue
                 verdict = result.get('verdict')
                 if result.get('supplemental_verdict') == 'DO_NOT_USE':
                     state = 'exclude'; reasons.append('Selected supplemental check failed'); continue

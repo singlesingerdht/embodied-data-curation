@@ -110,7 +110,7 @@ class Builder:
         self.channels[channel] = spec
         self.names[channel] = label
 
-    def other(self, channel, entry, where, label, units):
+    def other(self, channel, entry, where, label, units, ownership=None):
         """Values with no physical check of their own: checked for NaN/Inf and, when declared, their range."""
         source, field, picks = self.source_of(entry, where, ('scale', 'range', 'order'))
         unit = entry.get('unit')
@@ -132,10 +132,10 @@ class Builder:
             raise CardError(f'{where}: unit 是 {unit} 时不能写 range、scale')
         if scale and unit == 'raw':
             raise CardError(f'{where}: 写了 scale 就把 unit 写成换算后的物理单位（如 m、rad），range 按换算后的值写')
-        if picks is None and field == 'value' and not (value_range or scale):
+        if picks is None and field == 'value' and not (value_range or scale or ownership):
             self.names.setdefault(source, label)
             return
-        spec = {'modality': 'other', 'fields': ['value'],
+        spec = {'modality': 'other', 'fields': ['value'], **(ownership or {}),
                 'select': {'channel': source, 'field': field, 'indices': picks or [0]}}
         if picks is None:
             spec['select'] = {'channel': source, 'fields': {'value': field}}

@@ -104,7 +104,8 @@ def recommend_episode(episode, plugins, params=None, selected=None):
             elif not row['scope_complete'] and row['status'] == 'runnable':
                 row.update(availability='partial', reason=(row.get('reason', '') +
                     '; missing declared inputs: ' + ', '.join(scope['scope'].get('missing_arms', []) +
-                        scope['scope'].get('missing_channels', []))).strip('; '))
+                        scope['scope'].get('missing_channels', []) +
+                        scope['scope'].get('missing_ownership', []))).strip('; '))
             rows.append(row)
         entry = dict(rows[0])
         runnable = [r for r in rows if r['status'] == 'runnable']

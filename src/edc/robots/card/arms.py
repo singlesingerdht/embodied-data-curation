@@ -117,7 +117,8 @@ def add_arm(build, arm, spec, where, side, tag, label):
                             ('gripper_command', '夹爪指令', 'gripper'), ('hand', '灵巧手', 'hand'),
                             ('hand_command', '灵巧手指令', 'hand')):
         if spec.get(key) is not None:
-            build.other(f'{key}/{tag}', spec[key], f'{where}.{key}', f'{label}{word}', OTHER_UNITS[kind])
+            build.other(f'{key}/{tag}', spec[key], f'{where}.{key}', f'{label}{word}', OTHER_UNITS[kind],
+                        ownership={**common, 'source_kind': 'command' if key.endswith('_command') else 'feedback'})
     if spec.get('home') is not None:
         build.homes[arm] = (spec['home'], tag, dof)
     return part
