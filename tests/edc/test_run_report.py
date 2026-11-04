@@ -169,6 +169,7 @@ def test_no_html_preserves_quality_records_evidence_and_exit_status(sample, tmp_
 @pytest.mark.parametrize('keep_details', [False, True])
 def test_batch_generates_only_one_html_with_real_child_processes(sample, tmp_path, monkeypatch, keep_details):
     import edc
+    from edc.algorithms.registry import algorithms
     from edc.execution import batch
 
     source, profile, _ = sample
@@ -181,7 +182,9 @@ def test_batch_generates_only_one_html_with_real_child_processes(sample, tmp_pat
     assert result['files'] == 2
     assert list(tmp_path.rglob('*.html')) == [output]
     rows = json.loads(output.with_suffix('.json').read_text())['results']
-    assert len(rows) == 2 and all(len(row['algos']) == 9 for row in rows)
+    expected = {ident for ident, plugin in algorithms().plugins.items()
+                if plugin.spec.category == 'quality' and 'quality_cpu' in plugin.spec.presets}
+    assert len(rows) == 2 and all(set(row['algos']) == expected for row in rows)
     if kept:
         for row in rows:
             entry, = json.loads((Path(row['kept']) / 'catalog.json').read_text())['runs']
