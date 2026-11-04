@@ -219,8 +219,6 @@ def selected_inputs(episode, params, ident):
         view._explicit_pose_channel = c.name
     if ident == 'Dedup_Check' and params.get('channel') and 'channels' in params:
         raise ValueError('Use channel or channels, not both')
-    if ident == 'Sync_Check' and params.get('primary') and params['primary'] not in view.channels:
-        raise ValueError('Sync primary must be included in selected channels')
     if ident == 'Reset_Detection' and 'channels' in params:
         calibration = view.profile.get('calibration', {}).get(ident)
         if calibration and isinstance(calibration.get('references'), dict):
@@ -441,7 +439,7 @@ def reset_calibration(episode):
 CALENDAR_MIN_S = 946684800.0   # 2000-01-01 UTC; earlier headers are device counters, not dates
 # Record time mixes clock offset with transport/processing latency (Leju head depth arrives
 # 0.2-0.4 s late on a shared clock), so only offsets beyond 1 s are named as separate clocks.
-# Smaller mismatches still show in Sync_Check's own alignment numbers.
+# Smaller mismatches still show in Check_Timestamp's alignment numbers.
 CLOCK_GROUP_GAP_MS = 1000.0
 # "Salvageable" = every channel's record-minus-header lag is the same at the start and the end of
 # the episode (medians of CLOCK_WINDOWS equal slices within CLOCK_STABLE_MS), so one shift per
@@ -921,12 +919,21 @@ class LegacyAlgorithm:
         if self.spec.id == "Sync_Check":
             ts = {c.name: c.timestamps for c in ep.channels.values()
                   if c.time_source == "acquisition" and c.clock and c.timestamps}
-            if len({tuple(t) for t in ts.values()}) < 2:
+            # 拆出的通道和源话题是同一条时间轴，只留一份（优先源话题），免得同一条时间比两遍
+            unique = {}
+            for name in sorted(ts, key=lambda n: bool(ep.channels[n].selection)):
+                unique.setdefault(tuple(ts[name]), name)
+            if len(unique) < 2:
                 from edc.data.ir.metadata import IRNotProvided
                 from edc.data.readers.base import make_ir_report
                 return make_ir_report("同步", "sync_check", IRNotProvided("独立采集时间轴", ep.format))
-            result = module.assess(ts, **params)
-            result['clock_diagnosis'] = clock_diagnosis(ep, list(ts))
+            ts = {name: ts[name] for name in unique.values()}
+            diagnosis = clock_diagnosis(ep, list(ts))
+            topics = ep.describe_legacy().topics
+            record = {n: [v * 1e-9 for v in getattr(topics.get(n), 'container_timestamps_ns', None) or []] for n in ts}
+            record = record if all(record.values()) else None  # 有一路没有录包时间就都按采集时间比起止
+            result = module.assess(ts, clock=diagnosis, record=record, **params)
+            result['clock_diagnosis'] = diagnosis
             result['reasons'] = (result.get('reasons') or []) + result['clock_diagnosis']['notes']
             return result
         if self.spec.id == "Structure_Check":

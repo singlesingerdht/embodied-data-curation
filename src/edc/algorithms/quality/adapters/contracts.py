@@ -24,7 +24,7 @@ def cpu_parameters(ident):
     properties['arms'] = {'type': ['string', 'array'], 'items': {'type': 'string'},
                           'description': 'all 或已声明的机械臂部件 ID 列表；默认按机器人拓扑选择全部臂'}
     properties['skip'] = {'type': 'boolean', 'description': '由 yaml 的 checks.skip 生成：这项不查'}
-    if ident not in ('Reset_Detection', 'Action_Smoothness'):
+    if ident not in ('Reset_Detection', 'Action_Smoothness', 'Sync_Check'):
         properties['weights'] = {'type': ['object', 'null'], 'description': '原方法的子项权重；未提供时沿用原默认值'}
     if ident == 'Dedup_Check':
         properties['channel'] = {'type': ['string', 'null'], 'description': '指定原始时间通道；不填时检查各路，公共行时间只检查一次'}
@@ -75,8 +75,6 @@ def cpu_parameters(ident):
             'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填按中位行间隔的 3 倍'}
     if ident == 'Root_Cause':
         properties['families'] = {'type': ['object', 'null'], 'description': '原始话题的消息源分组（拆出的通道跟源话题走，不用写），用于关联异常；未填沿用原方法分组'}
-    if ident == 'Sync_Check':
-        properties['primary'] = {'type': ['string', 'null'], 'description': '参考采集通道；不填沿用原方法的参考选择'}
     if ident == 'Video_Integrity':
         properties['freeze_motion_review'] = {'type': 'object', 'default': {},
             'additionalProperties': True,

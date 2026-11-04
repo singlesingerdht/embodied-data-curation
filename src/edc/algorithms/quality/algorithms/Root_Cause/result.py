@@ -6,7 +6,7 @@ GUIDE = '看所列时刻附近各路数据是否同时缺失：同时缺失说�
 
 def explain(report, labels):
     subs = {s.get('name'): s for s in report.get('sub_indicators') or []}
-    parts = [f"{s['raw_value']}（该子项 {s['score']:.0f} 分）" for name in ('跨通道Stall', '周期性丢帧')
+    parts = [s['raw_value'] for name in ('跨通道Stall', '周期性丢帧')
              if (s := subs.get(name)) and s.get('score') is not None and s['score'] < 100]
     unknown = [name for name in ('时钟漂移', '时钟跳变') if name in subs and subs[name].get('score') is None]
     short = report.get('short_input')

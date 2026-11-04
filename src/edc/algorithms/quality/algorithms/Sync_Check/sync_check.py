@@ -1,4 +1,4 @@
-"""多通道时间同步检查: 覆盖/对齐/稳定性 (DF 方案)"""
+"""采集同步用的起止和交集计算；check_stability 现在只给时间异常归因（Root_Cause）用，采集同步不再用它。"""
 import numpy as np
 from typing import Dict, List, Optional
 from scipy.stats import linregress
@@ -11,10 +11,10 @@ def check_coverage(timestamps: Dict[str, List[float]],
                    early_end_sec: float = 5.0) -> dict:
     """多通道时间覆盖: 所有通道的时间交集占比"""
     if not timestamps:
-        return {"coverage_ratio": 0.0, "has_coverage": False, "severity": "error"}
+        return {"coverage_ratio": 0.0, "intersection_sec": 0.0, "total_sec": 0.0, "late_start": {}, "early_end": {}, "severity": "error"}
     ranges = [(min(ts), max(ts)) for ts in timestamps.values() if ts]
     if not ranges:
-        return {"coverage_ratio": 0.0, "has_coverage": False, "severity": "error"}
+        return {"coverage_ratio": 0.0, "intersection_sec": 0.0, "total_sec": 0.0, "late_start": {}, "early_end": {}, "severity": "error"}
     global_start = min(r[0] for r in ranges)
     global_end = max(r[1] for r in ranges)
     inter_start = max(r[0] for r in ranges)
@@ -22,56 +22,18 @@ def check_coverage(timestamps: Dict[str, List[float]],
     inter_dur = max(0.0, inter_end - inter_start)
     total_dur = max(0.0, global_end - global_start)
     ratio = inter_dur / total_dur if total_dur > 0 else 0.0
-    late_topics = [k for k, ts in timestamps.items() if ts and min(ts) - global_start > late_start_sec]
-    early_topics = [k for k, ts in timestamps.items() if ts and global_end - max(ts) > early_end_sec]
+    # 晚开始／早结束的话题和差了几秒
+    late = {k: round(min(ts) - global_start, 3) for k, ts in timestamps.items() if ts and min(ts) - global_start > late_start_sec}
+    early = {k: round(global_end - max(ts), 3) for k, ts in timestamps.items() if ts and global_end - max(ts) > early_end_sec}
     sev = "error" if ratio < coverage_low else ("warning" if ratio < coverage_high else "pass")
     return {
         "coverage_ratio": round(ratio, 4),
         "intersection_sec": round(inter_dur, 3),
         "total_sec": round(total_dur, 3),
-        "late_start_topics": late_topics,
-        "early_end_topics": early_topics,
+        "late_start": late,
+        "early_end": early,
         "severity": sev,
     }
-
-
-def check_alignment(timestamps: Dict[str, List[float]],
-                    primary: Optional[str] = None,
-                    alignment_low_ms: float = 100.0,
-                    alignment_high_ms: float = 200.0) -> dict:
-    """跨通道对齐: 每个非主通道的最近邻 delta"""
-    if len(timestamps) < 2:
-        return {"alignments": {}, "severity": "pass"}
-    if primary is None:
-        primary = max(timestamps.keys(), key=lambda k: len(timestamps[k]))
-    ref = np.array(timestamps[primary])
-    result = {}
-    max_p95 = 0.0
-    for topic, ts in timestamps.items():
-        if topic == primary or not ts:
-            continue
-        target = np.array(ts)
-        deltas = []
-        matched_times = []
-        for t in ref:
-            idx = np.searchsorted(target, t)
-            candidates = []
-            if idx < len(target):
-                candidates.append(abs(target[idx] - t))
-            if idx > 0:
-                candidates.append(abs(target[idx - 1] - t))
-            if candidates:
-                deltas.append(min(candidates) * 1000.0)
-        if deltas:
-            p95 = float(np.percentile(deltas, 95))
-            result[topic] = {
-                "mean_delta_ms": round(float(np.mean(deltas)), 2),
-                "p95_delta_ms": round(p95, 2),
-                "p99_delta_ms": round(float(np.percentile(deltas, 99)), 2),
-            }
-            max_p95 = max(max_p95, p95)
-    sev = "error" if max_p95 > alignment_high_ms else ("warning" if max_p95 > alignment_low_ms else "pass")
-    return {"alignments": result, "primary": primary, "severity": sev}
 
 
 def check_stability(timestamps: Dict[str, List[float]],
@@ -129,18 +91,3 @@ def check_stability(timestamps: Dict[str, List[float]],
     sev = "error" if max_drift > drift_high else ("warning" if max_drift > drift_low or any_jump else "pass")
     return {"stability": result, "primary": primary, "severity": sev}
 
-
-def check_sync(timestamps: Dict[str, List[float]], primary: Optional[str] = None) -> dict:
-    """一站式同步检查: 覆盖 + 对齐 + 稳定性"""
-    cov = check_coverage(timestamps)
-    ali = check_alignment(timestamps, primary)
-    stab = check_stability(timestamps, primary)
-    rank = {"pass": 0, "warning": 1, "error": 2}
-    sev = max(cov["severity"], ali["severity"], stab["severity"], key=lambda s: rank.get(s, 0))
-    return {
-        "coverage": cov,
-        "alignment": ali,
-        "stability": stab,
-        "severity": sev,
-        "passed": sev == "pass",
-    }

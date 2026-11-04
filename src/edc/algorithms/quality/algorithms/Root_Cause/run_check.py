@@ -22,6 +22,18 @@ from edc.algorithms.quality.algorithms.Root_Cause.root_cause import analyze_root
 RC_DEFAULTS = {"跨通道Stall": 0.30, "周期性丢帧": 0.25, "时钟漂移": 0.25, "时钟跳变": 0.20}
 
 
+def stall_spans(correlated, start):
+    """关联事件按时间合并成几段（同一次卡顿常被拆成好几个 100 ms 内的事件），写成“第几秒到第几秒”，从录制开始算。"""
+    merged = []
+    for a, b, longest in sorted((min(g['time'] for g in e['gaps']), max(g['time'] + g['gap_s'] for g in e['gaps']),
+                                 e['max_gap_ms']) for e in correlated):
+        if merged and a <= merged[-1][1]:
+            merged[-1] = [merged[-1][0], max(merged[-1][1], b), max(merged[-1][2], longest)]
+        else:
+            merged.append([a, b, longest])
+    return [f'第 {a - start:.1f}–{b - start:.1f} 秒（最长断 {longest / 1000:.1f} 秒）' for a, b, longest in merged]
+
+
 def assess(ts_map: dict, stability: dict = None, weights: dict = None, families: dict = None) -> dict:
     if sum(len(values) >= 2 for values in ts_map.values()) < 2:
         from edc.data.ir.metadata import IRNotProvided
@@ -39,8 +51,8 @@ def assess(ts_map: dict, stability: dict = None, weights: dict = None, families:
     if stall_count > 0:
         if result.get("correlated_is_real_hole"):
             stall_score = 0.0
-            largest = max(event['max_gap_ms'] for event in correlated)
-            stall_raw = f"跨通道长间隔: {stall_count}次关联事件, 最大{largest:.0f}ms；具体原因待确认"
+            spans = stall_spans(correlated, min(ts[0] for ts in ts_map.values() if len(ts)))
+            stall_raw = f"多路数据同时中断 {len(spans)} 处：{'、'.join(spans)}"
         else:
             stall_score = 70.0
             stall_raw = f"关联时间间隔异常: {stall_count}次；不能据此排除丢帧"

@@ -94,11 +94,24 @@ def test_joint_range_warning_cannot_hide_nonfinite_error():
     assert result['severity']=='error'
 
 
-def test_sync_short_series_is_not_fully_assessed():
+def test_sync_without_record_time_only_checks_spans():
     from edc.algorithms.quality.algorithms.Sync_Check.run_check import assess
     result = assess({'a':[i*.1 for i in range(40)],'b':[i*.1+.001 for i in range(40)]})
-    assert not result['assessment_complete']
-    assert result['sub_indicators'][2]['score'] is None
+    assert not result['assessment_complete'] and '缺少录包时间' in ' '.join(result['reasons'])
+
+
+def test_sync_names_late_channel_and_moving_clock():
+    from edc.algorithms.quality.algorithms.Sync_Check.run_check import assess
+    ts = {'a': [i*.1 for i in range(1000)], 'b': [6+i*.1 for i in range(940)]}  # b 晚开始 6 秒
+    clock = {'channels': {'a': {'record_minus_header_ms': 2.0, 'record_minus_header_change_ms': 1.0},
+                          'b': {'record_minus_header_ms': 3.0, 'record_minus_header_change_ms': 250.0}}}
+    result = assess(ts, clock=clock)
+    text = ' '.join(result['reasons'])
+    assert result['verdict'] == 'NEEDS_REVIEW' and result['assessment_complete']
+    assert 'b 比最早的一路晚开始 6.0 秒' in text and 'b 的“录包时间 − 采集时间”在数据中变化了 250 毫秒' in text
+    assert assess(ts, clock={**clock, 'salvage': {'status': 'unstable'}})['verdict'] == 'DO_NOT_USE'
+    ts['b'] = [20+i*.1 for i in range(800)]  # 共同时段只有 80 秒里的 ~60 秒
+    assert assess(ts, clock={'channels': {}})['verdict'] == 'DO_NOT_USE'
 
 
 def test_sync_detects_negative_drift_with_shifted_overlap():

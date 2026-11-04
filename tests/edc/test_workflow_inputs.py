@@ -27,7 +27,6 @@ def test_clock_mapping_consumed_by_real_cpu_method(tmp_path,monkeypatch,ident):
     source,profile=mcap_fixture(tmp_path)
     before=source.read_bytes()
     params={'channels':['rgb/head','/fast'],'target_clock':'head_clock'}
-    if ident=='Sync_Check':params['primary']='rgb/head'
     seen=[]
     module=importlib.import_module(f'edc.algorithms.quality.algorithms.{ident}.run_check')
     method='assess' if ident=='Sync_Check' else 'assess_from_ir'

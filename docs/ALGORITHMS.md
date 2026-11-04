@@ -103,10 +103,10 @@ The following describes current inputs and primary behavior; implementation link
 <a id="sync-check"></a>
 ### Sync_Check
 
-- **Input:** Independent valid acquisition timestamps with common clocks or explicit mappings.
-- **Parameters:** `primary` selects a reference; configure only supported timeline conditions.
-- **Output/rules:** Offsets, jitter, existing scores, and fixed-offset diagnostics with mapping evidence.
-- **Limits:** One shared row timeline cannot verify sensor synchronization. An observed offset does not prove a device or network cause; a reference name alone is not clock evidence.
+- **Input:** Independent valid acquisition timestamps with common clocks or explicit mappings; ROS/MCAP also use each message's record time. A derived view shares its source timeline and is counted once.
+- **Parameters:** None (no `primary` or `weights`).
+- **Output/rules:** Two items, no score. (1) Start/end overlap, by record time (acquisition time only when record time is missing): overlap below 80% of the span excludes; below 95%, or a channel starting late / ending early by more than 5 s, needs review and names the seconds. (2) Per-channel clock (its own record − header lag): groups over 1 s apart mean unsynchronised clocks, salvageable if fixed, excluded if moving; one channel's lag changing over 100 ms needs review (drift or jump). Without record time, item (2) is not assessed.
+- **Limits:** One shared row timeline cannot verify sensor synchronization. Record time includes transport latency, so differences under 1 s / 100 ms are not treated as clock faults. Frame-level cross-channel alignment belongs to Check_Timestamp and is not repeated here (user decision, 2026-11-04).
 - [Implementation](../src/edc/algorithms/quality/algorithms/Sync_Check/)
 
 <a id="root-cause"></a>
