@@ -1,7 +1,7 @@
 """`edc batch`: many episode files in, one HTML report out.
 
 Each file gets its own `edc run` process (all selected algorithms), 16 files at a time by default.
-A run writes its full output (records, report.html, evidence media) into a temporary folder; the
+A run writes JSON records and evidence, without per-episode HTML, into a temporary folder; the
 verdicts are summarized as soon as it finishes and the folder is deleted, unless --keep is given.
 """
 import json
@@ -80,7 +80,8 @@ def check_one(item, profile, params, keep, tmp):
     work = Path(tempfile.mkdtemp(prefix='edc_batch_', dir=tmp))
     target = kept or work / 'out'
     try:
-        cmd = [sys.executable, '-m', 'edc', 'run', str(path), '--profile', str(profile), '--output', str(target)]
+        cmd = [sys.executable, '-m', 'edc', 'run', str(path), '--profile', str(profile), '--output', str(target),
+               '--no-html']
         if params:
             cmd += ['--params', str(params)]
         if episode is not None:

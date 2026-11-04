@@ -63,6 +63,7 @@ def main(argv=None):
     p.add_argument('--algorithm', action='append', help='Only these algorithms')
     p.add_argument('--episode', type=int, help='Only the k-th episode (0-based) found in the input')
     p.add_argument('--backend', choices=['auto', 'official', 'compat'], default='auto')
+    p.add_argument('--no-html', action='store_true', help='Skip HTML generation; keep JSON results and evidence')
     p = sub.add_parser('regenerate', help='根据质检 JSON 报告筛选并重生成数据集（复制或软链接）')
     p.add_argument('report', help='edc batch 写出的 JSON 报告')
     p.add_argument('--output', required=True, help='新数据集目录（必须为空或不存在）')
@@ -148,7 +149,8 @@ def run_one(args):
             dataset._episodes = [episodes[args.episode]]
         saved, cpu.DEFAULT_MIN_DURATION_S = cpu.DEFAULT_MIN_DURATION_S, CLI_MIN_DURATION_S
         try:
-            result = run(dataset, output=args.output, algorithm_ids=args.algorithm, params=params or None)
+            result = run(dataset, output=args.output, algorithm_ids=args.algorithm, params=params or None,
+                         html_report=not args.no_html)
         finally:
             cpu.DEFAULT_MIN_DURATION_S = saved
     emit(result)

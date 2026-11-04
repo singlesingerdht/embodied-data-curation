@@ -135,3 +135,57 @@ def test_actual_builtin_selection_omits_unselected_checks(tmp_path):
     assert '结构完整性' in html
     assert '数值检查' not in html and '动作平滑度' not in html
     assert html.count('<details') == 2
+
+
+@pytest.mark.parametrize('algorithm', ['test__first', 'test__second'])
+def test_no_html_preserves_quality_records_evidence_and_exit_status(sample, tmp_path, monkeypatch, capsys,
+                                                                   algorithm):
+    source, profile, _ = sample
+    before = fingerprint(source)
+    baseline, output = tmp_path / 'with_html', tmp_path / 'without_html'
+    args = ['run', str(source), '--robot', str(profile), '--algorithm', algorithm]
+    expected_exit = main(args + ['--output', str(baseline)])
+    expected_summary = json.loads(capsys.readouterr().out)
+    _, expected_quality, _ = saved(baseline)
+
+    def unexpected_render(*args, **kwargs):
+        pytest.fail('HTML rendering must be skipped, not generated and deleted')
+
+    monkeypatch.setattr('edc.reporting.run.write_run_report', unexpected_render)
+    assert main(args + ['--output', str(output), '--no-html']) == expected_exit
+    summary = json.loads(capsys.readouterr().out)
+    assert summary['status_counts'] == expected_summary['status_counts']
+    entry, = json.loads((output / 'catalog.json').read_text())['runs']
+    assert 'report' not in entry
+    assert not list(output.rglob('*.html'))
+    root = output / Path(entry['run']).parent
+    assert json.loads((root / 'quality.json').read_text()) == expected_quality
+    for path in entry['records']:
+        records = [json.loads(line) for line in (output / path).read_text().splitlines()]
+        assert len(records) == 2
+        assert all((output / artifact).is_file() for record in records for artifact in record['artifacts'])
+    assert fingerprint(source) == before
+
+
+@pytest.mark.parametrize('keep_details', [False, True])
+def test_batch_generates_only_one_html_with_real_child_processes(sample, tmp_path, monkeypatch, keep_details):
+    import edc
+    from edc.execution import batch
+
+    source, profile, _ = sample
+    before = fingerprint(source)
+    # Child processes must use the same source tree or installed wheel as this test.
+    monkeypatch.setenv('PYTHONPATH', str(Path(edc.__file__).resolve().parents[1]))
+    output = tmp_path / 'report.html'
+    kept = tmp_path / 'details' if keep_details else None
+    result = batch.run_batch([source], profile=profile, output=output, keep=kept, jobs=1, log=lambda _: None)
+    assert result['files'] == 2
+    assert list(tmp_path.rglob('*.html')) == [output]
+    rows = json.loads(output.with_suffix('.json').read_text())['results']
+    assert len(rows) == 2 and all(len(row['algos']) == 9 for row in rows)
+    if kept:
+        for row in rows:
+            entry, = json.loads((Path(row['kept']) / 'catalog.json').read_text())['runs']
+            assert 'report' not in entry
+            assert all((Path(row['kept']) / record).is_file() for record in entry['records'])
+    assert fingerprint(source) == before

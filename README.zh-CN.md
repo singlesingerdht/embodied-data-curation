@@ -104,7 +104,9 @@ edc run /path/to/dataset/episode.mcap \
 
 未显式选择时尝试完整及部分可运行的质量项，缺失条件保留原因。`batch` 运行已登记的质量集合；逐项选择使用 `run` 或 Python API。`edc algorithms` 仅列登记清单。[选择规则、Python 示例与批量运行](docs/ALGORITHMS.zh-CN.md#selection)
 
-`run` 在输出目录生成 `report.html`，使用与 `batch` 相同的四栏报告，仅展示本次选中的算法。上例打开 `/path/to/results/selected/report.html`；完整 JSON 和证据保存在 `_runs/<run_id>/`，由 `catalog.json` 定位。每次运行的报告也保存在对应运行目录中。`batch` 支持单条、多条和目录输入，其 `report.json` 可用于上述筛选导出。
+`run` 默认在输出目录生成 `report.html`，使用与 `batch` 相同的四栏报告，仅展示本次选中的算法。上例打开 `/path/to/results/selected/report.html`；完整 JSON 和证据保存在 `_runs/<run_id>/`，由 `catalog.json` 定位。每次运行的报告也保存在对应运行目录中。添加 `--no-html` 可关闭本次 HTML 生成，JSON 和证据照常保存；Python API 使用 `edc.run(..., html_report=False)`。
+
+`batch` 支持单条、多条和目录输入，自动关闭内部 `run` 的 HTML，只生成一份汇总报告；即使使用 `--keep`，也只保留各条数据的 JSON 和证据，不额外生成单条 HTML。其 `report.json` 可用于上述筛选导出。
 
 | 算法名称 | 检查内容 | 最低输入 | 详细文档 |
 |---|---|---|---|

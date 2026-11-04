@@ -111,7 +111,9 @@ edc run /path/to/dataset/episode.mcap \
 
 Without an explicit selection, execution runs quality algorithms that are fully or partly available and explains what cannot be checked. Use `batch` for batch quality checks, or `run` and the Python API to select individual algorithms. `edc algorithms` only lists installed algorithms. [Selection, Python API, and batch execution](docs/ALGORITHMS.md#selection)
 
-`run` writes `report.html` in its output directory, using the same four report sections as `batch` and showing only the selected algorithms. For the example above, open `/path/to/results/selected/report.html`. Full JSON records and evidence are stored under `_runs/<run_id>/` and located through `catalog.json`; each run also retains its own report there. `batch` accepts a single recording, multiple recordings, or a directory, and its `report.json` can be used for the export commands above.
+`run` writes `report.html` in its output directory by default, using the same four report sections as `batch` and showing only the selected algorithms. For the example above, open `/path/to/results/selected/report.html`. Full JSON records and evidence are stored under `_runs/<run_id>/` and located through `catalog.json`; each run also retains its own report there. Add `--no-html` to skip HTML generation while keeping JSON and evidence, or use `edc.run(..., html_report=False)` in Python.
+
+`batch` accepts a single recording, multiple recordings, or a directory. It disables HTML generation in its internal `run` calls and produces one combined report. Even with `--keep`, per-episode output retains JSON and evidence without extra HTML reports. Its `report.json` can be used for the export commands above.
 
 | Algorithm | Checks | Minimum input | Details |
 |---|---|---|---|

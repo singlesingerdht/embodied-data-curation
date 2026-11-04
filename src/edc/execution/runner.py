@@ -41,7 +41,8 @@ class Context:
 
 
 def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, params=None, on_preflight=None,
-        unit_policy="auto", *, upstream=None, selection_policy="explicit", config_snapshot=None, method_select=None):
+        unit_policy="auto", *, upstream=None, selection_policy="explicit", config_snapshot=None, method_select=None,
+        html_report=True):
     from edc.data.ir.units import SIDataset, UnitInputError, validate_unit_policy
     from edc.data.ir.canonical import OrientationInputError, QUATERNION
     if selection_policy not in {"explicit", "runnable"}:
@@ -242,9 +243,11 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
         quality = write_quality(root, [s["episode_id"] for s in selection],
                                 (dataset.profile or {}).get('notes'))
         write_json(root / "summary.json", summary)
-        from edc.reporting.run import write_run_report
-        report = write_run_report(output, root, quality, seconds=perf_counter() - started,
-                                  episode_seconds=episode_seconds)
+        report = None
+        if html_report:
+            from edc.reporting.run import write_run_report
+            report = write_run_report(output, root, quality, seconds=perf_counter() - started,
+                                      episode_seconds=episode_seconds)
         catalog["runs"].append({"run_id": run_id, "records": records_paths,
             **({'report': report} if report else {}),
             **({'media_manifest': (media_cache.root / 'manifest.json').relative_to(output).as_posix()}
