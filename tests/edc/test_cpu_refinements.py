@@ -117,41 +117,26 @@ def test_unrelated_long_gap_does_not_promote_short_correlated_event():
     assert result['root_cause']['is_real_hole']
     assert not result['root_cause']['correlated_is_real_hole']
     assert result['sub_indicators'][0]['score'] == 70
+    assert result['sub_indicators'][1]['score'] == 70  # /local 单独断了 0.676 秒
     assert result['warnings']
-    assert result['verdict'] == 'OBSERVATION'
+    assert result['verdict'] == 'NEEDS_REVIEW'
 
 
-@pytest.mark.parametrize('stability', [None, {}, {'stability': {}},
-    {'primary': '/a/values', 'stability': {'/b/values': {'has_jump': False}}}])
-def test_missing_stability_is_unknown_not_no_drift(stability):
-    axes = {f'/{name}/values': (np.arange(50) * .01).tolist() for name in ('a', 'b')}
-    result = root_assess(axes, stability)
-    assert result['root_cause']['has_drift'] is None
-    assert not result['assessment_complete']
-    assert result['verdict'] == 'OBSERVATION'
-    assert result['passed'] is None
-    assert result['sub_indicators'][2]['score'] is None
-
-
-def test_root_stability_detects_negative_drift_and_preserves_measured_failure():
-    axes = {f'/{name}/values': (np.arange(50) * .01).tolist() for name in ('a', 'b')}
-    result = root_assess(axes, {'primary': '/a/values', 'stability': {
-        '/b/values': {'drift_rate_ms_per_min': -6., 'has_jump': False}}})
-    assert result['assessment_complete']
-    assert result['root_cause']['has_drift'] is True
-    assert result['verdict'] == 'DO_NOT_USE'
+def test_single_channel_gap_is_reviewed_and_named():
+    # 只有一路（如头部相机）断 1 秒、其他路正常：不是整机卡顿，判复核并写明哪一路、第几秒
+    axes = {f'/{name}/samples': (np.arange(150) * .01).tolist() for name in ('a', 'b', 'c')}
+    axes['/cam/image'] = gap_axis(1.0, index=60)
+    result = root_assess(axes)
+    single = result['sub_indicators'][1]
+    assert result['verdict'] == 'NEEDS_REVIEW' and result['assessment_complete']
+    assert single['score'] == 70 and '/cam/image 第 0.6–1.6 秒（断 1.0 秒）' in single['raw_value']
+    assert result['sub_indicators'][0]['score'] == 100
 
 
 @pytest.mark.parametrize('axes', [{}, {'/a': [1.]}, {'/a': [1., 2.], '/b': [1.]}])
 def test_root_insufficient_intervals_never_pass(axes):
     result = root_assess(axes)
     assert result['score'] is None and not result['assessment_complete']
-
-
-def test_root_partial_zero_available_weights_does_not_divide_by_zero():
-    axes = {f'/{name}': (np.arange(50) * .01).tolist() for name in ('a', 'b')}
-    result = root_assess(axes, weights={'跨通道Stall': 0, '周期性丢帧': 0, '时钟漂移': 1, '时钟跳变': 0})
-    assert result['score'] is None and result['verdict'] == 'OBSERVATION'
 
 
 def test_increasing_timestamps_and_repeated_images_are_independent(tmp_path):

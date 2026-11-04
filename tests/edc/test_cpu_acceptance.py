@@ -57,15 +57,6 @@ def test_numeric_nonfinite_imu_and_empty_field(tmp_path):
     assert not result[1]['assessment_complete']
 
 
-def test_root_cause_missing_stability_never_proves_no_drift():
-    from edc.algorithms.quality.algorithms.Root_Cause.run_check import assess
-    result = assess({'a': [i*.1 for i in range(50)], 'b': [i*.1+.001 for i in range(50)]})
-    assert result['root_cause']['has_drift'] is None
-    assert result['root_cause']['has_jump'] is None
-    assert not result['assessment_complete']
-    assert all(s['score'] is None for s in result['sub_indicators'][2:])
-
-
 def test_pending_calibration_only_checks_finite_values(tmp_path):
     source=tmp_path/'episode';source.mkdir()
     (source/'trajectory.json').write_text(json.dumps({'data':[{'joint_pos':[0]},{'joint_pos':[100]}]}))
@@ -112,12 +103,3 @@ def test_sync_names_late_channel_and_moving_clock():
     assert assess(ts, clock={**clock, 'salvage': {'status': 'unstable'}})['verdict'] == 'DO_NOT_USE'
     ts['b'] = [20+i*.1 for i in range(800)]  # 共同时段只有 80 秒里的 ~60 秒
     assert assess(ts, clock={'channels': {}})['verdict'] == 'DO_NOT_USE'
-
-
-def test_sync_detects_negative_drift_with_shifted_overlap():
-    from edc.algorithms.quality.algorithms.Sync_Check.sync_check import check_stability
-    ref=np.arange(1000)*.1
-    target=ref[100:]+np.linspace(.04,.001,900)
-    result=check_stability({'ref':ref.tolist(),'target':target.tolist()},primary='ref')
-    assert result['stability']['target']['drift_rate_ms_per_min'] > 20
-    assert result['severity']=='error'

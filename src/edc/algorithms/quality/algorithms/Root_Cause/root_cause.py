@@ -1,7 +1,9 @@
-"""跨通道根因分析: gap 关联 + 周期性检测 + 系统级 stall (DF 方案)
+"""跨通道根因分析: 哪里断了，是多路一起断（整机卡顿）、只有一路断（那一路设备），还是有规律地反复断
 
-输入: sync 检查产出的 stability/drift 结果 + timing 检查的 gap 事件
-输出: 人读 verdict 字符串 + 结构化关联事件
+输入: 各路采集时间
+输出: 人读 verdict 字符串 + 结构化关联事件、单路断档
+时钟漂移／跳变不在这里查（2026-11-04 去掉：原来拿不同频率的话题互比，单路断档会被误报成时钟跳变），
+由采集同步按每路“录包时间 − 采集时间”查。
 """
 import numpy as np
 from typing import Dict, List, Any, Optional
@@ -51,7 +53,6 @@ def _detect_real_stall(ts_map: dict) -> tuple:
 
 
 def analyze_root_cause(ts_map: Dict[str, List[float]],
-                       stability: Optional[Dict[str, Any]] = None,
                        drop_details: Optional[Dict[str, Any]] = None,
                        drop_ratio_low: float = 0.02,
                        drop_ratio_high: float = 0.10,
@@ -77,26 +78,12 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
         max(g['gap_s'] for g in gaps) >= REAL_STALL_MIN_GAP_S
         or sum(g['gap_s'] - channel_evidence[name]['typical_interval_s'] for g in gaps) >= REAL_STALL_MIN_EXCESS_S
         for name, gaps in correlated_series.items())
-
-    rows = (stability or {}).get('stability', {})
-    reference = (stability or {}).get('primary')
-    expected = set(ts_map) - ({reference} if reference in ts_map else set())
-    # Older standalone stability files can omit primary; still require N-1 rows.
-    covered = set(rows) & set(ts_map)
-    coverage_complete = (len(ts_map) >= 2 and len(covered) >= len(ts_map) - 1
-                         and (reference not in ts_map or expected <= covered))
-    drift_known = {name: row['drift_rate_ms_per_min'] for name, row in rows.items()
-                   if name in ts_map and isinstance(row, dict)
-                   and isinstance(row.get('drift_rate_ms_per_min'), (int, float))
-                   and np.isfinite(row['drift_rate_ms_per_min'])}
-    jump_known = {name: row['has_jump'] for name, row in rows.items()
-                  if name in ts_map and isinstance(row, dict) and type(row.get('has_jump')) is bool}
-    drift_complete = coverage_complete and covered <= drift_known.keys()
-    jump_complete = coverage_complete and covered <= jump_known.keys()
-    observed_drift = any(abs(value) > 5.0 for value in drift_known.values())
-    observed_jump = any(jump_known.values())
-    has_drift = True if observed_drift else False if drift_complete else None
-    has_jump = True if observed_jump else False if jump_complete else None
+    # 只有这一路断了 0.5 秒以上、没有和其他来源一起断：是这一路设备自己的问题（2026-11-04 用户决定报出来）
+    together = {(g['topic'], g['before_index']) for event in correlated for g in event['gaps']}
+    single_gaps = {name: [e for e in row['events'] if e['gap_s'] >= REAL_STALL_MIN_GAP_S
+                          and (name, e['before_index']) not in together]
+                   for name, row in channel_evidence.items()}
+    single_gaps = {name: events for name, events in single_gaps.items() if events}
 
     verdict_parts = []
     if drop_details:
@@ -112,10 +99,8 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
             )
     if is_real_hole:
         verdict_parts.append(f"检测到长间隔，最大{max_gap_s*1000:.0f}ms；各通道估算缺失时长最大≈{gap_excess_s:.1f}s")
-    if has_drift:
-        verdict_parts.append("时钟漂移 >5ms/min")
-    if has_jump:
-        verdict_parts.append("时钟跳变")
+    if single_gaps:
+        verdict_parts.append(f"单路长间隔: {len(single_gaps)} 路，没有和其他来源一起断")
     if not verdict_parts:
         verdict_parts.append("未发现跨通道关联异常")
 
@@ -123,8 +108,7 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
         "gap_patterns": gap_patterns,
         "correlated_gaps": correlated,
         "drop_summary": drop_summary,
-        "has_drift": has_drift,
-        "has_jump": has_jump,
+        "single_gaps": single_gaps,
         "is_real_hole": is_real_hole,
         "max_gap_s": round(max_gap_s, 3),
         "gap_excess_s": round(gap_excess_s, 3),
@@ -133,7 +117,6 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
         "gap_excess_aggregation": "max_per_channel_not_sum",
         "source_groups": {name: (families or {}).get(name, _sensor_family(name)) for name in ts_map},
         "source_group_basis": "explicit overrides or topic namespace; not proof of independent hardware",
-        "stability_evidence_complete": bool(drift_complete and jump_complete),
         "verdict": "; ".join(verdict_parts),
     }
 

@@ -57,8 +57,12 @@ def sentence(report, name, score, reference, labels_text, labels):
     found = [x for x in labels_text.split('；') if x]
     parts = []
     if '采集时间范围或采样周期不可评价' in found:
-        parts.append(f'{label}和{ref}的录制时间段只重合 {float(iou.group(1)):.0%}（算法要求至少 95%），不够就直接记 0 分，计入平均分'
-                     if iou else f'{label}的录制时间段或采样周期没法评价，直接记 0 分，计入平均分')
+        parts.append(f'{label}和{ref}的录制时间段完全不重合，没法配对，直接记 0 分，计入平均分'
+                     if iou and float(iou.group(1)) == 0 else f'{label}的采样周期没法计算，直接记 0 分，计入平均分')
+    penalty = re.search(r'IoU_penalty=([\d.]+)', sub.get('raw_value', ''))
+    if iou and penalty and float(penalty.group(1)) > 0:
+        parts.append(f'{label}和{ref}的录制时间段只重合 {float(iou.group(1)):.0%}（低于 95% 时每少 1% 扣 2 分），'
+                     f'扣 {float(penalty.group(1)):.0f} 分')
     unit = '一帧' if any('相机流' in x for x in found) or (median or 0) > 25 else '一条'
     if median and low is not None and high is not None and any(
             x in found for x in ('动作流采样不稳定', '相机流采样不稳定', '动作流局部中断')):

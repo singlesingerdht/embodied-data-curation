@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
         "--iou-threshold",
         type=float,
         default=DEFAULT_IOU_THRESHOLD,
-        help=f"Topic receives zero when window IoU is lower than this value (default: {DEFAULT_IOU_THRESHOLD}).",
+        help=f"Below this window IoU a topic loses 2 points per percentage point; zero only without overlap (default: {DEFAULT_IOU_THRESHOLD}).",
     )
     parser.add_argument("--match-window-factor", type=float, default=DEFAULT_MATCH_WINDOW_FACTOR)
     parser.add_argument("--min-match-window-ms", type=float, default=DEFAULT_MIN_MATCH_WINDOW_MS)
@@ -639,9 +639,10 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
     iou = window_iou(reference.timestamps, target.timestamps)
     ref_period = period_ms(reference.timestamps)
     target_period = period_ms(target.timestamps)
-    if iou < args.iou_threshold or ref_period is None or target_period is None:
+    # 完全不重合或算不出采样周期才记 0 分；只是重合不够在下面按比例扣分
+    if iou <= 0.0 or ref_period is None or target_period is None:
         return {"topic": target.topic, "kind": target.kind, "score": 0.0,
-                "status": "window_iou_failed" if iou < args.iou_threshold else "period_unavailable",
+                "status": "window_iou_failed" if iou <= 0.0 else "period_unavailable",
                 "window_iou": round(iou, 6), "period_ms": target_period,
                 "attribution": ['采集时间范围或采样周期不可评价']}
     window_ms = build_match_window_ms(ref_period, target_period, args)
@@ -685,7 +686,12 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
     cadence = 100.0 * dt["cadence_component"]
     alignment_weight, cadence_weight = (0.90, 0.10) if target.kind == "camera" else (0.70, 0.30)
     topic_score = alignment_weight * alignment + cadence_weight * cadence
+    # 和参考的录制时间段（按采集时间）重合不到 iou_threshold：每少 1 个百分点扣 2 分。2026-11-04 用户决定，
+    # 原来直接记 0 分太重：处理延迟大的相机在短数据里重合率天然偏低（乐聚头部深度晚 0.4 秒，7 秒的 bag 只重合 89%）
+    overlap_penalty = max(0.0, args.iou_threshold - iou) * 200.0
+    topic_score = max(0.0, topic_score - overlap_penalty)
     component_losses = {
+        "window_iou": overlap_penalty,
         "coverage": alignment_weight * 20.0 * (1.0 - coverage_component),
         "p50_error": alignment_weight * 20.0 * (1.0 - p50_component),
         "p99_error": alignment_weight * 25.0 * (1.0 - p99_component),
@@ -704,6 +710,7 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
                **{key: value for key, value in drift.items() if key != "predicted_error_ms"},
                "target_period_ms": target_period, "match_window_ms": window_ms,
                "missing_match_count": missing, "alignment_score": alignment, "cadence_score": cadence,
+               "window_iou_penalty": overlap_penalty,
                "dt_cv": dt.get("dt_cv", 1.0), "long_gap_ratio": dt.get("long_gap_ratio", 1.0),
                "long_gap_count": dt.get("long_gap_count", 0), "max_gap_ms": dt.get("max_gap_ms"),
                "max_gap_multiple": dt.get("max_gap_multiple"), "dt_metrics": dt,
@@ -716,6 +723,8 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
     }
     # Rebuild detail reasons from the same components used by scoring.
     reasons = []
+    if overlap_penalty > 0:
+        reasons.append(f"录制时间段重合 {iou:.1%}，低于 {args.iou_threshold:.0%}，扣 {overlap_penalty:.1f} 分")
     if coverage_component < 1.0:
         reasons.append(f"\u53c2\u8003\u5e27\u5339\u914d\u8986\u76d6\u7387\u4e3a {coverage:.1%}")
     if p50_component < 1.0:
@@ -981,6 +990,7 @@ def _topic_to_sub_indicator(report: dict, weight: float) -> dict:
     dt_m = metrics.get("dt_metrics") or {}
     coverage = metrics.get("source_match_coverage", 0.0)
     raw = (f"score={score:.1f} | status={status} | IoU={report.get('window_iou', '-')}"
+           f" | IoU_penalty={metrics.get('window_iou_penalty', 0):.1f}"
            f" | coverage={coverage:.1%} | P99={metrics.get('p99_error_ms', 0):.2f}ms"
            f" | dt_cv={dt_m.get('dt_cv', '-')}")
 

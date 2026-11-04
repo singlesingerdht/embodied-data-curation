@@ -96,7 +96,7 @@ The following describes current inputs and primary behavior; implementation link
 
 - **Input:** Valid time values with known units; cross-channel pairing additionally requires comparable clocks and reference inputs.
 - **Parameters:** `shared_row_max_gap_s` defaults to three times the median row interval; scoring is the same for every robot: the error floor is 1/3 of the fastest color camera's frame interval, and interval variation is penalized from 0.3 and scores 0 at 0.6.
-- **Output/rules:** Intervals, gaps, and available pairing metrics. Single/shared-row timeline checks do not establish cross-device synchronization.
+- **Output/rules:** Intervals, gaps, and available pairing metrics. Single/shared-row timeline checks do not establish cross-device synchronization. When a channel's time span (acquisition time) overlaps the reference camera's by less than 95%, it loses 2 points per missing percentage point; only no overlap at all scores 0.
 - **Limits:** Missing independent time, units, or clocks produces an explicitly limited recommendation.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Check_Timestamp/)
 
@@ -114,7 +114,7 @@ The following describes current inputs and primary behavior; implementation link
 
 - **Input:** Comparable multi-channel timelines and source groups.
 - **Parameters:** `families` declares groups of related sources.
-- **Output/rules:** Coincident gaps and correlated timing anomalies, producing review findings under existing rules.
+- **Output/rules:** Three items, each naming the seconds. (1) Simultaneous gaps (at least 3 sources within 100 ms, one over 0.5 s): whole-system stall, excluded. (2) Single-channel gap (one channel over 0.5 s while other sources continue): that device's problem, needs review. (3) Periodic drops: excluded. Clock drift and jumps are checked by Sync_Check from each channel's record − header lag, not here (2026-11-04).
 - **Limits:** Attribution provides investigation clues, not a definitive hardware diagnosis. A single shared timeline is insufficient.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Root_Cause/)
 

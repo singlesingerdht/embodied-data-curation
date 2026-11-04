@@ -648,15 +648,6 @@ class timestamp_scoring:
             setattr(self.module, name, value)
 
 
-def needs_person(result, reason):
-    """No automatic verdict possible: hand the item to a person instead of leaving OBSERVATION."""
-    result.update(original_verdict=result.get('verdict'), verdict='NEEDS_REVIEW', passed=None,
-                  assessment_complete=True, automatic_check_complete=False)
-    result.setdefault('review_candidates', []).append({'check': 'manual', 'needs_review': True, 'reason': reason})
-    result['reasons'] = [reason] + list(result.get('reasons') or [])
-    return result
-
-
 # Used when a profile has no min_duration_s. None here (library calls, tests); `edc run` sets
 # CLI_MIN_DURATION_S so every robot and input format checked from the command line gets 3 s.
 DEFAULT_MIN_DURATION_S = None
@@ -963,10 +954,9 @@ class LegacyAlgorithm:
         return fn(info, reader, **params)
 
     def _root_cause_on_one_clock(self, ep, module, info, reader, params):
-        """Root_Cause after shifting any clock offset out, so drift and jumps can be measured.
+        """Root_Cause after shifting any clock offset out, so gaps on different device clocks line up.
 
-        Fixed or moving, the per-group median offset is removed; whatever moves around that
-        median is left for the method's own drift/jump checks to judge.
+        Fixed or moving, the per-group median offset is removed; the clocks themselves are judged by Sync_Check.
         """
         diagnosis = clock_diagnosis(ep, [c.name for c in ep.channels.values()
             if c.time_source == 'acquisition' and c.clock and c.timestamps])
@@ -978,64 +968,33 @@ class LegacyAlgorithm:
         result['clock_diagnosis'] = diagnosis
         if shift:
             result['clock_shift_s'] = shift
-            result['reasons'] = [f'时钟偏差已先平移掉（{shift_note(shift)}），再查漂移、跳变和断档'] + (result.get('reasons') or [])
+            result['reasons'] = [f'时钟偏差已先平移掉（{shift_note(shift)}），再查断档'] + (result.get('reasons') or [])
         else:
             result['reasons'] = (result.get('reasons') or []) + diagnosis['notes']
-        if result.get('verdict') == 'OBSERVATION':
-            missing = [s['name'] for s in result.get('sub_indicators') or [] if s.get('score') is None]
-            # check_stability skips any channel with fewer than its min_samples (100) samples.
-            names = (result.get('timestamp_scope') or {}).get('included_topics') or []
-            counts = {n: len(ep.channels[n].timestamps) for n in names if n in ep.channels and ep.channels[n].timestamps}
-            short = {n: k for n, k in counts.items() if k < 100}
-            if short and missing:
-                # Each channel's own span: device-counter clocks cannot be compared with each other.
-                seconds = max(ep.channels[n].timestamps[-1] - ep.channels[n].timestamps[0] for n in counts)
-                fewest = min(short, key=short.get)
-                result['short_input'] = {'seconds': round(float(seconds), 2), 'channel': fewest,
-                                         'samples': short[fewest], 'required': 100, 'channels': sorted(short)}
-                reason = (f'数据太短：整条只有 {seconds:.1f} 秒，{fewest} 只有 {short[fewest]} 个样本；'
-                          f'{"、".join(missing)}每一路至少要 100 个样本才能算，所以没算出来')
-                checked = [s for s in result.get('sub_indicators') or [] if s.get('score') is not None]
-                if checked and all(s['score'] >= 100 for s in checked):
-                    # User decision 2026-10-30: in a few seconds a clock cannot drift or jump in a way
-                    # that matters, so the unmeasurable items do not block a pass when the rest is clean.
-                    result.update(original_verdict=result.get('verdict'), verdict='ACCEPTABLE', passed=True,
-                                  assessment_complete=True, automatic_check_complete=False)
-                    result['reasons'] = [reason + '；这么短的数据里时钟来不及漂移或跳变，这两项不需要查'] + list(result.get('reasons') or [])
-                else:
-                    needs_person(result, reason)
-            else:
-                needs_person(result, '时间异常归因没能自动做完' + (f"（{'、'.join(missing)}没有算出来）" if missing else '')
-                             + '：请看各路数据在时间轴上是否有同时断档或时间突然跳动')
         return result
 
     @staticmethod
     def _root_cause(module, info, reader, params, drop=()):
-        """Root_Cause with the clock-stability input its IR entry never passes.
+        """Root_Cause on the source timelines only, with configured source groups.
 
         The original entry runs first and keeps every shortage/synthetic-time outcome. When it
-        evaluated real timelines, the same timelines are re-assessed with Sync_Check's own
-        check_stability (drift and jumps), and configured source groups are limited to the
-        topics this episode has, since the method rejects names it was not given.
+        evaluated real timelines, they are re-assessed without derived copies, and configured source
+        groups are limited to the topics this episode has, since the method rejects names it was not given.
         """
         families = params.get('families')
         result = module.assess_from_ir(info, reader, **{**params, 'families': None})
         if not (result.get('timestamp_scope') or {}).get('included_topics'):
             return result
-        import numpy as np
         from edc.data.readers.base import filter_real_timestamps
         from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-        from edc.algorithms.quality.algorithms.Sync_Check.sync_check import check_stability
         ts_map, _ = filter_real_timestamps(info, reader.require_timestamps(info, min_channels=2))
         ts_map, _ = partition_timing_topics(info, ts_map)
         # 拆出或推算的通道和源话题是同一条时间轴，只算源话题，免得一次断档被数成几个来源
         kept = {n: t for n, t in ts_map.items() if n not in drop}
         ts_map = kept if len(kept) >= 2 else ts_map
-        stability = check_stability({n: np.asarray(t, dtype=float).tolist() for n, t in ts_map.items()})
         families = {n: g for n, g in (families or {}).items() if n in ts_map} or None
-        full = module.assess(ts_map, stability, weights=params.get('weights'), families=families)
+        full = module.assess(ts_map, weights=params.get('weights'), families=families)
         full.update(excluded_topics=result.get('excluded_topics'), timestamp_scope=result['timestamp_scope'],
-                    stability_input='Sync_Check.check_stability on the same timelines (adapter)',
                     source_groups_input='configured' if families else 'method default (topic namespace)')
         return full
 
