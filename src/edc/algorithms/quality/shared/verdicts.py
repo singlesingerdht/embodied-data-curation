@@ -158,7 +158,9 @@ def common_note(algo, reports, items):
         counts = Counter(VERDICTS.get(i.verdict) or STATUSES[i.status] for i in items)
         note = f'{len(items)} 项：' + ' '.join(f'{k}{n}' for k, n in counts.most_common())
     if any(frames_only(r) for r in reports):
-        note += ('（' if note else '') + '逐帧图片，无视频容器可查' + ('）' if note else '')
+        from edc.algorithms.quality.adapters.video import VIDEO_STREAM_NOTE
+        text = VIDEO_STREAM_NOTE if any(r.get('video_stream') for r in reports) else '逐帧图片，无视频容器可查'
+        note += ('（' if note else '') + text + ('）' if note else '')
     clock = re.search(r'相差约 ([\d.]+) (秒|毫秒)', ' '.join(i.reason for i in items))
     salvage = next((s for r in reports if (s := salvage_of(r))), None)
     if any(r.get('precondition') == 'clock_fixed_offset' for r in reports):

@@ -1,1 +1,1 @@
-"""ROS bag timestamp export and alignment check tools."""
+"""时间戳对齐：各路和头部相机逐帧配对打分。"""

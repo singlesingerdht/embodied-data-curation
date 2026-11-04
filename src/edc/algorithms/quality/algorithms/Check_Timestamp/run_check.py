@@ -1,25 +1,14 @@
-#!/usr/bin/env python3
-
-
+"""时间戳对齐：头部相机当参考，其他每一路和它逐帧配对打分；头部自己只看节奏。框架通过 assess_from_ir 调用。"""
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import math
-import sys
 from bisect import bisect_left
-from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path, PurePosixPath
+from dataclasses import dataclass
 from statistics import median, pstdev
 from typing import Any
-import os
 
 # ── 接入统一输出契约 (shared.format_report) ──
-_QA_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if __name__ == "__main__" and str(Path(_QA_ROOT).parent) not in sys.path:
-    sys.path.insert(0, str(Path(_QA_ROOT).parent))
 from edc.algorithms.quality.shared.attribution import format_report
 
 DEFAULT_IOU_THRESHOLD = 0.95
@@ -43,57 +32,8 @@ DEFAULT_DRIFT_MIN_DURATION_S = 2.0
 @dataclass
 class RawStream:
     topic: str
-    msgtype: str
-    msgcount: int
-    path: Path
     kind: str
-    timestamps: list[float] = field(default_factory=list)
-    timestamp_record_indices: list[int] = field(default_factory=list)
-    raw_count: int = 0
-    invalid_counts: dict[str, int] = field(default_factory=dict)
-    invalid_events: list[dict[str, Any]] = field(default_factory=list)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Score one raw_export bag, or recursively score all exported bags in a directory."
-    )
-    parser.add_argument("input_path", type=Path, help="raw_export directory path")
-    parser.add_argument(
-        "--recursive",
-        action="store_true",
-        help="Recursively find directories containing topics.csv and score each one.",
-    )
-    parser.add_argument(
-        "--reference",
-        default=None,
-        help="Reference raw topic. If omitted, choose the best camera topic.",
-    )
-    parser.add_argument(
-        "--iou-threshold",
-        type=float,
-        default=DEFAULT_IOU_THRESHOLD,
-        help=f"Below this window IoU a topic loses 2 points per percentage point; zero only without overlap (default: {DEFAULT_IOU_THRESHOLD}).",
-    )
-    parser.add_argument("--match-window-factor", type=float, default=DEFAULT_MATCH_WINDOW_FACTOR)
-    parser.add_argument("--min-match-window-ms", type=float, default=DEFAULT_MIN_MATCH_WINDOW_MS)
-    parser.add_argument("--absolute-error-floor-ms", type=float, default=DEFAULT_ABSOLUTE_ERROR_FLOOR_MS)
-    parser.add_argument("--long-gap-multiple", type=float, default=DEFAULT_LONG_GAP_MULTIPLE)
-    parser.add_argument("--long-gap-ratio-warning", type=float, default=DEFAULT_LONG_GAP_RATIO_WARNING)
-    parser.add_argument("--long-gap-ratio-zero", type=float, default=DEFAULT_LONG_GAP_RATIO_ZERO)
-    parser.add_argument("--dt-cv-no-penalty", type=float, default=DEFAULT_DT_CV_NO_PENALTY)
-    parser.add_argument("--dt-cv-zero", type=float, default=DEFAULT_DT_CV_ZERO)
-    parser.add_argument("--drift-rate-no-penalty-ms-per-min", type=float,
-                        default=DEFAULT_DRIFT_RATE_NO_PENALTY_MS_PER_MIN)
-    parser.add_argument("--drift-rate-zero-ms-per-min", type=float,
-                        default=DEFAULT_DRIFT_RATE_ZERO_MS_PER_MIN)
-    parser.add_argument("--drift-r2-threshold", type=float, default=DEFAULT_DRIFT_R2_THRESHOLD)
-    parser.add_argument("--drift-min-points", type=int, default=DEFAULT_DRIFT_MIN_POINTS)
-    parser.add_argument("--drift-min-duration-s", type=float, default=DEFAULT_DRIFT_MIN_DURATION_S)
-    parser.add_argument("--nearest-mode", choices=("forward",), default="forward", help="reference -> target \u5355\u5411\u6700\u8fd1\u90bb\u5339\u914d")
-    parser.add_argument("--json-out", type=Path, default=None, help="Write report JSON to this path.")
-    parser.add_argument("--verbose", action="store_true", help="保留兼容参数；评分输出仍只包含包级结果和 C/D topic 归因。")
-    return parser.parse_args()
+    timestamps: list[float]
 
 
 def clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
@@ -157,249 +97,6 @@ def nearest_pairs_ms(source: list[float], target: list[float], window_ms: float)
     return pairs, missing
 
 
-def parse_count(value: str | None) -> int:
-    try:
-        return int((value or "").strip())
-    except ValueError:
-        return 0
-
-
-def explicit_false(value: str | None) -> bool:
-    return (value or "").strip().lower() in {"0", "false", "no", "off"}
-
-
-def row_exclusion_reason(row: dict[str, str]) -> str | None:
-    topic = row.get("topic", "").strip().lower()
-    export_kind = row.get("export_kind", "").strip()
-    if parse_count(row.get("msgcount")) <= 1:
-        return "insufficient_message_count"
-    if export_kind not in {"jsonl", "compressed_binary_frames"}:
-        return "unsupported_export_kind"
-    if topic.endswith("/camera_info") or topic.endswith("/metadata"):
-        return "excluded_topic_category"
-    # New exports mark topics without a top-level header.stamp explicitly.
-    # Old exports omit these columns and continue through the legacy path.
-    if explicit_false(row.get("alignment_eligible")) or explicit_false(row.get("has_header")):
-        return "no_header_stamp"
-    return None
-
-
-def is_scored_row(row: dict[str, str]) -> bool:
-    return row_exclusion_reason(row) is None
-
-
-def detect_kind(topic: str, msgtype: str) -> str:
-    topic_lower = topic.lower()
-    msgtype_lower = msgtype.lower()
-    if "compressedimage" in msgtype_lower or msgtype_lower.endswith("/image") or "/image" in topic_lower:
-        return "camera"
-    return "action"
-
-
-def row_path(root: Path, row: dict[str, str]) -> Path:
-    relative = row.get("relative_output", "").replace("\\", "/")
-    return root / Path(PurePosixPath(relative))
-
-
-def increment(counts: dict[str, int], reason: str) -> None:
-    counts[reason] = counts.get(reason, 0) + 1
-
-
-def record_invalid(
-    stream: RawStream,
-    reason: str,
-    record_index: int | None,
-    line_number: int | None = None,
-    **details: Any,
-) -> None:
-    increment(stream.invalid_counts, reason)
-    event: dict[str, Any] = {"type": reason}
-    if record_index is not None:
-        event["record_index"] = record_index
-    if line_number is not None:
-        event["line_number"] = line_number
-    event.update({key: value for key, value in details.items() if value is not None})
-    stream.invalid_events.append(event)
-
-
-def load_stream(row: dict[str, str], root: Path) -> RawStream:
-    topic = row["topic"].strip()
-    export_kind = row.get("export_kind", "").strip()
-    stream = RawStream(
-        topic=topic,
-        msgtype=row.get("msgtype", "").strip(),
-        msgcount=parse_count(row.get("msgcount")),
-        path=row_path(root, row),
-        kind=detect_kind(topic, row.get("msgtype", "")),
-    )
-    if not stream.path.is_file():
-        record_invalid(stream, "timestamp_file_missing", None)
-        return stream
-
-    def append_timestamp(record: dict[str, Any], record_index: int, line_number: int | None = None) -> None:
-        sec = record.get("header_stamp_sec")
-        nanosec = record.get("header_stamp_nanosec")
-        if sec in (None, "") or nanosec in (None, ""):
-            record_invalid(
-                stream,
-                "header_stamp_missing",
-                record_index,
-                line_number,
-                raw_sec=sec,
-                raw_nanosec=nanosec,
-            )
-            return
-        try:
-            sec_int = int(sec)
-            nanosec_int = int(nanosec)
-        except (TypeError, ValueError):
-            record_invalid(
-                stream,
-                "header_stamp_not_integer",
-                record_index,
-                line_number,
-                raw_sec=sec,
-                raw_nanosec=nanosec,
-            )
-            return
-        if sec_int == 0 and nanosec_int == 0:
-            record_invalid(stream, "header_stamp_zero", record_index, line_number)
-            return
-        if sec_int < 0 or nanosec_int < 0:
-            record_invalid(
-                stream,
-                "header_stamp_negative",
-                record_index,
-                line_number,
-                raw_sec=sec_int,
-                raw_nanosec=nanosec_int,
-            )
-            return
-        if nanosec_int >= 1_000_000_000:
-            record_invalid(
-                stream,
-                "header_nanosec_out_of_range",
-                record_index,
-                line_number,
-                raw_sec=sec_int,
-                raw_nanosec=nanosec_int,
-            )
-            return
-        timestamp = sec_int + nanosec_int / 1_000_000_000.0
-        if not math.isfinite(timestamp):
-            record_invalid(
-                stream,
-                "header_stamp_non_finite",
-                record_index,
-                line_number,
-                raw_sec=sec_int,
-                raw_nanosec=nanosec_int,
-            )
-            return
-        stream.timestamps.append(timestamp)
-        stream.timestamp_record_indices.append(record_index)
-
-    if export_kind == "jsonl":
-        with stream.path.open("r", encoding="utf-8") as handle:
-            for line_number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    record_invalid(stream, "empty_jsonl_line", None, line_number)
-                    continue
-                stream.raw_count += 1
-                record_index = stream.raw_count
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    record_invalid(stream, "invalid_json", record_index, line_number)
-                    continue
-                if not isinstance(record, dict):
-                    record_invalid(stream, "json_record_not_object", record_index, line_number)
-                    continue
-                append_timestamp(record, record_index, line_number)
-    elif export_kind == "compressed_binary_frames":
-        with stream.path.open("r", encoding="utf-8", newline="") as handle:
-            for record_index, record in enumerate(csv.DictReader(handle), start=1):
-                stream.raw_count += 1
-                append_timestamp(record, record_index, record_index + 1)
-    else:
-        record_invalid(stream, "unsupported_export_kind", None)
-
-    topic_headtime = stream.timestamps[0] if stream.timestamps else None
-    for index, (previous, current) in enumerate(zip(stream.timestamps, stream.timestamps[1:])):
-        previous_record_index = stream.timestamp_record_indices[index]
-        current_record_index = stream.timestamp_record_indices[index + 1]
-        if current < previous:
-            details = {
-                "previous_record_index": previous_record_index,
-                "previous_timestamp": previous,
-                "current_timestamp": current,
-                "delta_ms": (current - previous) * 1000.0,
-            }
-            if topic_headtime is not None:
-                details.update({
-                    "relative_previous_s": previous - topic_headtime,
-                    "relative_current_s": current - topic_headtime,
-                })
-            record_invalid(stream, "timestamp_backward", current_record_index, **details)
-        elif current == previous:
-            details = {
-                "previous_record_index": previous_record_index,
-                "previous_timestamp": previous,
-                "current_timestamp": current,
-                "delta_ms": 0.0,
-            }
-            if topic_headtime is not None:
-                details.update({
-                    "relative_previous_s": previous - topic_headtime,
-                    "relative_current_s": current - topic_headtime,
-                })
-            record_invalid(stream, "timestamp_duplicate", current_record_index, **details)
-    if not stream.timestamps:
-        increment(stream.invalid_counts, "no_usable_timestamps")
-    annotate_invalid_event_context(stream)
-    return stream
-
-
-def annotate_invalid_event_context(stream: RawStream) -> None:
-    valid_indices = stream.timestamp_record_indices
-    if not valid_indices or not stream.timestamps:
-        return
-    topic_headtime = stream.timestamps[0]
-    order_events = {"timestamp_backward", "timestamp_duplicate"}
-    for event in stream.invalid_events:
-        if event.get("type") in order_events:
-            continue
-        record_index = event.get("record_index")
-        if not isinstance(record_index, int):
-            continue
-        position = bisect_left(valid_indices, record_index)
-        if position > 0:
-            previous_index = position - 1
-            event["previous_valid_record_index"] = valid_indices[previous_index]
-            event["previous_valid_timestamp"] = stream.timestamps[previous_index]
-            event["relative_previous_valid_s"] = stream.timestamps[previous_index] - topic_headtime
-        if position < len(valid_indices):
-            event["next_valid_record_index"] = valid_indices[position]
-            event["next_valid_timestamp"] = stream.timestamps[position]
-            event["relative_next_valid_s"] = stream.timestamps[position] - topic_headtime
-
-
-def load_topic_rows(root: Path) -> list[dict[str, str]]:
-    topics_path = root / "topics.csv"
-    if not topics_path.is_file():
-        raise FileNotFoundError(f"topics.csv not found: {topics_path}")
-    with topics_path.open("r", encoding="utf-8", newline="") as handle:
-        rows = list(csv.DictReader(handle))
-    required = {"topic", "msgtype", "msgcount", "export_kind", "relative_output"}
-    if not rows or not required.issubset(rows[0]):
-        raise ValueError("topics.csv must contain topic,msgtype,msgcount,export_kind,relative_output")
-    return rows
-
-
-def load_streams(root: Path) -> list[RawStream]:
-    return [load_stream(row, root) for row in load_topic_rows(root) if is_scored_row(row)]
-
-
 def camera_priority(stream: RawStream) -> tuple[int, str]:
     topic = stream.topic.lower()
     if "head" in topic and ("rgb" in topic or "color" in topic):
@@ -411,14 +108,8 @@ def camera_priority(stream: RawStream) -> tuple[int, str]:
     return 3, topic
 
 
-def choose_reference(streams: list[RawStream], requested: str | None) -> RawStream:
-    valid_streams = [stream for stream in streams if not stream.invalid_counts]
-    if requested:
-        for stream in streams:
-            if stream.topic == requested:
-                return stream
-        raise ValueError(f"reference topic not found: {requested}")
-    cameras = [stream for stream in valid_streams if stream.kind == "camera"]
+def choose_reference(streams: list[RawStream]) -> RawStream:
+    cameras = [stream for stream in streams if stream.kind == "camera"]
     if not cameras:
         raise ValueError("no valid camera topic available for automatic reference selection")
     return min(cameras, key=camera_priority)
@@ -631,11 +322,9 @@ def attribution_for_topic(kind: str, metrics: dict[str, Any], args: argparse.Nam
     return labels
 
 def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespace) -> dict[str, Any]:
-    if target.invalid_counts or not target.timestamps:
+    if not target.timestamps:
         return {"topic": target.topic, "kind": target.kind, "score": 0.0,
-                "status": "invalid_timestamps", "attribution": ['时间戳无效'],
-                "invalid_counts": target.invalid_counts,
-                "invalid_events": target.invalid_events}
+                "status": "invalid_timestamps", "attribution": ['时间戳无效']}
     iou = window_iou(reference.timestamps, target.timestamps)
     ref_period = period_ms(reference.timestamps)
     target_period = period_ms(target.timestamps)
@@ -795,185 +484,32 @@ def _add_topic_grade(report: dict[str, Any]) -> None:
         report["verdict"] = "DO_NOT_USE"
 
 
-INVALID_EVENT_LABELS = {
-    "header_stamp_missing": "\u65e0 header \u65f6\u95f4\u6233",
-    "header_stamp_not_integer": "header \u65f6\u95f4\u6233\u4e0d\u662f\u6574\u6570",
-    "header_stamp_zero": "header \u65f6\u95f4\u6233\u4e3a 0",
-    "header_stamp_negative": "header \u65f6\u95f4\u6233\u4e3a\u8d1f\u6570",
-    "header_nanosec_out_of_range": "nanosec \u8d85\u51fa\u8303\u56f4",
-    "header_stamp_non_finite": "header \u65f6\u95f4\u6233\u4e0d\u662f\u6709\u9650\u503c",
-    "timestamp_backward": "\u65f6\u95f4\u6233\u5012\u9000",
-    "timestamp_duplicate": "\u91cd\u590d\u91c7\u6837",
-    "empty_jsonl_line": "JSONL \u7a7a\u884c",
-    "invalid_json": "JSON \u89e3\u6790\u5931\u8d25",
-    "json_record_not_object": "JSON \u8bb0\u5f55\u4e0d\u662f\u5bf9\u8c61",
-    "timestamp_file_missing": "\u65f6\u95f4\u6233\u6587\u4ef6\u4e0d\u5b58\u5728",
-    "unsupported_export_kind": "\u4e0d\u652f\u6301\u7684\u5bfc\u51fa\u7c7b\u578b",
-    "no_usable_timestamps": "\u6ca1\u6709\u53ef\u7528\u65f6\u95f4\u6233",
-}
+def score_reference(reference: RawStream, args: argparse.Namespace) -> tuple[dict | None, str | None]:
+    """参考相机（头部）不和自己比对齐，只按和其他路一样的节奏规则打一行分，计入平均（2026-11-04 用户决定）。
+    它时间倒退、重复或算不出采样周期时不能当基准，返回 (None, 原因)，整项排除。"""
+    dt = stream_dt_metrics(reference.timestamps, args)
+    broken = "、".join(f"{text} {count} 次" for count, text in ((dt["backward_count"], "时间倒退"),
+                                                                (dt["duplicate_count"], "时间重复")) if count)
+    if broken or dt["dt_cv"] is None:
+        return None, f"{broken or '没法算出采样周期'}，不能当对齐基准，整项记 0 分"
+    labels = [label for bad, label in ((dt["dt_cv"] > args.dt_cv_no_penalty, "相机流采样不稳定"),
+                                       (dt["long_gap_ratio"] > args.long_gap_ratio_warning, "相机流掉帧")) if bad]
+    cadence = 100.0 * dt["cadence_component"]
+    report = {"topic": reference.topic, "kind": reference.kind, "score": round(cadence, 3),
+              "status": "reference_cadence", "cadence_score": round(cadence, 3),
+              "metrics": {"cadence_score": cadence, "dt_metrics": dt},
+              "attribution": ["参考相机自身节奏不稳", *labels] if labels else ["正常"]}
+    _add_topic_grade(report)
+    return report, None
 
 
-def _format_invalid_event(event: dict[str, Any]) -> str:
-    event_type = event.get("type", "unknown_invalid_timestamp")
-    label = INVALID_EVENT_LABELS.get(event_type, event_type)
-    record_index = event.get("record_index")
-    line_number = event.get("line_number")
-    location_parts = []
-    if record_index is not None:
-        location_parts.append(f"\u7b2c{record_index}\u6761\u8bb0\u5f55")
-    if line_number is not None:
-        location_parts.append(f"\u6587\u4ef6\u7b2c{line_number}\u884c")
-    location = "\uff0c".join(location_parts) or "\u6587\u4ef6\u7ea7"
-
-    if event_type == "timestamp_backward":
-        previous_index = event.get("previous_record_index", "?")
-        previous = event.get("previous_timestamp")
-        current = event.get("current_timestamp")
-        delta_ms = event.get("delta_ms")
-        if "relative_previous_s" in event and "relative_current_s" in event:
-            return (
-                f"{location}\u4e0e\u7b2c{previous_index}\u6761\u8bb0\u5f55\u4e4b\u95f4"
-                f"\uff08topic\u65f6\u95f4 {event['relative_previous_s']:.6f} s"
-                f" -> {event['relative_current_s']:.6f} s\uff09"
-                f"{label}\uff1a{previous:.6f} s -> {current:.6f} s"
-                f"\uff0c\u56de\u9000 {abs(delta_ms):.3f} ms"
-            )
-        return (
-            f"{location}\u4e0e\u7b2c{previous_index}\u6761\u8bb0\u5f55\u4e4b\u95f4{label}"
-            f"\uff1a{previous:.6f} s -> {current:.6f} s\uff0c\u56de\u9000 {abs(delta_ms):.3f} ms"
-        )
-
-    if event_type == "timestamp_duplicate":
-        timestamp = event.get("current_timestamp")
-        if "relative_current_s" in event:
-            return (
-                f"{location}\u4e0e\u7b2c{event.get('previous_record_index', '?')}\u6761\u8bb0\u5f55\u4e4b\u95f4"
-                f"\uff08topic\u65f6\u95f4 {event['relative_current_s']:.6f} s\uff09{label}"
-                f"\uff1a{timestamp:.6f} s"
-            )
-        return (
-            f"{location}\u4e0e\u7b2c{event.get('previous_record_index', '?')}\u6761\u8bb0\u5f55\u4e4b\u95f4"
-            f"{label}\uff1a{timestamp:.6f} s"
-        )
-
-    return f"{location}{label}"
-
-
-def _group_invalid_events(events: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-    ordered = sorted(
-        events,
-        key=lambda event: (
-            event.get("record_index") is None,
-            event.get("record_index", 0),
-            event.get("line_number", 0),
-        ),
-    )
-    groups: list[list[dict[str, Any]]] = []
-    for event in ordered:
-        if not groups:
-            groups.append([event])
-            continue
-        previous = groups[-1][-1]
-        same_type = event.get("type") == previous.get("type")
-        current_index = event.get("record_index")
-        previous_index = previous.get("record_index")
-        consecutive = (
-            isinstance(current_index, int)
-            and isinstance(previous_index, int)
-            and current_index == previous_index + 1
-        )
-        if same_type and consecutive:
-            groups[-1].append(event)
-        else:
-            groups.append([event])
-    return groups
-
-
-def _format_invalid_event_group(group: list[dict[str, Any]]) -> str:
-    if len(group) == 1:
-        return _format_invalid_event(group[0])
-
-    first = group[0]
-    last = group[-1]
-    event_type = first.get("type", "unknown_invalid_timestamp")
-    label = INVALID_EVENT_LABELS.get(event_type, event_type)
-    first_index = first.get("record_index", "?")
-    last_index = last.get("record_index", "?")
-    line_start = first.get("line_number")
-    line_end = last.get("line_number")
-    line_text = (
-        f"\uff0c\u6587\u4ef6\u7b2c{line_start}\u884c\u81f3\u7b2c{line_end}\u884c"
-        if line_start is not None and line_end is not None
-        else ""
-    )
-
-    relative_times = []
-    for event in group:
-        for key in ("relative_previous_s", "relative_current_s"):
-            value = event.get(key)
-            if isinstance(value, (int, float)):
-                relative_times.append(float(value))
-    for event in (first, last):
-        for key in ("relative_previous_valid_s", "relative_next_valid_s"):
-            value = event.get(key)
-            if isinstance(value, (int, float)):
-                relative_times.append(float(value))
-    if relative_times:
-        time_text = (
-            f"\uff0c\u7ea6\u4f4d\u4e8e topic \u65f6\u95f4 "
-            f"{min(relative_times):.6f} s \u81f3 {max(relative_times):.6f} s \u4e4b\u95f4"
-        )
-    else:
-        time_text = "\uff0ctopic \u65f6\u95f4\u65e0\u6cd5\u8ba1\u7b97\uff08\u6ca1\u6709\u8db3\u591f\u7684\u6709\u6548\u65f6\u95f4\u6233\uff09"
-
-    if event_type == "timestamp_backward":
-        return (
-            f"\u7b2c{first_index}\u6761\u81f3\u7b2c{last_index}\u6761\u8bb0\u5f55"
-            f"{line_text}"
-            f"\u5171\u53d1\u751f {len(group)} \u6b21{label}{time_text}"
-        )
-    if event_type == "timestamp_duplicate":
-        return (
-            f"\u7b2c{first_index}\u6761\u81f3\u7b2c{last_index}\u6761\u8bb0\u5f55"
-            f"{line_text}"
-            f"\u5171\u53d1\u751f {len(group)} \u6b21{label}{time_text}"
-        )
-    return (
-        f"\u7b2c{first_index}\u6761\u81f3\u7b2c{last_index}\u6761\u8bb0\u5f55"
-        f"{line_text}\u8fde\u7eed {len(group)} \u6761{label}{time_text}"
-    )
-
-
-def _format_invalid_event_summary(events: list[dict[str, Any]]) -> str:
-    if not events:
-        return ""
-    groups = _group_invalid_events(events)
-    if len(groups) <= 8:
-        selected = groups
-        suffix = ""
-    else:
-        selected = groups[:4] + groups[-4:]
-        suffix = f"\uff1b\u5171 {len(events)} \u4e2a\u4e8b\u4ef6\uff0c\u4ec5\u5c55\u793a\u9996 4 \u7ec4\u548c\u672b 4 \u7ec4"
-    return "\uff1b".join(_format_invalid_event_group(group) for group in selected) + suffix
-
-
-def _topic_failure_reason(report: dict[str, Any]) -> str:
-    status = report.get("status")
-    if status == "invalid_timestamps":
-        counts = report.get("invalid_counts", {})
-        details = ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
-        event_details = _format_invalid_event_summary(report.get("invalid_events", []))
-        reason = f"\u65f6\u95f4\u6233\u65e0\u6548 ({details or 'no usable timestamp'})"
-        return f"{reason}\uff1b\u5177\u4f53\u5f02\u5e38\uff1a{event_details}" if event_details else reason
-    if status == "window_iou_failed":
-        return f"\u65f6\u95f4\u7a97\u53e3 IoU={report.get('window_iou', 0.0):.3f} \u4f4e\u4e8e\u9608\u503c"
-    if status == "period_unavailable":
-        return "\u91c7\u6837\u5468\u671f\u4e0d\u53ef\u8ba1\u7b97"
-    if status == "no_matches":
-        return "\u5339\u914d\u7a97\u53e3\u5185\u6ca1\u6709\u53ef\u7528\u76ee\u6807\u5e27"
-    if report.get("score") == 0:
-        return "topic \u5206\u6570\u4e3a 0"
-    return ""
+def _reference_failed(reference: RawStream, reason: str) -> dict:
+    return _emit_module(
+        score=0.0, passed=False,
+        sub_indicators=[{"name": reference.topic, "weight": 1.0, "passed": False, "score": 0.0, "gap": 100.0,
+                         "weighted_gap": 100.0, "details": [], "grade": "D", "raw_value": reason}],
+        reasons=[f"reference topic 为 {reference.topic}。", f"topic {reference.topic}：score=0.000，{reason}"],
+        threshold_profile={"reference_topic": reference.topic, "failure": "reference_hard_fail"})
 
 
 def _topic_to_sub_indicator(report: dict, weight: float) -> dict:
@@ -1018,6 +554,9 @@ def _topic_to_sub_indicator(report: dict, weight: float) -> dict:
             _atom("采样稳定性", (metrics.get("cadence_score", 0.0) / 100.0), round(dt_m.get("dt_cv", 0) * 100, 1),
                   DEFAULT_DT_CV_NO_PENALTY, DEFAULT_DT_CV_ZERO),
         ]
+    if status == "reference_cadence":  # 参考相机只有节奏这一项
+        details = details[-1:]
+        raw = f"score={score:.1f} | status={status} | dt_cv={dt_m.get('dt_cv', '-')}"
     grade, _, _ = grade_from_score(score)
     return {
         "name": report.get("topic", "?"), "weight": weight,
@@ -1046,170 +585,6 @@ def _emit_module(score: float, passed: bool, sub_indicators: list,
     report["reasons"] = reasons
     return report
 
-
-def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
-    streams = load_streams(root)
-    if not streams:
-        raise ValueError("no scored JSONL topics found in topics.csv")
-
-    try:
-        reference = choose_reference(streams, args.reference)
-    except ValueError as exc:
-        failure_topics = []
-        for stream in streams:
-            if stream.invalid_counts or not stream.timestamps:
-                failure_topics.append({
-                    "topic": stream.topic,
-                    "kind": stream.kind,
-                    "score": 0.0,
-                    "grade": "D",
-                    "status": "invalid_timestamps",
-                    "attribution": ["\u65f6\u95f4\u6233\u65e0\u6548"],
-                    "reasons": [_topic_failure_reason({
-                        "status": "invalid_timestamps",
-                        "invalid_counts": stream.invalid_counts,
-                        "invalid_events": stream.invalid_events,
-                    })],
-                    "invalid_counts": stream.invalid_counts,
-                    "invalid_events": stream.invalid_events,
-                })
-        reasons = ["\u65e0\u53ef\u7528\u53c2\u8003 topic\uff0c\u5305\u7ea7\u8bc4\u5206\u4e3a 0", str(exc)]
-        reasons.extend(f"topic {item['topic']}\uff1aD\uff08score=0\uff09\uff0c{item['reasons'][0]}" for item in failure_topics)
-        return _emit_module(
-            score=0.0, passed=False,
-            sub_indicators=[{"name": "timestamp_validity", "weight": 1.0, "passed": False,
-                             "score": 0.0, "gap": 100.0, "weighted_gap": 100.0, "details": [],
-                             "grade": "D", "raw_value": "无可用参考 topic，所有流时间戳非法"}],
-            reasons=reasons,
-            threshold_profile={"reference_topic": None, "aggregate": "mean", "failure": "no_reference"},
-        )
-
-    reference_dt = stream_dt_metrics(reference.timestamps, args)
-    reference_cv = reference_dt.get("dt_cv")
-    reference_long_gap_ratio = reference_dt.get("long_gap_ratio")
-    reference_hard_fail = (
-        reference_cv is None
-        or reference_cv >= 0.20
-        or reference_long_gap_ratio >= 0.05
-        or reference_dt.get("backward_count", 0) > 0
-        or reference_dt.get("duplicate_count", 0) > 0
-    )
-    reference_warning = (
-        (reference_cv is not None and reference_cv > 0.10)
-        or reference_long_gap_ratio > 0.01
-    )
-    reference_detail = (
-        f"参考流不稳定：dt_cv={reference_cv:.1%}，"
-        f"long_gap_ratio={reference_long_gap_ratio:.1%}。"
-        if reference_cv is not None else
-        "参考流不稳定：无法计算有效采样周期。"
-    )
-    if reference_hard_fail:
-        return _emit_module(
-            score=0.0, passed=False,
-            sub_indicators=[
-                {"name": "reference_cadence", "weight": 1.0, "passed": False, "score": 0.0,
-                 "gap": 100.0, "weighted_gap": 100.0, "details": [], "grade": "D",
-                 "raw_value": reference_detail},
-                {"name": "timestamp_validity", "weight": 0.0, "passed": True, "score": 100.0,
-                 "gap": 0.0, "weighted_gap": 0.0, "details": [], "grade": "S",
-                 "raw_value": "时间戳合法"},
-            ],
-            reasons=[
-                f"reference topic 为 {reference.topic}。",
-                reference_detail,
-                "参考流 cadence 未通过硬门控，无法作为可靠对齐基准，包级评分为 0。",
-            ],
-            threshold_profile={"reference_topic": reference.topic,
-                               "reference_cv": reference_cv,
-                               "reference_long_gap": reference_long_gap_ratio,
-                               "failure": "reference_hard_fail"},
-        )
-
-    topic_reports: list[dict[str, Any]] = []
-    for stream in streams:
-        if stream.topic == reference.topic:
-            continue
-        report = score_topic(reference, stream, args)
-        _add_topic_grade(report)
-        topic_reports.append(report)
-    if not topic_reports:
-        raise ValueError("at least one non-reference topic is required for bag scoring")
-
-    invalid_streams = [stream for stream in streams if stream.invalid_counts or not stream.timestamps]
-    failure_topics = []
-    for report in topic_reports:
-        failure_reason = _topic_failure_reason(report)
-        if report.get("status") in {"invalid_timestamps", "window_iou_failed", "period_unavailable", "no_matches"}:
-            failure_topics.append({
-                "topic": report["topic"], "kind": report.get("kind"), "score": report.get("score"),
-                "grade": report.get("grade", "D"), "status": report.get("status"),
-                "attribution": report.get("attribution", []), "reasons": [failure_reason],
-                "invalid_counts": report.get("invalid_counts", {}),
-                "invalid_events": report.get("invalid_events", []),
-                "window_iou": report.get("window_iou"),
-            })
-
-    if invalid_streams:
-        reasons = [
-            "\u5b58\u5728\u975e\u6cd5\u65f6\u95f4\u6233\uff0c\u5305\u7ea7\u8bc4\u5206\u4e3a 0\uff0c\u4ee5\u4e0b\u5217\u51fa\u89e6\u53d1\u5931\u8d25\u7684 topic\u3002",
-            f"reference topic \u4e3a {reference.topic}\uff0c\u5176\u4f59\u6709\u6548 topic \u4ecd\u5df2\u5b8c\u6210\u72ec\u7acb\u8bc4\u4ef7\u3002",
-        ]
-        for item in failure_topics:
-            reasons.append(f"topic {item['topic']}\uff1aD\uff08score=0\uff09\uff0c{item['reasons'][0]}")
-        if not failure_topics:
-            for stream in invalid_streams:
-                details = ", ".join(f"{key}={value}" for key, value in sorted(stream.invalid_counts.items()))
-                reasons.append(f"topic {stream.topic}\uff1aD\uff08score=0\uff09\uff0c\u65f6\u95f4\u6233\u65e0\u6548\uff08{details or 'no usable timestamp'}\uff09")
-        invalid_subs = [{"name": "timestamp_validity", "weight": 1.0, "passed": False,
-                         "score": 0.0, "gap": 100.0, "weighted_gap": 100.0, "details": [],
-                         "grade": "D", "raw_value": "存在非法时间戳"}]
-        for ft in failure_topics:
-            invalid_subs.append({"name": ft["topic"], "weight": 0.0, "passed": False,
-                                 "score": 0.0, "gap": 100.0, "weighted_gap": 0.0, "details": [],
-                                 "grade": "D", "raw_value": (ft.get("reasons") or [""])[0]})
-        return _emit_module(
-            score=0.0, passed=False, sub_indicators=invalid_subs, reasons=reasons,
-            threshold_profile={"reference_topic": reference.topic, "failure": "invalid_timestamps"},
-        )
-
-    raw_bag_score = sum(float(report.get("score", 0.0) or 0.0) for report in topic_reports) / len(topic_reports)
-    bag_score = min(raw_bag_score, 90.0) if reference_warning else raw_bag_score
-    passed = grade_from_score(bag_score)[1]
-    problem_topics = [
-        report for report in topic_reports
-        if float(report.get("score", 0.0) or 0.0) <= 80.0
-    ]
-    reasons = [
-        f"reference topic \u4e3a {reference.topic}\u3002",
-        f"\u5171\u8bc4\u4ef7 {len(topic_reports)} \u4e2a topic\uff0c\u7b97\u672f\u5e73\u5747\u5206\u4e3a {bag_score:.3f}\u3002",
-    ]
-    if reference_warning:
-        reasons.insert(1, reference_detail + "包级等级最高为 B。")
-    if not problem_topics:
-        reasons.append("所有topic的评分都在B及以上")
-    for report in sorted(problem_topics, key=lambda item: float(item.get("score", 0.0) or 0.0)):
-        attribution_text = "；".join(report.get("attribution", [])) or "未归因"
-        report_reasons = report.get("reasons", [])
-        topic_prefix = f"topic {report['topic']}：score="
-        if any(str(reason).startswith(topic_prefix) for reason in report_reasons):
-            reasons.append("；".join(str(reason) for reason in report_reasons))
-        else:
-            reasons.append(f"topic {report['topic']}：score={float(report.get('score', 0.0) or 0.0):.3f}，{attribution_text}")
-    n_topics = len(topic_reports) or 1
-    topic_weight = round(1.0 / n_topics, 4)
-    topic_subs = [_topic_to_sub_indicator(r, topic_weight) for r in topic_reports]
-    return _emit_module(
-        score=bag_score, passed=passed, sub_indicators=topic_subs, reasons=reasons,
-        threshold_profile={
-            "reference_topic": reference.topic,
-            "reference_warning": reference_warning,
-            "aggregate": "mean(topic_scores)",
-            "score_cap": 90.0 if reference_warning else None,
-            "iou_threshold": args.iou_threshold,
-        },
-        threshold=90.0,
-    )
 
 def assess_from_ir(info, reader, weights: dict = None) -> dict:
     """从 IR DataInfo 评估时间戳对齐 (使用 IR 提取的时间戳)。"""
@@ -1255,24 +630,13 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         drift_r2_threshold=DEFAULT_DRIFT_R2_THRESHOLD,
         drift_min_points=DEFAULT_DRIFT_MIN_POINTS,
         drift_min_duration_s=DEFAULT_DRIFT_MIN_DURATION_S,
-        reference=None,
     )
 
     streams = []
     for topic_name, ts_list in sorted(ts_map.items()):
         ti = info.topics.get(topic_name)
         kind = "camera" if (ti and ti.modality in {"image", "rgb"}) else "action"
-        stream = RawStream(
-            topic=topic_name,
-            msgtype=ti.msg_type if ti else "",
-            msgcount=len(ts_list),
-            path=Path(ti.source) if ti else Path(""),
-            kind=kind,
-            timestamps=list(ts_list),
-            timestamp_record_indices=list(range(len(ts_list))),
-            raw_count=len(ts_list),
-        )
-        streams.append(stream)
+        streams.append(RawStream(topic_name, kind, list(ts_list)))
 
     if len(streams) < 2:
         from edc.data.readers.base import make_ir_report
@@ -1281,14 +645,17 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
 
     try:
-        reference = choose_reference(streams, None)
+        reference = choose_reference(streams)
     except ValueError:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
         exc = IRNotProvided("可用参考 topic (camera)", info.format, info.capability_summary())
         return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
 
-    topic_reports = []
+    reference_row, broken = score_reference(reference, args)
+    if broken:
+        return scoped(_reference_failed(reference, broken))
+    topic_reports = [reference_row]
     for stream in streams:
         if stream.topic == reference.topic:
             continue
@@ -1296,7 +663,7 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         _add_topic_grade(report)
         topic_reports.append(report)
 
-    if not topic_reports:
+    if len(topic_reports) < 2:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
         exc = IRNotProvided("非参考 topic", info.format, info.capability_summary())
@@ -1322,58 +689,3 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
     ))
 
 
-def main() -> int:
-    args = parse_args()
-    root = args.input_path.expanduser().resolve()
-
-    # IR 路径自动探测
-    from edc.data.ir.metadata import detect_format, FORMAT_UNKNOWN, FORMAT_JSON
-    fmt = detect_format(str(root))
-    if fmt != FORMAT_UNKNOWN and fmt != FORMAT_JSON and not (root / "topics.csv").is_file():
-        from edc.algorithms.quality.config import open_info
-        info, reader = open_info(str(root))
-        report = assess_from_ir(info, reader)
-        print(json.dumps(report, ensure_ascii=False, indent=2))
-        return 0
-
-    # 旧路径: raw_export 目录
-    if args.recursive:
-        export_dirs = [root] if (root / "topics.csv").is_file() else sorted(
-            path.parent for path in root.rglob("topics.csv")
-        ) if root.is_dir() else []
-        if not export_dirs:
-            raise SystemExit(f"no exported bag directories with topics.csv found: {root}")
-        if args.json_out:
-            args.json_out.expanduser().mkdir(parents=True, exist_ok=True)
-        failed = 0
-        for export_dir in export_dirs:
-            try:
-                report = build_report(export_dir, args)
-                relative = export_dir.relative_to(root) if export_dir != root else Path(export_dir.name)
-                filename = "__".join(relative.parts) + ".json"
-                if args.json_out:
-                    (args.json_out.expanduser() / filename).write_text(
-                        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-                    )
-                print(json.dumps({"input_path": str(export_dir), **report}, ensure_ascii=False))
-            except Exception as exc:
-                failed += 1
-                print(f"FAILED\t{export_dir}\t{exc}", file=sys.stderr)
-        return 1 if failed else 0
-
-    if not root.is_dir():
-        raise SystemExit(f"raw_export directory not found: {root}")
-    report = build_report(root, args)
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
-    output_report = report
-    text = json.dumps(output_report, ensure_ascii=False, indent=2)
-    print(text)
-    if args.json_out:
-        full_text = json.dumps(report, ensure_ascii=False, indent=2)
-        args.json_out.expanduser().write_text(full_text + "\n", encoding="utf-8")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

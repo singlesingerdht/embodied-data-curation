@@ -30,7 +30,7 @@ def explain(report, labels):
     # The verdict comes from the mean over all topics, not from the worst one.
     reference = next((m.group(1) for t in lines if (m := re.search(r'reference topic 为 ([^\s。，]+)', t))), None)
     ref = labels.get(reference, reference) if reference else '对照相机'
-    head = (f'每一路都拿来和{ref}对比打分，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分（高于 90 通过，80–90 复核，80 及以下排除）。'
+    head = (f'其他每一路都拿来和{ref}对比打分，{ref}自己只看节奏，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分（高于 90 通过，80–90 复核，80 及以下排除）。'
             if mean else '')
     if topics:
         return head + '分数最低的：' + ''.join(sentence(report, name, score, reference or '对照相机', why, labels)
@@ -90,8 +90,10 @@ def sentence(report, name, score, reference, labels_text, labels):
             offset = (atom.get('系统偏移') or {}).get('val')
             parts.append(text + (f'（约 {abs(offset):.1f} 毫秒）' if key != '时钟漂移' and offset is not None else ''))
     known = {'采集时间范围或采样周期不可评价', '动作流采样不稳定', '相机流采样不稳定', '动作流局部中断', 'P99 尾部误差偏大',
-             'P50 对齐误差偏大', '参考帧匹配覆盖率不足', '固定延迟', '基准时间偏移', '时钟漂移', '跨流抖动'}
+             'P50 对齐误差偏大', '参考帧匹配覆盖率不足', '固定延迟', '基准时间偏移', '时钟漂移', '跨流抖动', '参考相机自身节奏不稳'}
     parts += [x for x in found if x not in known]
+    if name == reference:  # 对照相机不和自己比，只看自身节奏
+        return f'{called}是对照相机，只看自身节奏，{score:.0f} 分：' + '；'.join(parts) + '。'
     return f'{called}和{ref}对比 {score:.0f} 分：' + '；'.join(parts) + '。'
 
 

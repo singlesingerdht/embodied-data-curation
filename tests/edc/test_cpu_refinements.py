@@ -45,6 +45,19 @@ def test_explicit_metadata_scope(modality, msg_type, name):
     assert not selected and excluded[0]['topic'] == name
 
 
+def test_reference_camera_scores_own_cadence_and_bad_time_excludes():
+    # 头部相机自己断 1 秒：单独一行只看节奏、计入平均；时间重复 → 不能当基准，整项 0 分排除
+    info, reader = timing_info()
+    head = info.topics['/head/rgb']
+    head.timestamps = (np.arange(100) / 30 + (np.arange(100) >= 50) * 1.0).tolist()
+    row = next(s for s in assess_from_ir(info, reader)['sub_indicators'] if s['name'] == '/head/rgb')
+    assert row['score'] < 100 and [d['name'] for d in row['details']] == ['采样稳定性']
+    head.timestamps = head.timestamps[:10] + head.timestamps[9:99]
+    result = assess_from_ir(info, reader)
+    assert result['score'] == 0 and result['verdict'] == 'DO_NOT_USE'
+    assert any('时间重复 1 次' in r for r in result['reasons'])
+
+
 def test_short_sensor_is_not_silently_filtered_as_metadata():
     single = TopicInfo('/wrist/rgb', modality='rgb', count=1, timestamps=[0.])
     info, reader = timing_info({single.name: single})

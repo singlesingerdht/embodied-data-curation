@@ -1,6 +1,9 @@
 """Explicit image/video inputs over unchanged quality methods and thresholds."""
 import time
 
+# 相机消息是 H.264 视频流（一条消息一帧压缩数据）时的说明，报告格子也用这句
+VIDEO_STREAM_NOTE = '视频流（H.264），已逐帧解码检查画面；没有 MP4 文件，文件层检查不适用'
+
 
 def input_mode(episode, channel, params):
     """Select from reader-declared storage, never from a topic name."""
@@ -68,6 +71,11 @@ def _assess_channel(episode, channel, params, context, index, started, role):
             downscale=params.get('downscale', 4)).detect_frames(
                 episode.iter_frames(channel.name), channel.count)
         measured_failure = fq.get('verdict') == 'DO_NOT_USE'
+        try:  # 只为读消息类型；没有话题信息的数据（如测试用的假数据）按普通图片写
+            topic = episode.describe_legacy().topics.get(channel.name)
+        except AttributeError:
+            topic = None
+        video_stream = (getattr(topic, 'msg_type', None) or '').endswith('/CompressedVideo')
         if fq.get('verdict') == 'NEEDS_REVIEW':
             # Pass or exclude only (user decision 2026-10-30): a few bad frames below the method's
             # exclusion ratio pass, and the report notes how many. The method's verdict is kept.
@@ -80,7 +88,8 @@ def _assess_channel(episode, channel, params, context, index, started, role):
             'encoding_integrity_scope': 'Source pixel decode only; no independent encoded-byte validation',
             'container_checks': {'status': 'not_applicable',
                 'reason': 'Frame input has no video container; packet PTS and video frame-count checks are not applied'},
-            'reasons': ['相机存的是逐帧图片：已抽帧解码检查画面；没有视频容器，容器检查不适用'],
+            'video_stream': video_stream,
+            'reasons': [VIDEO_STREAM_NOTE if video_stream else '相机存的是逐帧图片：已抽帧解码检查画面；没有视频容器，容器检查不适用'],
             'process_time_ms': round((time.perf_counter()-started)*1000, 1)}
     else:
         directory = getattr(context, 'workdir', None)
