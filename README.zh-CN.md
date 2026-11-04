@@ -230,7 +230,15 @@ URDF 写进 yaml 后，框架自动从 URDF 读关节限位（上下各放宽 0.
 
 ## 根据报告重生成数据集（`edc regenerate`）
 
-`edc batch` 会给每条数据一个结论（建议保留／可救／建议复核／…）。想只把结论好的数据留下来训练，用 `edc regenerate` 按报告复制（或软链接）成一个新数据集：
+`edc batch` 会给每条数据一个结论（建议保留／可救／建议复核／…）。想只把结论好的数据留下来训练，用 `edc regenerate` 按报告复制（或软链接）成一个新数据集。
+
+它只搬运数据，不重新算任何算法、不改原结论：报告里是“可救”的，导出后清单里仍写“可救”，不会变成“通过”。
+
+### 用法
+
+```bash
+edc regenerate <报告.json> --output <新目录> [--mode copy|link] [--include 状态,...] [--preview]
+```
 
 ```bash
 # 默认只留“建议保留”，复制成独立新目录
@@ -246,7 +254,52 @@ edc regenerate reports/x1pro_report.json --output /mnt/out/good_only --mode link
 edc regenerate reports/x1pro_report.json --output /mnt/out/mixed --include keep,salvage,review
 ```
 
-它只搬运数据和写 `manifest.json`（记录报告来源、筛选条件、每条的原结论、源→目标映射、Episode ID／selector 和失败原因），不重新算任何算法、不改结论。复制模式另写 `dataset.yaml` 让框架能重新读。独立 episode（JSON+MP4 目录、MCAP）整体复制/软链接；一个文件里多条 episode 的共享源，复制模式下整份复制一次、用 `dataset.yaml` 的 selector 保留选择范围，软链接模式会明确报错。
+报告就是 `edc batch --output x.html` 时同时写出的 `x.json`。
+
+### 参数
+
+| 参数 | 缺省 | 说明 |
+|---|---|---|
+| `<报告.json>` | 必填 | `edc batch` 写出的 JSON 报告（必须含 `results[]`） |
+| `--output` | 必填 | 新数据集目录。必须**不存在或为空**；不能放在任何源数据目录里面 |
+| `--mode` | `copy` | `copy` 复制：新数据集可独立使用；`link` 软链接：只建链接、省空间，但要求源数据一直存在，源删了链接就断 |
+| `--include` | `keep` | 要选哪些结论，逗号分隔，见下表。写别的状态（如 `review`）也可以，原结论不改 |
+| `--preview` | 关 | 只打印“会选几条、源路径、目标路径、操作方式”，不创建目录、不写文件 |
+| `--profile` | 不写 | 解析 episode 身份用的机器人 yaml（如 `configs/robots/x1pro.yaml`）。一般不用写；框架会自动识别格式 |
+
+`--include` 可选的状态（和报告的“整条数据的结论”一致）：
+
+| 状态 | 报告里的中文 | 默认选中 |
+|---|---|---|
+| `keep` | 建议保留 | ✓ |
+| `salvage` | 可救 | |
+| `review` | 建议复核 | |
+| `unassessed` | 未评估完 | |
+| `exclude` | 含建议排除项 | |
+| `failed` | 运行失败 | |
+
+不写 `--include` 就是只要 `keep`。状态不是白名单限制，写了不认识的词也不会报错，只是按字面值匹配。
+
+### 产出
+
+```
+<新目录>/
+├── manifest.json          # 机器可读清单（一定有）
+├── dataset.yaml           # 仅 copy 模式；让框架能重新读取
+└── <每条数据>              # 复制的目录/文件，或软链接
+```
+
+`manifest.json`（`dqs_regenerate_manifest_v1`）记录：报告来源、筛选条件（`--include` / `--mode`）、选中条数、**每条的原结论**、源→目标映射、Episode ID／format／selector、操作模式和失败原因。复制完成后会用框架重新读取一遍，核对读到的 Episode 集合与预期一致。
+
+### 边界与报错
+
+- **独立 episode**（JSON+MP4 目录、MCAP／rosbag 文件）：整体复制或软链接。
+- **共享源**（一个 LeRobot 目录或 Parquet/HDF5 文件里有多条 episode）：`copy` 模式整份容器复制一次，`dataset.yaml` 用每条的 selector 保留选择范围，未选的轨迹不会被读成独立 episode；`link` 模式会明确报错（链接会把整份容器都暴露出去）。
+- **一个目录里有多个独立 episode 子目录**：不是共享源，会记失败并提示逐条导出。
+- **零条匹配**：打印“0 条匹配筛选条件”，不创建输出目录，退出码 0。
+- **同名冲突 / 缺 `source` / 源路径不存在 / 名称与 `dataset.yaml`、`manifest.json` 冲突**：记进清单的 `failed`，不影响其它条目导出，退出码 1。
+- **输出目录非空、输出落在源数据目录内、报告不存在或格式不对**：直接报错，不写任何东西，退出码 2。
+- 原始数据只读，任何时候都不会写源目录。
 
 ---
 
