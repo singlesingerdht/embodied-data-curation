@@ -15,6 +15,7 @@
 | 算法选择 | 根据输入、参数、单位、时间和依赖，说明完整、部分及不可运行项 |
 | 质量检查 | 检查结构、数值、保持段振动、时间、复位与图像／视频 |
 | 结果追溯 | HTML 定位问题；JSON 保存检查项、指标、证据及实际输入 |
+| 筛选导出 | 根据 batch 报告选择建议保留的数据，复制或创建软链接，并保存原始数据与输出数据的对应清单 |
 
 读取器覆盖 LeRobot、HDF5、Parquet、ROS bag、MCAP 和 JSON＋视频目录；具体后端、消息类型及语义条件见[支持范围](docs/DATA_AND_CONFIGURATION.zh-CN.md#formats)。能打开文件不等于每项算法都能检查。
 
@@ -55,6 +56,20 @@ edc batch /path/to/dataset/episode.mcap \
 
 用浏览器打开 `report.html`，同目录的 `report.json` 供程序读取。运行成功表示检查已执行，不表示所有数据都通过。[完整快速开始与参考结果](docs/QUICKSTART.zh-CN.md)
 
+**4. 导出选中数据（可选）**
+
+根据 batch 的 `report.json`，默认只导出“建议保留”（`keep`）的数据。按需要选择一种方式：
+
+```bash
+# 复制数据
+edc regenerate /path/to/results/report.json --output /path/to/selected --mode copy
+
+# 或创建指向原数据的软链接
+edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
+```
+
+输出目录保存数据副本或链接，以及记录来源和筛选条件的 `manifest.json`。原始数据保持不变；软链接依赖原数据持续存在。共享文件中只选部分轨迹的限制见[筛选导出说明](docs/SELECTION.md)。
+
 ## 数据与配置
 
 数据集说明文件位置、采集任务，以及每次操作从哪里开始和结束；机器人配置定义字段含义；算法参数定义本次检查范围和判定条件。
@@ -88,6 +103,8 @@ edc run /path/to/dataset/episode.mcap \
 ```
 
 未显式选择时尝试完整及部分可运行的质量项，缺失条件保留原因。`batch` 运行已登记的质量集合；逐项选择使用 `run` 或 Python API。`edc algorithms` 仅列登记清单。[选择规则、Python 示例与批量运行](docs/ALGORITHMS.zh-CN.md#selection)
+
+`run` 在输出目录生成 `report.html`，使用与 `batch` 相同的四栏报告，仅展示本次选中的算法。上例打开 `/path/to/results/selected/report.html`；完整 JSON 和证据保存在 `_runs/<run_id>/`，由 `catalog.json` 定位。每次运行的报告也保存在对应运行目录中。`batch` 支持单条、多条和目录输入，其 `report.json` 可用于上述筛选导出。
 
 | 算法名称 | 检查内容 | 最低输入 | 详细文档 |
 |---|---|---|---|
@@ -127,7 +144,6 @@ tests/             # 契约与实现测试
 
 ### 待办
 
-- 整理按质量结果筛选数据的完整使用流程；已有 [`regenerate`](docs/SELECTION.md) 复制／链接入口。
 - 接入价值评估算法，按各方法条件选择可用轨迹。
 - 接入编辑和增强算法，完成派生数据校验及质量复检。
 - 完善串行工作流的实际方法示例与验证；已有[工作流接口与合成示例](docs/WORKFLOWS.md)，不代表具体算法已接入并验证。

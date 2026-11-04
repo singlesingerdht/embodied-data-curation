@@ -101,7 +101,7 @@ def readable_log(bag):
     return log
 
 
-def page(bags, info):
+def page(bags, info, *, algorithm_ids=None, title='批量质检报告'):
     rank = list(DECISION)
     bags = sorted(bags, key=lambda b: (rank.index(displayed_decision(b)) if displayed_decision(b) in rank else 9, b['name']))
     decisions = Counter(displayed_decision(b) for b in bags)
@@ -110,7 +110,8 @@ def page(bags, info):
     levels = {c['level'] for b in bags for c in b['algos'].values()}
     legend = ''.join(f'<li>{chip(v)} {esc(LEVEL[v][2])}</li>'
                      for v in LEVEL if v != 'failed' and (v in ('PASS', 'REVIEW', 'SALVAGE', 'EXCLUDE') or v in levels))
-    algos = list(ALGOS) + sorted({a for b in bags for a in b['algos']} - set(ALGOS))  # Added algorithms too.
+    algos = (list(algorithm_ids) if algorithm_ids is not None else
+             list(ALGOS) + sorted({a for b in bags for a in b['algos']} - set(ALGOS)))
     head = ''.join(f'<th>{esc(NAMES.get(a, a))}</th>' for a in algos)
     rows, details, issues = [], [], {a: [] for a in algos}
     for i, b in enumerate(bags):
@@ -158,7 +159,7 @@ def page(bags, info):
         sections.append(f'<details><summary>{esc(NAMES.get(algo, algo))} <span class="muted">{summary}</span></summary>'
                         f'{how}<ul>{body}</ul></details>')
     return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>批量质检报告 · {esc(info['robot'])}</title><style>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)} · {esc(info['robot'])}</title><style>
 body{{margin:0;background:#f3f6f8;color:#192d3d;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif}}
 main{{max-width:1400px;margin:24px auto;padding:0 16px}}h1{{margin:0 0 4px}}h2{{margin:28px 0 10px;font-size:18px}}
 .muted{{color:#586c7c;font-size:13px}}a{{color:#155f83}}.box{{background:#fff;border-radius:10px;padding:10px 18px}}
@@ -178,7 +179,7 @@ details{{background:#fff;border-radius:10px;margin:8px 0;padding:10px 16px}}summ
 details ul{{margin:6px 0;padding-left:18px}}details li{{margin:3px 0}}.detail td:first-child{{width:150px;white-space:nowrap}}
 pre{{white-space:pre-wrap;background:#f4f6f8;padding:10px;font-size:12px}}
 </style></head><body><main>
-<h1>批量质检报告 · {esc(info['robot'])}</h1>
+<h1>{esc(title)} · {esc(info['robot'])}</h1>
 <p class="muted">{esc(info['inputs'])} · {len(bags)} 条 · {esc(info['finished'])} 完成，用时 {info['seconds']:.0f} 秒（同时 {info['jobs']} 条）<br>
 机器人配置 {esc(info['profile'])}<br>
 每条由框架 <code>edc run</code> 运行所选算法；本页只汇总算法写下的结论和原因，不计算新分数、不做总分。</p>

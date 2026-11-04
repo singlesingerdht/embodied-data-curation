@@ -15,6 +15,7 @@ Provide a data path and robot configuration. EDC lists available algorithms and 
 | Algorithm selection | List what can run, what can only be checked in part, and which data or settings are missing |
 | Quality checks | Check missing data, unusual numbers and timing, vibration while holding still, reset positions, and images/videos |
 | Results | Inspect conclusions and problem locations in a web report; save measurements and references to original records in JSON |
+| Selected data export | Copy or symlink data marked for retention in a batch report, with a manifest mapping original data to exported data |
 
 Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, JSON with video directories, and standalone MP4 video**. See [supported formats and robot configurations](docs/DATA_AND_CONFIGURATION.md#formats) for their requirements.
 
@@ -62,6 +63,20 @@ edc batch /path/to/dataset/episode.mcap \
 
 Open `report.html` in a browser. The accompanying `report.json` provides machine-readable results. Successful execution does not mean all data passed. [Full quick start and reference results](docs/QUICKSTART.md)
 
+**4. Export selected data (optional)**
+
+Use the batch `report.json` to export only data marked for retention (`keep`) by default. Choose one mode:
+
+```bash
+# Copy data
+edc regenerate /path/to/results/report.json --output /path/to/selected --mode copy
+
+# Or create symbolic links to the original data
+edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
+```
+
+The output directory contains copies or links and a `manifest.json` recording sources and selection criteria. Original data stays unchanged; symbolic links require the sources to remain available. See [selection and export](docs/SELECTION.md) for limits when selecting episodes from shared files.
+
 ## Data and Configuration
 
 Configuration describes where the data is stored, which task was recorded, and where each operation starts and ends; which records contain joints, cameras, or other sensors and what units they use; and which algorithms, robot parts, and parameters to use for this run.
@@ -95,6 +110,8 @@ edc run /path/to/dataset/episode.mcap \
 ```
 
 Without an explicit selection, execution runs quality algorithms that are fully or partly available and explains what cannot be checked. Use `batch` for batch quality checks, or `run` and the Python API to select individual algorithms. `edc algorithms` only lists installed algorithms. [Selection, Python API, and batch execution](docs/ALGORITHMS.md#selection)
+
+`run` writes `report.html` in its output directory, using the same four report sections as `batch` and showing only the selected algorithms. For the example above, open `/path/to/results/selected/report.html`. Full JSON records and evidence are stored under `_runs/<run_id>/` and located through `catalog.json`; each run also retains its own report there. `batch` accepts a single recording, multiple recordings, or a directory, and its `report.json` can be used for the export commands above.
 
 | Algorithm | Checks | Minimum input | Details |
 |---|---|---|---|
@@ -134,7 +151,6 @@ tests/             # Functionality and interface tests
 
 ### Roadmap
 
-- Improve instructions for selecting, copying, or linking data based on quality results; [`regenerate`](docs/SELECTION.md) is already available.
 - Add value assessment algorithms and select operation recordings that meet each algorithm's requirements.
 - Add editing and augmentation algorithms, then recheck the quality of modified or generated data copies.
 - Extend examples that run algorithms in sequence; [workflow interfaces and synthetic examples (Chinese)](docs/WORKFLOWS.md) already exist, with the algorithms above and full-flow validation to follow.
