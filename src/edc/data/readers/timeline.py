@@ -12,7 +12,9 @@ def declared_timestamp_unit(value):
 
 def header_nanoseconds(message):
     stamp = getattr(getattr(message, 'header', None), 'stamp', None)
-    if stamp is None:
+    # foxglove 消息（如 CompressedVideo）没有 header，采集时间直接写在 timestamp 字段
+    stamp = stamp if stamp is not None else getattr(message, 'timestamp', None)
+    if not hasattr(stamp, 'nanosec'):  # 自定义消息里普通数字的 timestamp 不算
         return None
     return int(stamp.sec) * 1_000_000_000 + int(stamp.nanosec)
 

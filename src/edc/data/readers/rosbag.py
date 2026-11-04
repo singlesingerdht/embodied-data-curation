@@ -33,11 +33,19 @@ def _header_time(message):
     return float(stamp.sec) + float(stamp.nanosec) * 1e-9
 
 
-def decode_ros_image(message, msgtype):
+def decode_ros_image(message, msgtype, decoders=None):
     """Shared pixel decoding only; clock selection and row order belong to the reader."""
     from edc.data.readers.video import decode_image
     if msgtype.endswith('/CompressedImage'):
         return decode_image(bytes(message.data))
+    if msgtype.endswith('/CompressedVideo'):
+        # H.264/H.265 视频流：后一帧依赖前面的帧，同一路相机要按顺序喂同一个解码器（decoders 由调用方按路保存）
+        import av
+        decoder = decoders.setdefault(message.format, av.CodecContext.create(message.format, 'r'))
+        frames = decoder.decode(av.Packet(bytes(message.data)))
+        if len(frames) != 1:
+            raise ValueError(f'{message.format} 视频包解出 {len(frames)} 帧（应为 1 帧）')
+        return frames[0].to_ndarray(format='rgb24')
     encoding = message.encoding.lower()
     channels = {'rgb8': 3, 'bgr8': 3, 'mono8': 1}.get(encoding)
     if channels is None:
