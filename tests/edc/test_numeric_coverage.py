@@ -3,8 +3,13 @@ import json
 from types import SimpleNamespace
 import numpy as np
 from edc.data.ir.dataset import Channel
-from edc.robots.numeric_review import confirm_numeric_profile
 from edc.algorithms.quality.adapters.cpu import builtins
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}
 
 
 def evaluate(values, modality='joint_space', field='position', kind='feedback', confirmed=True, thresholds=None):
@@ -15,7 +20,7 @@ def evaluate(values, modality='joint_space', field='position', kind='feedback', 
     if thresholds:
         p['numeric_check'] = {'thresholds': thresholds}
     if confirmed:
-        p = confirm_numeric_profile(p, 'fixture owner')
+        p = with_confirmer(p, 'fixture owner')
     c = Channel('data', modality, [field], len(values), 'fixture.json', unit=unit,
         source_kind=kind, calibration_status='confirmed', value_available=True, representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
     ep = SimpleNamespace(profile=p, channels={'data': c}, read_signal=lambda *args: values)

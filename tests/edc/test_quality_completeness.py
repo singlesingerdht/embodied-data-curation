@@ -8,7 +8,6 @@ from edc.algorithms.quality.adapters.cpu import builtins
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.execution.completeness import record_complete
 from edc.execution.runner import run
-from edc.robots.numeric_review import confirm_numeric_profile
 from edc.workflows.gates import quality_gate
 
 
@@ -55,7 +54,7 @@ def imu_episode(n=60, accel_z=9.81, gyro=None, with_gyro=True):
     spec = {'modality': 'imu', 'fields': fields, 'field_metadata': metadata,
         'source_kind': 'feedback', 'calibration_status': 'confirmed',
         'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}
-    profile = confirm_numeric_profile({'schema_version': 1, 'id': 'imu', 'version': '1',
+    profile = with_confirmer({'schema_version': 1, 'id': 'imu', 'version': '1',
         'channels': {'imu': spec}}, 'synthetic fixture')
     channel = Channel('imu', 'imu', fields, n, 'synthetic.json',
         field_metadata=metadata, source_kind='feedback', calibration_status='confirmed',
@@ -116,7 +115,7 @@ def test_direct_run_and_recommendation_use_subcheck_coverage(tmp_path, limits, e
     spec = {'modality': 'joint_space', 'fields': ['position'], 'unit': 'rad',
         'source_kind': 'feedback', 'calibration_status': 'confirmed',
         'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}
-    profile = confirm_numeric_profile({'schema_version': 1, 'id': 'joint', 'version': '1',
+    profile = with_confirmer({'schema_version': 1, 'id': 'joint', 'version': '1',
         'channels': {'joint_pos': spec}, 'numeric_check': {'thresholds': {'joint': {'limits': limits}}}},
         'synthetic fixture')
     with open_dataset(source, profile=profile) as ds:
@@ -131,3 +130,9 @@ def test_direct_run_and_recommendation_use_subcheck_coverage(tmp_path, limits, e
     assert selected['policy_version'] == 'episode_filter_v3'
     if limits is None:
         assert json.loads(next((tmp_path / 'out/_runs').glob('*/quality.json')).read_text())[0]['decision'] != 'keep'
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}

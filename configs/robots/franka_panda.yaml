@@ -4,8 +4,8 @@
 
 robot:
   name: franka_panda
-  model: Franka Emika Panda（robomimic / robosuite 仿真）
   confirmed_by: renxiaoshu
+  signature: 75e5a1bc20ade6d0
 
 data:
   episode_group: data          # data/demo_0、data/demo_1……各算一条

@@ -5,6 +5,7 @@ A run writes JSON records and evidence, without per-episode HTML, into a tempora
 verdicts are summarized as soon as it finishes and the folder is deleted, unless --keep is given.
 """
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,30 @@ def robot_settings(profile):
     return params, names
 
 
+def sign(profile):
+    """yaml 除注释外改过（或没签名）就在终端里问签名人，把 confirmed_by、signature 两行写回 yaml（只改这两行，注释保留）。"""
+    from edc.robots.card import is_card, card_digest
+    from edc.data.channel_registry import read_unique_yaml
+    data = read_unique_yaml(Path(profile).read_text(encoding='utf-8'))
+    if not is_card(data) or data['robot'].get('signature') == card_digest(data):
+        return
+    robot = data['robot']
+    if not sys.stdin.isatty():
+        raise ValueError(f'{profile} 改过或还没签名：请在终端里运行 edc batch，按提示输入签名人')
+    try:
+        who = input(f'{profile} 改过或还没签名。核对无误后输入签名人（直接回车 = {robot["confirmed_by"]}，Ctrl+C 取消）：')
+    except (KeyboardInterrupt, EOFError):
+        raise SystemExit('\n已取消，没有签名')
+    robot['confirmed_by'] = who.strip() or robot['confirmed_by']
+    text = re.sub(r'^[ \t]+signature:.*\n', '', Path(profile).read_text(encoding='utf-8'), flags=re.M)
+    text = re.sub(r'^([ \t]+)confirmed_by:[^#\n]*', lambda m: f"{m[1]}confirmed_by: {robot['confirmed_by']}  ", text,
+                  count=1, flags=re.M)
+    text = re.sub(r'^([ \t]+)confirmed_by:.*$', lambda m: f'{m[0].rstrip()}\n{m[1]}signature: {card_digest(data)}', text,
+                  count=1, flags=re.M)
+    Path(profile).write_text(text, encoding='utf-8')
+    print(f'✓ 已签名：{robot["confirmed_by"]}')
+
+
 def size_of(path):
     return sum(p.stat().st_size for p in path.rglob('*') if p.is_file()) if path.is_dir() else path.stat().st_size
 
@@ -72,7 +97,7 @@ def _algorithm_errors(summary):
     return any(i['status'] == 'failed' for r in summary['algos'].values() for i in r['items'])
 
 
-def check_one(item, profile, params, keep, tmp):
+def check_one(item, profile, keep, tmp):
     path, episode = item
     label = f'{path.name}:{episode}' if episode is not None else path.name
     t0 = time.time()
@@ -82,8 +107,6 @@ def check_one(item, profile, params, keep, tmp):
     try:
         cmd = [sys.executable, '-m', 'edc', 'run', str(path), '--profile', str(profile), '--output', str(target),
                '--no-html']
-        if params:
-            cmd += ['--params', str(params)]
         if episode is not None:
             cmd += ['--episode', str(episode)]
         done = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors='replace')
@@ -111,15 +134,12 @@ def check_one(item, profile, params, keep, tmp):
     return summary
 
 
-def run_batch(inputs, *, profile=None, robot=None, params=None, jobs=None, output=None, keep=None,
-              tmp=None, log=print):
+def run_batch(inputs, *, profile=None, robot=None, jobs=None, output=None, keep=None, tmp=None, log=print):
     profile = resolve_robot(robot) if robot else Path(profile)
     if not profile.is_file():
         raise ValueError(f'找不到文件：{profile}')
-    settings, _ = robot_settings(profile)
-    if params:  # A parameter file overrides what the robot yaml says, algorithm by algorithm.
-        for algo, values in json.loads(Path(params).read_text(encoding='utf-8')).items():
-            settings.setdefault(algo, {}).update(values)
+    robot_settings(profile)  # 先核对 yaml 写得对不对
+    sign(profile)            # 改过就当场签名（只在 edc batch 里问）
     items = find_items(inputs, profile)
     if not items:
         raise ValueError('没有找到数据')
@@ -133,17 +153,12 @@ def run_batch(inputs, *, profile=None, robot=None, params=None, jobs=None, outpu
     log(f'找到 {len(items)} 条数据（{len(sizes)} 个文件/目录，共 {sum(sizes.values()) / 2**30:.1f} GB），同时跑 {jobs} 个')
     log(f'配置 {profile}')
     start, results = time.time(), []
-    with tempfile.TemporaryDirectory(prefix='edc_params_', dir=tmp) as folder:
-        params = Path(folder) / 'params.json' if settings else None
-        if params:
-            params.write_text(json.dumps(settings, ensure_ascii=False), encoding='utf-8')
-        with ThreadPoolExecutor(jobs) as pool:
-            for future in as_completed([pool.submit(check_one, item, profile, params, keep, tmp)
-                                        for item in items]):
-                r = future.result()
-                results.append(r)
-                log(f'[{len(results)}/{len(items)}] {time.time() - start:5.0f}s  {r["name"]}  '
-                    f'{DECISION.get(r["decision"], (r["decision"],))[0]}')
+    with ThreadPoolExecutor(jobs) as pool:
+        for future in as_completed([pool.submit(check_one, item, profile, keep, tmp) for item in items]):
+            r = future.result()
+            results.append(r)
+            log(f'[{len(results)}/{len(items)}] {time.time() - start:5.0f}s  {r["name"]}  '
+                f'{DECISION.get(r["decision"], (r["decision"],))[0]}')
     info = {'robot': label, 'inputs': ' '.join(map(str, inputs)), 'jobs': jobs, 'seconds': time.time() - start,
             'finished': f'{datetime.now():%Y-%m-%d %H:%M}', 'profile': str(profile)}
     output.parent.mkdir(parents=True, exist_ok=True)

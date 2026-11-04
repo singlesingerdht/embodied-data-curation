@@ -79,8 +79,7 @@ def test_execution_failure_has_no_quality_verdict_and_cannot_be_kept():
     assert failed.items[0].verdict is None and decide([failed, na]) == 'unassessed'
     html = render([failed, na])
     # A real execution error remains visible and cannot silently become PASS.
-    assert '算法异常' in html and '运行失败' in html
-    assert '没跑完' not in html and '未评估完' not in html
+    assert '算法异常' in html and '未评估完' in html
     assert '未完成评估' not in html and 'execution-status' not in html and '· 未判定' not in html
 
 

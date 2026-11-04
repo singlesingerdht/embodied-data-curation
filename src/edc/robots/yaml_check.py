@@ -12,7 +12,7 @@ def list_channels(data, log=print):
     log(f'{data}：{len(episodes)} 条数据，下面是第 1 条（{episodes[0].id}）里的内容')
     episode = episodes[0]
     with episode.opened():
-        info = episode._reader.info if hasattr(episode._reader, 'info') else episode.info
+        info = episode.describe_legacy()
         log(f'{"名字（填到 source）":48} {"类型":6} {"行数":>7}  字段/形状')
         for name, topic in sorted(info.topics.items()):
             kind = '图像' if topic.image_available else '深度' if topic.modality == 'depth' else '数值'

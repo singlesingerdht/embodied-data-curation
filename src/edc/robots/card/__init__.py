@@ -11,6 +11,8 @@ One file per yaml part: common.py (errors, value parsers, the Builder that colle
 urdf.py (arms.<arm>.urdf), sensors.py (cameras, imu, other). This file: robot / data, then the checks' settings.
 """
 import copy
+import hashlib
+import json
 import re
 
 from .arms import add_arms
@@ -18,9 +20,17 @@ from .common import CardError, Builder, edc_command, indices, number
 from .sensors import add_cameras, add_imu, add_other
 from .urdf import urdf_chain, urdf_route
 
-__all__ = ['CardError', 'compile_card', 'edc_command', 'indices', 'is_card', 'number', 'urdf_chain', 'urdf_route']
+__all__ = ['CardError', 'card_digest', 'compile_card', 'edc_command', 'indices', 'is_card', 'number', 'urdf_chain', 'urdf_route']
 TOP_KEYS = {'robot', 'data', 'arms', 'cameras', 'imu', 'other', 'checks'}
+ROBOT_KEYS = {'name', 'confirmed_by', 'signature', 'version'}
 DATA_KEYS = {'time', 'time_note', 'min_duration_s', 'video_frame_time', 'episode_group'}
+
+
+def card_digest(card):
+    """yaml 内容的指纹：按解析后的内容算，注释、空行、缩进写法不影响；robot.signature 这一行本身不算。"""
+    data = copy.deepcopy(card)
+    (data.get('robot') or {}).pop('signature', None)
+    return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()[:16]
 
 
 def is_card(value):
@@ -34,6 +44,8 @@ def compile_card(card, base=None):
     if unknown:
         raise CardError(f'不认识的顶层项：{", ".join(sorted(unknown))}（只能有 {", ".join(sorted(TOP_KEYS))}）')
     robot = card.get('robot') or {}
+    if set(robot) - ROBOT_KEYS:
+        raise CardError(f'robot 里不认识的项：{", ".join(sorted(set(robot) - ROBOT_KEYS))}（可用：{", ".join(sorted(ROBOT_KEYS))}）')
     name = robot.get('name')
     if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', name):
         raise CardError('robot.name 必填：英文字母开头，只含字母、数字、下划线、连字符')
@@ -44,11 +56,15 @@ def compile_card(card, base=None):
     if set(data) - DATA_KEYS:
         raise CardError(f'data 里不认识的项：{", ".join(sorted(set(data) - DATA_KEYS))}（可用：{", ".join(sorted(DATA_KEYS))}）')
     profile = {'schema_version': 1, 'id': name, 'version': str(robot.get('version', '1')),
-               'model': robot.get('model') or name, 'instance_id': None,
+               'instance_id': None,
                'min_duration_s': float(data.get('min_duration_s', 3.0)),
                'parts': {}, 'camera_requirements': {}, 'channels': {}}
     add_data(profile, data)
     params = copy.deepcopy(card.get('checks') or {})
+    skip = params.pop('skip', []) if isinstance(params, dict) else []
+    from edc.algorithms.quality.adapters.results import ALGOS
+    if not isinstance(skip, list) or set(skip) - set(ALGOS):
+        raise CardError(f'checks.skip 写不查的算法名列表，如 [Reset_Detection]（可用：{", ".join(ALGOS)}）')
     if not isinstance(params, dict) or any(not isinstance(v, dict) for v in params.values()):
         raise CardError('checks 写成 {算法名: {参数: 值}}')
 
@@ -74,21 +90,24 @@ def compile_card(card, base=None):
 
         build.finite_only += [f'{source}.{f}' for f in spec['fields']]
         build.names.setdefault(source, source)
-    # Data the yaml does not mention is not checked.
-    channels['*'] = {'modality': 'other', 'fields': [], 'time_source': 'acquisition', 'clock': clock}
+    profile['declared_only'] = True  # 没写进 yaml 的数据（含它们的时间）不读、不检查
     if build.chains:
         profile['transforms'] = {'chains': build.chains}
     add_numeric(build, params.setdefault('Numeric_Check', {}))
+    for algo in skip:
+        params.setdefault(algo, {})['skip'] = True
+    if build.unchecked:
+        profile['unchecked'] = {'Numeric_Check': '未查：' + '；'.join(build.unchecked)}
     profile['labels'] = build.names  # Readable names, used by the algorithms' reasons and the report.
-    from edc.robots.numeric_review import numeric_settings, review_digest
-    settings = numeric_settings(profile, params['Numeric_Check'])
-    profile['numeric_review'] = {'status': 'confirmed', 'confirmed_by': confirmed_by,
-                                 'configuration_sha256': review_digest(profile, settings)}
+    from edc.robots.numeric_review import numeric_settings
+    numeric_settings(profile, params['Numeric_Check'])  # 阈值写错时在这里就报错
+    profile['numeric_review'] = {'confirmed_by': confirmed_by}
     return profile, params, build.names
 
 
 def add_data(profile, data):
     time = data.get('time')
+    profile['time_declared'] = time is not None or data.get('time_note') is not None
     if time is not None:
         if not isinstance(time, dict) or not isinstance(time.get('source'), str):
             raise CardError('data.time 写成 {source: 时间列名, unit: s/ms/us/ns}')

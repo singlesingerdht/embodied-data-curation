@@ -77,12 +77,12 @@ Start from [single_arm.yaml](../configs/templates/single_arm.yaml), [dual_arm.ya
 
 | Section | Responsibility |
 |---|---|
-| `robot` | Name, model, confirmation owner; `name` begins with an ASCII letter and `confirmed_by` is required |
+| `robot` | Name, confirmation owner, signature; `name` begins with an ASCII letter and `confirmed_by` is required; `signature` is written by `edc batch` when it asks for a signature after the yaml changes, do not edit it by hand |
 | `data` | Explicit time column, absent acquisition-time explanation, minimum duration, HDF5 episode group |
 | `arms` | Actual arms, joint/end-effector feedback, commands, grippers/hands, Home, and optional URDF |
-| `cameras` | Source, camera role, RGB/depth, and wrist ownership |
+| `cameras` | Source, camera role, RGB/depth, and wrist ownership; `info` names the matching camera-info topic paired by the structure check |
 | `imu` / `other` | IMU components and other declared numeric fields |
-| `checks` | Algorithm parameters, channel selection, and scope for this run |
+| `checks` | Algorithm parameters, channel selection, and scope for this run; `skip: [algorithm_id]` skips a check |
 
 Example single-arm card; replace field names to match your data:
 

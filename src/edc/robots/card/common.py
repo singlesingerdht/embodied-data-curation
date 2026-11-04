@@ -90,6 +90,7 @@ class Builder:
         self.ranges = {}         # 'channel.field' -> {range, unit}
         self.limits, self.velocity_limits, self.command_limits = {}, {}, {}   # per internal channel
         self.chains, self.homes = {}, {}
+        self.unchecked = []      # 数值检查没查的项，写进报告格子
 
     def source_of(self, entry, where, allow=('scale',)):
         if not isinstance(entry, dict) or not isinstance(entry.get('source'), str) or not entry['source']:

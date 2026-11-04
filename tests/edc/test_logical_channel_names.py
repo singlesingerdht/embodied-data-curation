@@ -204,20 +204,6 @@ def test_x1pro_confirmations_keep_units_clocks_and_metadata_unknown():
     assert all(c['clock'] is None and c['calibration_status'] == 'unknown' for c in channels.values())
 
 
-def test_name_mapping_preserves_existing_numeric_author_confirmation():
-    from edc.robots.numeric_review import confirm_numeric_profile, numeric_review
-    p = {'schema_version': 1, 'id': 'reviewed', 'version': '1', 'channels': {'joint': {
-        'modality': 'joint_space', 'fields': ['position'], 'source_kind': 'feedback',
-        'unit': 'rad', 'side': 'left', 'calibration_status': 'confirmed', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}}}
-    confirmed = confirm_numeric_profile(p, 'fixture author')
-    before = confirmed['numeric_review']['configuration_sha256']
-    confirmed['channels']['joint']['logical_name'] = 'joint/arm/left/feedback'
-    review = numeric_review(confirmed)
-    assert review['status'] == 'confirmed' and review['configuration_sha256'] == before
-    confirmed['channels']['joint']['unit'] = 'deg'
-    assert numeric_review(confirmed)['status'] == 'stale'
-
-
 def test_visual_types_and_projection_nested_bindings_resolve():
     VisualQuality = pytest.importorskip('edc.algorithms.quality.adapters.vision', reason='GPU extension is outside CPU distribution').VisualQuality
     c = Channel('source_rgb', 'rgb', [], 2, 'test', image_available=True, side='left',

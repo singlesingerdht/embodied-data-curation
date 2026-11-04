@@ -57,7 +57,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
                      params={k: v for k, v in params.items() if k in selected})
 ```
 
-卡片参数写在 `checks.<算法ID>`；`--params /path/to/params.json` 接受 `{算法ID: {参数: 值}}`，覆盖对应算法参数。范围参数如 `arms: [left]` 与输入 `channels` 依具体方法声明使用。切换范围后推荐与执行都要使用更新的参数。[单／双臂](DATA_AND_CONFIGURATION.zh-CN.md#robot)
+卡片参数只写在 `checks.<算法ID>`，不另用参数文件覆盖；yaml 改过后 `edc batch` 会要求重新签名。范围参数如 `arms: [left]` 与输入 `channels` 依具体方法声明使用。切换范围后推荐与执行都要使用更新的参数。[单／双臂](DATA_AND_CONFIGURATION.zh-CN.md#robot)
 
 ## 九项内置质量算法
 
@@ -76,7 +76,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
 ### Numeric_Check · 数值检查
 
 - **输入：** 已登记数值；物理子项另需确认语义、SI 单位、标定和对应阈值。
-- **参数：** `freeze_min_duration_s` 默认5；卡片可提供 `range`、URDF 关节限位、`max_joint_velocity`；`joint_stuck` 需要同臂关节和末端反馈。
+- **参数：** `freeze_min_duration_s` 默认5；卡片可提供 `range`；关节限位和速度上限只读 URDF，没写 URDF 就不查并在报告中写明；`joint_stuck` 需要同臂关节和末端反馈。
 - **输出／判断：** 逐字段有限值、超限与冻结事件；NaN／Inf 或明确超限可排除，冻结线索需复核；关节卡住且末端运动可给出可救项及处理建议。
 - **边界：** 未配置的物理子项不算检查通过。IMU 等已接入子检查属于本算法；未知 effort 不解释为力矩，不把指令当反馈。
 - [实现](../src/edc/algorithms/quality/algorithms/Numeric_Check/)
@@ -95,7 +95,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
 ### Check_Timestamp · 时间戳检查
 
 - **输入：** 有效且单位明确的时间；跨通道配对另需可比较时间和参考输入。
-- **参数：** `shared_row_max_gap_s` 默认按中位行间隔的3倍；`scoring` 调整本方法已有评分参数。
+- **参数：** `shared_row_max_gap_s` 默认按中位行间隔的3倍；评分标准所有机型统一：误差下限取最快彩色相机帧间隔的 1/3，帧间隔波动系数 0.3 起扣分、0.6 扣到 0。
 - **输出／判断：** 时间间隔、断档和可用配对指标；可只检查单路／共享行时间，不把该范围报告为跨设备同步通过。
 - **边界：** 缺独立采集时间、单位或 clock 时，推荐列明部分可检查范围。
 - [实现](../src/edc/algorithms/quality/algorithms/Check_Timestamp/)
@@ -133,7 +133,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
 ### Reset_Detection · 复位检测
 
 - **输入：** 所选臂反馈位置及同机器人、同字段的 Home 与正容差。
-- **参数：** 卡片 `home` 可使用关节rad或末端m；双臂须保持同类型和相同卡片容差。完整 profile 也支持明确的逐通道标定。`split_segments` 用于按已有切片标记跳过复位。
+- **参数：** 卡片 `home` 可使用关节rad或末端m；双臂须保持同类型和相同卡片容差。完整 profile 也支持明确的逐通道标定。`home` 只填采集团队确认过的姿态；给不出或数据是剪出来的片段时，用 `checks.skip: [Reset_Detection]` 跳过。
 - **输出／判断：** 开头／结尾与参考的偏差及复位判断，超出条件需复核。
 - **边界：** 关节数、单位、零位或坐标系不匹配时，不能套用另一机器人的 Home；任务允许不同初末状态时需调整使用范围。
 - [实现](../src/edc/algorithms/quality/algorithms/Reset_Detection/)

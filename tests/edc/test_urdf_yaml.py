@@ -94,13 +94,12 @@ def test_each_arm_has_its_own_velocity_table(tmp_path):
     card = yaml.safe_load(robot_yaml(tmp_path).read_text(encoding='utf-8'))
     card['arms']['left']['joint_velocity'] = {'source': 'v', 'index': '0-5', 'unit': 'rad/s'}
     card['arms']['right'] = {'joints': {'source': 'q2', 'index': '0-6', 'unit': 'rad'},
-                             'joint_velocity': {'source': 'v2', 'index': '0-6', 'unit': 'rad/s'},
-                             'max_joint_velocity': 2.0}           # 7 joints, different limits: used to be refused.
+                             'joint_velocity': {'source': 'v2', 'index': '0-6', 'unit': 'rad/s'}}   # 没有 URDF
     profile, params, _ = compile_card(card)
     settings = numeric_settings(profile, params['Numeric_Check'])
     pick = lambda side: channel_settings(settings, SimpleNamespace(name=f'joint/arm/{side}/feedback'))
     assert pick('left')['thresholds']['joint_velocity']['max_abs'] == [4.188] * 3 + [3.77] * 3
-    assert pick('right')['thresholds']['joint_velocity']['max_abs'] == [2.0] * 7
+    assert pick('right')['thresholds']['joint_velocity']['max_abs'] is None   # 没有 URDF：不查超速
 
 
 def test_commented_out_xacro_is_not_xacro(tmp_path, capsys):

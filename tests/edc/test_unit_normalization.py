@@ -12,7 +12,7 @@ from edc.execution.runner import run
 from edc.data.ir.dataset import open_dataset
 from edc.data.ir.units import SIDataset, UnitInputError
 from edc.algorithms.registry import AlgorithmSpec
-from edc.robots.numeric_review import confirm_numeric_profile, numeric_review
+from edc.robots.numeric_review import numeric_review
 from edc.data.transforms.core import UNITS
 
 
@@ -43,7 +43,7 @@ def test_degree_and_radian_physical_results_are_equal_and_sources_unchanged(tmp_
     outputs = []
     for unit, values in [('deg', np.rad2deg(physical)), ('rad', physical)]:
         path = source(tmp_path / unit, [{'joint_pos': row.tolist()} for row in values])
-        p = confirm_numeric_profile(profile(unit), 'fixture author')
+        p = with_confirmer(profile(unit), 'fixture author')
         before = copy.deepcopy(p)
         digest = hashlib.sha256((path / 'trajectory.json').read_bytes()).hexdigest()
         out = tmp_path / f'out-{unit}'
@@ -123,7 +123,7 @@ def test_mixed_fields_selection_legacy_bridge_and_plugin_dataset_use_si(tmp_path
 @pytest.mark.parametrize('unit', ['deg', 'rad'])
 def test_manual_policy_never_forwards_non_si_to_physical_check(tmp_path, unit):
     path = source(tmp_path, [{'joint_pos': [0.]}, {'joint_pos': [1.]}])
-    p = confirm_numeric_profile(profile(unit), 'fixture author')
+    p = with_confirmer(profile(unit), 'fixture author')
     out = tmp_path / 'out'
     with open_dataset(path, profile=p) as dataset:
         run(dataset, algorithm_ids=['Numeric_Check', 'Structure_Check'], output=out, unit_policy='manual')
@@ -230,3 +230,7 @@ def test_non_si_plugin_failure_is_missing_input_and_does_not_block_other_algorit
     assert not evidence(out, record(out, 'Structure_Check'))['fields'][0]['conversion_applied']
 
 
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}

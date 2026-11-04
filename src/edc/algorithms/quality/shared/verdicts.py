@@ -56,8 +56,8 @@ def recorded_verdict(report):
     if report.get('skipped') == 'too_short':
         return 'SKIPPED'
     verdict = report.get('verdict')
-    if verdict == 'NOT_APPLICABLE' and (report.get('split_segment') or report.get('not_applicable')):
-        return 'NA'  # Cut-out segment with no recording end, or the algorithm's own "nothing to check here".
+    if verdict == 'NOT_APPLICABLE' and report.get('not_applicable'):
+        return 'NA'  # The algorithm's own "nothing to check here".
     if report.get('supplemental_verdict') == 'DO_NOT_USE':
         return 'SALVAGE' if joint_ik_salvage(report) else 'DO_NOT_USE'
     if verdict == 'ACCEPTABLE' and has_review_candidate(report):
@@ -94,38 +94,6 @@ def target_of(algo, report, labels):
     else:
         name = SIDE.get(report.get('side')) or report.get('input_channel') or report.get('channel') or ''
     return labels.get(name, name) or '本条'
-
-
-def unfinished_reason(algo, report, reason=''):
-    """Explain missing evaluation conditions, without inventing a data-review finding."""
-    if algo == 'Numeric_Check':
-        checks = (report.get('check_coverage') or {}).get('checks') or []
-        blockers = ' '.join([str(report.get('unit_normalization_reason') or ''),
-                             *map(str, report.get('physical_check_blockers') or [])])
-        missing = []
-        if (report.get('configuration_review') or {}).get('status') in ('pending', 'stale'):
-            missing.append('阈值配置待确认')
-        if 'source_unit' in report and report['source_unit'] in (None, '', 'unknown'):
-            missing.append('源单位未确认')
-        if 'physical quantity' in blockers or 'semantic_status' in blockers:
-            missing.append('物理含义未确认')
-        if 'calibration_status' in report and report['calibration_status'] != 'confirmed':
-            missing.append('标定状态未确认')
-        if 'source_kind' in blockers or 'command/feedback' in blockers:
-            missing.append('指令／反馈未声明')
-        known_pending = bool(missing)
-        suffix = {'unconfigured': '未配置', 'insufficient_input': '输入不足',
-                  'unsupported': '尚未实现', 'pending_confirmation': '待确认',
-                  'blocked_nonfinite': '被非有限值阻断'}
-        for check in checks:
-            state = check.get('status')
-            if state in suffix and not (state == 'pending_confirmation' and known_pending):
-                missing.append(check.get('name', check.get('id', '子项')) + suffix[state])
-        prefix = 'NaN/Inf 检查通过；' if report.get('finite') is True else ''
-        return prefix + '物理检查未完成：' + '、'.join(dict.fromkeys(missing or ['缺少完整执行记录']))
-    if algo == 'Check_Timestamp' and (report.get('cross_channel_alignment') or {}).get('status') == 'missing_input':
-        return '已检查可用通道的时间间隔；缺少有效时间轴或共同 clock，跨通道对齐未执行'
-    return '检查未完成：' + (reason or '缺少完整执行记录，请查看运行记录中的输入条件和执行原因')
 
 
 def dedup_missing_inputs(report):
@@ -168,21 +136,14 @@ def to_item(algo, report, explain, labels):
     verdict = TO_VERDICT.get(old)
     if verdict is None:
         return Item(target, FAILED, reason=f'算法没有给出结论（{old}）')
-    metrics = {k: report[k] for k in ('score', 'clock_shift_s') if report.get(k) is not None}
-    metrics.update(report.get('item_metrics') or {})
-    if not own_dedup_complete and not report_complete(report, algo):
-        rows = (report.get('cadence') or {}).get('channels') or []
-        observed_problem = any(r.get('backward_interval_count') or r.get('zero_interval_count')
-                               or r.get('anomaly_examples') for r in rows)
-        missing_alignment = (old == 'OBSERVATION' and algo == 'Check_Timestamp'
-                             and (report.get('cross_channel_alignment') or {}).get('status') == 'missing_input'
-                             and not observed_problem and not report.get('review_candidates'))
-        if verdict == PASS or missing_alignment:
-            return Item(target, FAILED, reason=clean_reason(unfinished_reason(algo, report, reason)), metrics=metrics)
+    if verdict == PASS and not own_dedup_complete and not report_complete(report, algo):
+        verdict, reason = REVIEW, (reason + '；' if reason else '') + '有子项没评估完，需要人看'
     if verdict != PASS and not reason.strip():  # Every verdict but PASS says why; never leave the cell blank.
         score = f"，分数 {report['score']}" if report.get('score') is not None else ''
         reason = f'算法判为{VERDICTS[verdict]}（原始结论 {old}{score}），但没有写出具体原因；请用 --keep 看这条的详细输出'
     remedy = REMEDY['joint_ik' if salvage == 'joint_ik' else 'fixed_offset'] if verdict == SALVAGE else ''
+    metrics = {k: report[k] for k in ('score', 'clock_shift_s') if report.get(k) is not None}
+    metrics.update(report.get('item_metrics') or {})  # Numbers an algorithm wants shown with its item.
     return Item(target, CHECKED, verdict, clean_reason(reason), remedy, metrics=metrics)
 
 
@@ -246,6 +207,8 @@ def plain_reason(algo, status, reason, notes=None):
         return '机器人 yaml 里没写复位位置（home），不检查复位'
     if algo == 'Action_Smoothness' and 'pose/arm' in reason:
         return '没有末端位置：数据里没录（yaml 没写 eef_position），也没提供 URDF 来算（eef_position: fk）'
+    if reason == 'yaml 的 checks.skip 里写了不查这项':
+        return reason
     if status == 'missing_input':
         return '机器人 yaml 里没提供这项需要的数据：' + reason
     return reason or status

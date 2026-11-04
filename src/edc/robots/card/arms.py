@@ -3,29 +3,27 @@ from .common import NO_LIMIT, OTHER_UNITS, CardError, scaled, unknown_keys
 from .urdf import urdf_chain
 
 ARM_KEYS = {'joints', 'joint_velocity', 'joint_command', 'eef_position', 'eef_orientation', 'eef_command',
-            'gripper', 'gripper_command', 'hand', 'hand_command', 'urdf', 'home', 'max_joint_velocity', 'side', 'label'}
+            'gripper', 'gripper_command', 'hand', 'hand_command', 'urdf', 'home'}
 SIDE_LABEL = {'left': '左臂', 'right': '右臂'}
 
 
-def side_of(arm, spec):
-    return (spec or {}).get('side', arm if arm in ('left', 'right') else 'unknown')
+def side_of(arm):
+    return arm if arm in ('left', 'right') else 'unknown'
 
 
 def add_arms(build, arms):
     if not isinstance(arms, dict):
         raise CardError('arms 写成 {手臂名: {...}}，单臂可以只写一个（如 main）')
+    if len(arms) > 1 and set(arms) != {'left', 'right'}:
+        raise CardError('双臂的手臂名写 left 和 right；单臂名字随意（如 main）')
     for arm, spec in arms.items():
         where = f'arms.{arm}'
         if not isinstance(spec, dict):
             raise CardError(f'{where}: 写成映射')
         unknown_keys(spec, ARM_KEYS, where)
-        side = side_of(arm, spec)
-        if side not in ('left', 'right', 'unknown'):
-            raise CardError(f'{where}.side 只能是 left、right 或 unknown')
+        side = side_of(arm)
         tag = side if side != 'unknown' else 'main'
-        if tag == 'main' and sum(1 for a, s in arms.items() if side_of(a, s) == 'unknown') > 1:
-            raise CardError('多条手臂时请用 left/right 命名，或给每条写 side')
-        label = spec.get('label') or SIDE_LABEL.get(side) or ('' if len(arms) == 1 else arm)
+        label = SIDE_LABEL.get(side, '')
         build.profile['parts'][arm] = add_arm(build, arm, spec, where, side, tag, label)
     add_homes(build)
 
@@ -38,7 +36,7 @@ def add_arm(build, arm, spec, where, side, tag, label):
     confirmed = {'semantic_status': 'confirmed', 'confirmed_by': build.confirmed_by, 'calibration_status': 'confirmed'}
     feedback = f'joint/arm/{tag}/feedback'
     joint = spec.get('joints')
-    dof = None
+    dof = chain = None
     if joint is not None:
         source, field, picks = build.source_of(joint, f'{where}.joints')
         if picks is None:
@@ -49,6 +47,7 @@ def add_arm(build, arm, spec, where, side, tag, label):
             raise CardError(f'{where}.joints.unit 必填：rad 或 deg')
         fields = {'position': field}
         metadata = {'position': {'unit': unit, 'quantity': 'joint_angle', **confirmed, **scaled(joint, f'{where}.joints')}}
+        chain = urdf_chain(spec['urdf'], build.base, f'{where}.urdf', dof, feedback) if spec.get('urdf') is not None else None
         velocity = spec.get('joint_velocity')
         if velocity is not None:
             v_source, v_field, v_picks = build.source_of(velocity, f'{where}.joint_velocity')
@@ -56,10 +55,13 @@ def add_arm(build, arm, spec, where, side, tag, label):
                 raise CardError(f'{where}.joint_velocity: index 个数要和 joints 一样（{dof} 个）')
             if velocity.get('unit') not in ('rad/s', 'deg/s'):
                 raise CardError(f'{where}.joint_velocity.unit 必填：rad/s 或 deg/s')
+        # 速度上限只用 URDF 的 <limit velocity>；没有就不查超速（原始数据照样查 NaN/无穷大）
+        if velocity is not None and chain and chain['velocity']:
             fields['velocity'] = (v_field if v_source == source and v_picks == picks else
                                   {'channel': v_source, 'field': v_field, 'indices': v_picks})
             metadata['velocity'] = {'unit': velocity['unit'], 'quantity': 'angular_velocity', **confirmed,
                                     **scaled(velocity, f'{where}.joint_velocity')}
+            build.velocity_limits[feedback] = chain['velocity']
         build.add(feedback, {
             'modality': 'joint_space', 'fields': list(fields), **common, 'source_kind': 'feedback',
             'dimensions': [dof], 'unit': unit,
@@ -80,24 +82,19 @@ def add_arm(build, arm, spec, where, side, tag, label):
                             'field_metadata': {'position': {'unit': command['unit'], 'quantity': 'joint_angle', **confirmed,
                                                             **scaled(command, f'{where}.joint_command')}},
                             'logical_name': channel}, f'{label}关节指令')
-        build.command_limits[channel] = [NO_LIMIT] * len(picks)
-    has_velocity = joint is not None and 'velocity' in build.channels[feedback]['fields']
-    if spec.get('urdf') is not None:
+        # 指令限位和关节限位同一套（URDF）；没有 URDF 不限
+        build.command_limits[channel] = chain['limits'] if chain else [NO_LIMIT] * len(picks)
+    no_urdf = ['关节限位'] * (joint is not None) + ['超速'] * ('joint_velocity' in spec) + ['指令限位'] * (command is not None)
+    if chain is None and no_urdf:
+        build.unchecked.append(f"{label}{'、'.join(no_urdf)}（没写 urdf）")
+    elif chain and 'joint_velocity' in spec and not chain['velocity']:
+        build.unchecked.append(f'{label}超速（URDF 里没有速度上限）')
+    if spec.get('urdf') is not None or spec.get('joint_velocity') is not None:
         if joint is None:
-            raise CardError(f'{where}.urdf: 要先写 joints（URDF 用关节角算末端）')
-        chain = urdf_chain(spec['urdf'], build.base, f'{where}.urdf', dof, feedback)
+            raise CardError(f'{where}: 写 urdf、joint_velocity 要先写 joints')
+    if chain:
         build.chains[arm] = chain['config']
         build.limits[feedback] = chain['limits']
-        if chain['velocity'] and has_velocity:
-            build.velocity_limits[feedback] = chain['velocity']
-    if spec.get('max_joint_velocity') is not None:
-        value = spec['max_joint_velocity']
-        values = value if isinstance(value, list) else [value] * (dof or 0)
-        if not values or len(values) != dof or any(not isinstance(v, (int, float)) or v <= 0 for v in values):
-            raise CardError(f'{where}.max_joint_velocity: 一个正数，或每个关节一个（rad/s）')
-        build.velocity_limits[feedback] = [float(v) for v in values]
-    if has_velocity and feedback not in build.velocity_limits:
-        raise CardError(f'{where}: 写了 joint_velocity 就要给上限：写 max_joint_velocity，或提供带 velocity 的 URDF')
     eef = spec.get('eef_position')
     if eef == 'fk':
         if arm not in build.chains:

@@ -99,8 +99,7 @@ def test_failed_episode_keeps_successful_results_and_error_exit(sample, tmp_path
     _, quality, html = saved(output)
     assert [r['decision'] for r in quality] == ['review', 'unassessed']
     assert 'first' in html and 'second' in html and 'test decoder failed' in html
-    assert '运行失败' in html and '检查位置：第 4 行' in html
-    assert '没跑完' not in html and '未评估完' not in html
+    assert '未评估完' in html and '没跑完' in html and '检查位置：第 4 行' in html
     assert all(p.calls == ['first', 'second'] for p in registry.plugins.values())
     for row in quality:
         good = next(r for r in row['results'] if r['algorithm'] == 'test__first')

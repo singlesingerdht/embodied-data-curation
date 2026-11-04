@@ -23,12 +23,9 @@ def cpu_parameters(ident):
         'description': '选择源 topic/Channel 名称或机器人配置的 logical_name；支持多个，缺失或解析后重复拒绝，不猜测或回退。不填按 arms 与声明的输入要求选择。'}}
     properties['arms'] = {'type': ['string', 'array'], 'items': {'type': 'string'},
                           'description': 'all 或已声明的机械臂部件 ID 列表；默认按机器人拓扑选择全部臂'}
+    properties['skip'] = {'type': 'boolean', 'description': '由 yaml 的 checks.skip 生成：这项不查'}
     if ident not in ('Reset_Detection', 'Action_Smoothness'):
         properties['weights'] = {'type': ['object', 'null'], 'description': '原方法的子项权重；未提供时沿用原默认值'}
-    if ident == 'Reset_Detection':
-        properties['split_segments'] = {'type': 'boolean', 'default': False,
-            'description': '数据集自带剪辑记录（数据目录里的 anno/source_segment.json，或上级目录 split_manifest.json 列出本条）时，'
-                           '这条是从长录制剪出来的切片：只查真正的录制开头（从原始第 0 帧剪起时查开头），其余端不查；两端都不查时记为不适用'}
     if ident == 'Dedup_Check':
         properties['channel'] = {'type': ['string', 'null'], 'description': '指定原始时间通道；不填时检查各路，公共行时间只检查一次'}
         properties['dedup_ratio_low'] = {'type': 'number', 'minimum': 0, 'maximum': 1, 'default': .01,
@@ -74,14 +71,10 @@ def cpu_parameters(ident):
         properties['target_clock'] = {'type': 'string',
             'description': '执行时使用的共同clock；仅应用配置中明确的仿射映射，不重采样、不修改原时间或时间来源'}
     if ident == 'Check_Timestamp':
-        properties['scoring'] = {'type': 'object', 'description': '本机型的评分参数（原方法命令行选项）：'
-            'absolute_error_floor_ms、dt_cv_no_penalty、dt_cv_zero、long_gap_ratio_warning、long_gap_ratio_zero、iou_threshold'}
-        properties['count_each_source_once'] = {'type': 'boolean', 'default': False,
-            'description': '拆分或推算出来的通道（与源话题同一时间轴）不重复计分'}
         properties['shared_row_max_gap_s'] = {'type': 'number', 'exclusiveMinimum': 0,
             'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填按中位行间隔的 3 倍'}
     if ident == 'Root_Cause':
-        properties['families'] = {'type': ['object', 'null'], 'description': '显式消息源分组，用于关联异常；未填沿用原方法分组'}
+        properties['families'] = {'type': ['object', 'null'], 'description': '原始话题的消息源分组（拆出的通道跟源话题走，不用写），用于关联异常；未填沿用原方法分组'}
     if ident == 'Sync_Check':
         properties['primary'] = {'type': ['string', 'null'], 'description': '参考采集通道；不填沿用原方法的参考选择'}
     if ident == 'Video_Integrity':

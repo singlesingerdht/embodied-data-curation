@@ -137,7 +137,9 @@ def instances(episode, supplied, mode):
         if mode == 'rgb' and (channel.modality != 'rgb' or not channel.image_available):
             continue
         # Raw numeric arrays with no declared owner must not silently become shared inputs.
+        # 机器人 yaml（declared_only）里写了的数据都算明确声明，不属于某条臂的当共享输入
         explicit_shared = (channel.robot_part in profile.get('parts', {}) or
+            (profile.get('declared_only') and name in profile.get('channels', {})) or
             channel.modality not in {'other', 'joint_space', 'pose'} or bool(channel.selection))
         if channel.value_available and channel.fields and not owners and not explicit_shared:
             unowned.append(name)

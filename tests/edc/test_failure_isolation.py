@@ -132,7 +132,7 @@ def test_batch_keeps_all_algorithms_and_exitcode(tmp_path, monkeypatch, code, wo
     source.write_bytes(b'synthetic')
     results = summary_results(worst=worst)
     mock_process(monkeypatch, results, code)
-    row = batch.check_one((source, None), 'robot.yaml', None, None, tmp_path)
+    row = batch.check_one((source, None), 'robot.yaml', None, tmp_path)
     assert row['algos'] == {r.algorithm: r.to_dict() for r in results}
     assert row['decision'] == decide(results) and row['returncode'] == code
     assert batch._algorithm_errors(row)
@@ -143,7 +143,7 @@ def test_process_failure_after_valid_results_keeps_results_but_blocks_keep(tmp_p
     source.write_bytes(b'synthetic')
     results = summary_results(failure=False)
     mock_process(monkeypatch, results, 7)
-    row = batch.check_one((source, None), 'robot.yaml', None, None, tmp_path)
+    row = batch.check_one((source, None), 'robot.yaml', None, tmp_path)
     assert row['decision'] == 'failed' and row['returncode'] == 7 and len(row['algos']) == 2
     assert '退出码 7' in row['log']
     html = page([row], {'robot': 'test', 'inputs': 'synthetic', 'finished': 'test', 'seconds': 0,
@@ -159,7 +159,7 @@ def test_absent_corrupt_or_invalid_results_fail_without_crashing(tmp_path, monke
     source = tmp_path / 'synthetic.mcap'
     source.write_bytes(b'synthetic')
     mock_process(monkeypatch, None, code=0, payload=payload)
-    row = batch.check_one((source, None), 'robot.yaml', None, None, tmp_path)
+    row = batch.check_one((source, None), 'robot.yaml', None, tmp_path)
     assert row['decision'] == 'failed' and row['algos'] == {} and row['returncode'] == 0
     assert 'quality.json' in row['log']
 

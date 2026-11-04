@@ -11,7 +11,6 @@ import yaml
 from edc import open_dataset, recommend, run
 from edc.data.ir.units import SIDataset, UnitInputError
 from edc.algorithms.registry import AlgorithmSpec, Registry
-from edc.robots.numeric_review import confirm_numeric_profile
 
 
 def fixture(tmp_path, unit=None, extra=None):
@@ -111,8 +110,6 @@ def test_video_preflight_does_not_depend_on_unknown_numeric_units(tmp_path, monk
 def test_unknown_quantity_with_filled_unit_is_still_blocked(tmp_path):
     path, p = fixture(tmp_path, 'rad')
     p['channels']['joint_pos']['representation'] = {'quantity': 'unknown', 'semantic_status': 'pending_owner_confirmation'}
-    with pytest.raises(ValueError, match='physical quantity'):
-        confirm_numeric_profile(p, 'owner')
     with open_dataset(path, profile=p) as ds:
         with next(SIDataset(ds).iter_episodes()).opened() as ep:
             assert ep.unit_evidence()['fields'][0]['status'] == 'blocked'

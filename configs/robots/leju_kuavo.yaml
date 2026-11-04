@@ -2,12 +2,11 @@
 # 依据：input_example/03_ros1bag_leju 和服务器 40 条乐聚 bag 实测（证据详见 input_example/CHANGES.md 第 3 节）
 robot:
   name: leju_kuavo
-  model: Leju KUAVO 4pro（灵巧手）
   confirmed_by: renxiaoshu
+  signature: 2e8e91f30277269c
 
 data:
   # bag 里每个话题有自己的时间，不用写 time
-  min_duration_s: 3.0
 
 arms:
   left:
@@ -23,10 +22,10 @@ arms:
       joints: [zarm_l1_joint, zarm_l2_joint, zarm_l3_joint, zarm_l4_joint, zarm_l5_joint, zarm_l6_joint, zarm_l7_joint]   # joint_q 第 12-18 列依次对应
       base_link: base_link
       tip_link: zarm_l7_end_effector
-    # 速度上限 3 rad/s（2026-10-30 用户定；URDF 写的 18.8 太宽）
-    max_joint_velocity: 3.0
     # 灵巧手 12 维 = 左 6 + 右 6，原始数值：40 条全部是 0~100 的整数（物理单位未知）
     hand: {source: /dexhand/state, field: position, index: 0-5, unit: raw, range: [0, 100]}
+    # 灵巧手指令：40 条全是 0~100 的整数（2026-11-03 统计）
+    hand_command: {source: /control_robot_hand_position, field: left_hand_position, unit: raw, range: [0, 100]}
     # Home：算法自带 Reset_Detection/configs/robots/kuavo/calibrated.yaml；容差 0.6 rad 按 40 条分布定
     home:
       joints: [-0.19142070412635803, 0.4532884657382965, -0.05640721321105957, -1.673997163772583,
@@ -42,21 +41,25 @@ arms:
       joints: [zarm_r1_joint, zarm_r2_joint, zarm_r3_joint, zarm_r4_joint, zarm_r5_joint, zarm_r6_joint, zarm_r7_joint]   # joint_q 第 19-25 列依次对应
       base_link: base_link
       tip_link: zarm_r7_end_effector
-    max_joint_velocity: 3.0
     hand: {source: /dexhand/state, field: position, index: 6-11, unit: raw, range: [0, 100]}
+    hand_command: {source: /control_robot_hand_position, field: right_hand_position, unit: raw, range: [0, 100]}
     home:
       joints: [-0.1637825071811676, -0.36417925357818604, -0.007646217942237854, -1.8297309875488281,
                -0.06254658102989197, -0.10310856252908707, 0.1484537422657013]
       tolerance: 0.6
 
 cameras:
-  head: {source: /cam_h/color/image_raw/compressed, mount: head, label: 头部相机}
-  left_wrist: {source: /cam_l/color/image_raw/compressed, mount: wrist, arm: left, label: 左手腕相机}
-  right_wrist: {source: /cam_r/color/image_raw/compressed, mount: wrist, arm: right, label: 右手腕相机}
+  head: {source: /cam_h/color/image_raw/compressed, info: /cam_h/color/camera_info, mount: head, label: 头部相机}
+  left_wrist: {source: /cam_l/color/image_raw/compressed, info: /cam_l/color/camera_info, mount: wrist, arm: left,
+               label: 左手腕相机}
+  right_wrist: {source: /cam_r/color/image_raw/compressed, info: /cam_r/color/camera_info, mount: wrist, arm: right,
+                label: 右手腕相机}
   # 深度图：比例和单位未确认，不做数值检查，只参与时间检查
-  head_depth: {source: /cam_h/depth/image_raw/compressedDepth, mount: head, type: depth}
-  left_wrist_depth: {source: /cam_l/depth/image_rect_raw/compressedDepth, mount: wrist, arm: left, type: depth}
-  right_wrist_depth: {source: /cam_r/depth/image_rect_raw/compressedDepth, mount: wrist, arm: right, type: depth}
+  head_depth: {source: /cam_h/depth/image_raw/compressedDepth, info: /cam_h/depth/camera_info, mount: head, type: depth}
+  left_wrist_depth: {source: /cam_l/depth/image_rect_raw/compressedDepth, info: /cam_l/depth/camera_info, mount: wrist,
+                     arm: left, type: depth}
+  right_wrist_depth: {source: /cam_r/depth/image_rect_raw/compressedDepth, info: /cam_r/depth/camera_info, mount: wrist,
+                      arm: right, type: depth}
 
 # 机身 IMU（在 /sensors_data_raw 里）：|acc| 中位 9.78–9.80 → m/s^2 含重力；角速度和四元数推算一致 → rad/s
 imu:
@@ -72,21 +75,12 @@ other:
   - {source: /dexhand/state, field: effort, label: 灵巧手力, unit: raw, range: [-1000, 1000]}
 
 checks:
-  Numeric_Check:
-    freeze_min_duration_s: 5
-  Check_Timestamp:
-    count_each_source_once: true
-    scoring: {absolute_error_floor_ms: 11.1, dt_cv_no_penalty: 0.3, dt_cv_zero: 0.6}
   Root_Cause:
+    # 这 5 个话题都由机器人主机发出、共用主机的钟（40 条实测互差 1.6–4.0 ms），算一个来源；
+    # 从它们拆出的通道（关节、IMU、灵巧手、other……）自动跟源话题走，不用写
     families:
       /sensors_data_raw: robot
-      joint/arm/left/feedback: robot
-      joint/arm/right/feedback: robot
-      imu/main: robot
-      pose/arm/left/feedback: robot
-      pose/arm/right/feedback: robot
       /kuavo_arm_traj: robot
-      joint/arm/left/command: robot
-      joint/arm/right/command: robot
       /joint_cmd: robot
       /dexhand/state: robot
+      /control_robot_hand_position: robot

@@ -2,7 +2,7 @@
 from .arms import side_of
 from .common import OTHER_UNITS, CardError, unknown_keys
 
-CAMERA_KEYS = {'source', 'mount', 'arm', 'type', 'label'}
+CAMERA_KEYS = {'source', 'mount', 'arm', 'type', 'label', 'info'}
 MOUNTS = {'head', 'chest', 'wrist', 'main'}
 
 
@@ -19,7 +19,7 @@ def add_cameras(build, cameras, arms, clock):
             raise CardError(f'{where}: mount 是 head/chest/wrist/main，type 是 rgb/depth')
         if arm is not None and arm not in arms:
             raise CardError(f'{where}.arm: 没有叫 {arm} 的手臂')
-        side = side_of(arm, arms.get(arm)) if arm else 'unknown'
+        side = side_of(arm) if arm else 'unknown'
         logical = f'{kind}/{mount}' + (f'/{side if side != "unknown" else "main"}' if mount == 'wrist' else '')
         entry = {'modality': kind, 'time_source': 'acquisition', 'clock': clock,
                  'body_part': mount if mount != 'main' else 'unknown', 'logical_name': logical,
@@ -38,6 +38,11 @@ def add_cameras(build, cameras, arms, clock):
         if spec['source'] in build.channels:
             raise CardError(f'{where}: {spec["source"]} 重复定义')
         build.channels[spec['source']] = entry
+        if spec.get('info') is not None:  # 相机内参：只读来给结构检查配对，不做数值、时间检查
+            if not isinstance(spec['info'], str) or spec['info'] in build.channels:
+                raise CardError(f'{where}.info: 写数据里相机内参的名字（如 /cam_h/color/camera_info），不能和别的重复')
+            build.channels[spec['info']] = {'modality': 'other', 'fields': []}
+            build.profile.setdefault('camera_info', {})[spec['source']] = spec['info']
         build.names[spec['source']] = spec.get('label') or f'{camera}相机'
         build.names[logical] = build.names[spec['source']]
 

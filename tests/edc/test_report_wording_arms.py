@@ -57,27 +57,6 @@ def numeric(**values):
                 {'id': 'joint_step', 'name': '相邻关节位置差', 'status': 'pending_confirmation'}]}, **values}
 
 
-def test_config_only_missing_has_precise_reason_and_no_human_data_review():
-    raw = emit('Numeric_Check', numeric(), {})
-    result = to_result('Numeric_Check', [record(raw)])
-    item, = result.items
-    assert item.status == FAILED and item.verdict is None
-    assert item.reason == 'NaN/Inf 检查通过；物理检查未完成：阈值配置待确认、关节位置限位未配置'
-    assert '单位未确认' not in item.reason and '标定' not in item.reason
-    assert decide([result]) == 'unassessed'
-    html = render([result])
-    assert '有子项没评估完' not in html and '怎么复核：' not in html
-
-
-def test_unknown_quantity_and_units_are_not_hidden_by_config_message():
-    raw = emit('Numeric_Check', numeric(source_unit=None, calibration_status='unknown',
-               physical_check_blockers=['physical quantity is unconfirmed; semantic_status',
-                                        'source_kind command/feedback is unconfirmed']), {})
-    reason = raw['edc_item']['reason']
-    for text in ('源单位未确认', '物理含义未确认', '标定状态未确认', '指令／反馈未声明'):
-        assert text in reason
-
-
 @pytest.mark.parametrize('verdict,expected', [('DO_NOT_USE', 'EXCLUDE'), ('NEEDS_REVIEW', 'REVIEW')])
 def test_measured_findings_survive_incomplete_other_subchecks(verdict, expected):
     raw = emit('Numeric_Check', numeric(verdict=verdict, reason='发现 NaN；'), {})
@@ -119,16 +98,6 @@ def test_dedup_single_record_only_is_not_applicable():
     item = emit('Dedup_Check', raw, {})['edc_item']
     assert item['status'] == NOT_APPLICABLE and item['verdict'] is None
     assert item['reason'] == '少于2条记录，无法检查时间或序列重复'
-
-
-@pytest.mark.parametrize('backward', [0, 1])
-def test_missing_alignment_does_not_demand_review_unless_measured_problem(backward):
-    raw = {'verdict': 'OBSERVATION', 'assessment_complete': False, 'cadence': {'channels': [
-        {'channel': '/arm', 'status': 'observed', 'backward_interval_count': backward, 'zero_interval_count': 0}]},
-        'cross_channel_alignment': {'status': 'missing_input', 'reason': 'Invalid timeline'}}
-    result = to_result('Check_Timestamp', [record(emit('Check_Timestamp', raw, {}))])
-    assert result.items[0].level == ('REVIEW' if backward else FAILED)
-    assert decide([result]) != 'keep'
 
 
 def test_duplicate_separators_removed_without_changing_numeric_evidence():

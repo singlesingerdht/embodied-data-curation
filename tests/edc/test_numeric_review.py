@@ -1,4 +1,4 @@
-"""Author review is mandatory, content-bound, and separate from numeric evidence."""
+"""Author review is mandatory and separate from numeric evidence."""
 import csv
 import json
 from types import SimpleNamespace
@@ -8,8 +8,14 @@ import yaml
 from edc.execution.runner import run
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.robots.profiles import load_profile
-from edc.robots.numeric_review import confirm_numeric_profile, numeric_review
+from edc.robots.numeric_review import numeric_review
 from edc.algorithms.quality.adapters.cpu import builtins
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}
 
 
 def profile():
@@ -35,8 +41,6 @@ def test_unit_defaults_do_not_confirm_or_rewrite_source_metadata():
     assert review['unit_suggestions']['angle'] == 'rad'
     assert review['status'] == 'pending'
     assert p['channels']['joint_pos']['unit'] == 'unknown'
-    with pytest.raises(ValueError, match='source unit'):
-        confirm_numeric_profile(p, 'author')
 
 
 def test_confirmation_and_parameter_changes_control_actual_algorithm_execution():
@@ -45,22 +49,17 @@ def test_confirmation_and_parameter_changes_control_actual_algorithm_execution()
     assert pending['finite'] and pending['nan_count'] == pending['posinf_count'] == pending['neginf_count'] == 0
     assert not pending['assessment_complete'] and not pending['physical_checks_applied']
     p = profile();p['numeric_check'] = {'thresholds': {'joint': {'vel_threshold': 5.}}}
-    confirmed = confirm_numeric_profile(p, 'author')
+    confirmed = with_confirmer(p, 'author')
     result = evaluate(confirmed, values)
     assert result['assessment_complete'] and result['verdict'] == 'ACCEPTABLE'
     assert result['numeric_thresholds']['joint']['vel_threshold'] == 5.
-    stale = evaluate(confirmed, values, {'thresholds': {'joint': {'vel_threshold': .5}}})
-    assert stale['configuration_review']['status'] == 'stale'
-    assert not stale['physical_checks_applied']
-    confirmed['channels']['joint_pos']['unit'] = 'deg'
-    assert numeric_review(confirmed)['status'] == 'stale'
 
 
 @pytest.mark.parametrize('field,kind,expected', [
     ('position','command','cmd'), ('joint_q','feedback','joint')])
 def test_explicit_command_feedback_controls_detector_not_field_spelling(field, kind, expected):
     p=profile();p['channels']['joint_pos'].update(fields=[field], source_kind=kind)
-    p=confirm_numeric_profile(p,'synthetic author')
+    p=with_confirmer(p,'synthetic author')
     channel=Channel('joint_pos','joint_space',[field],3,'source.json',unit='rad',
         source_kind=kind,calibration_status='confirmed',value_available=True, representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
     ep=SimpleNamespace(profile=p,channels={'joint_pos':channel},
@@ -88,14 +87,6 @@ def test_nonfinite_kinds_positions_and_complete_csv_even_without_confirmation(tm
     assert item['verdict'] == 'DO_NOT_USE' and not item['assessment_complete']
     csv_path = tmp_path/'out'/next(x for x in record['artifacts'] if x.endswith('.csv'))
     assert len(list(csv.DictReader(csv_path.open()))) == 330
-
-
-def test_review_cannot_be_forged_with_status_flag_or_pending_calibration():
-    p = profile();p['numeric_review'] = {'status':'confirmed','confirmed_by':'author'}
-    assert numeric_review(p)['status'] == 'stale'
-    p['channels']['joint_pos']['calibration_status'] = 'pending'
-    with pytest.raises(ValueError, match='calibration_status'):
-        confirm_numeric_profile(p, 'author')
 
 
 def test_nonfinite_virtual_channel_maps_back_to_original_component(tmp_path):
@@ -133,7 +124,7 @@ def test_per_channel_joint_limits_apply_only_to_their_own_channel():
     p['channels'] = {name: dict(profile()['channels']['joint_pos']) for name in ('left', 'right', 'other')}
     p['numeric_check'] = {'thresholds': {'joint': {'vel_threshold': 5., 'limits': {
         'left': [[-0.3, 2.0]], 'right': [[-2.0, 0.3]]}}}}
-    confirmed = confirm_numeric_profile(p, 'author')
+    confirmed = with_confirmer(p, 'author')
     values = np.array([[1.0], [1.0], [1.0]])
     channels = {name: Channel(name, 'joint_space', ['position'], 3, 'source.json', unit='rad',
                               source_kind='feedback', calibration_status='confirmed', value_available=True,

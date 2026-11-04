@@ -16,7 +16,7 @@ LEVEL = {'EXCLUDE': ('排除', 'bad', '算法认为这一项的数据不能用')
          'not_applicable': ('不适用', 'na', '这条数据没有这项可查（例如没有原始采集时间、yaml 没写复位位置、数据太短），见原因')}
 DECISION = {'exclude': ('含建议排除项', 'bad', '至少一项算法判为“排除”'),
             'salvage': ('可救', 'fix', '没有排除项，但有“可救”的问题：修好后可用'),
-            'unassessed': ('未评估完', 'info', '所选检查尚未形成完整结论，原因见逐条详情'),
+            'unassessed': ('未评估完', 'info', '没有排除和可救项，但有算法没跑完，框架不下结论'),
             'review': ('建议复核', 'warn', '没有排除项，但有需要人看的项'),
             'keep': ('建议保留', 'ok', '全部通过（“不适用”的项不影响）'),
             'failed': ('运行失败', 'bad', 'edc run 没有正常结束，见该条详情里的日志')}
@@ -63,8 +63,6 @@ def problems(result):
 
 
 def chip(verdict):
-    if verdict == 'failed':
-        return ''  # Processing status is not another quality verdict in the HTML.
     word, tone, meaning = LEVEL.get(verdict, (str(verdict), 'na', ''))
     return f'<span class="chip {tone}" title="{esc(meaning)}">{esc(word)}</span>'
 
@@ -78,11 +76,6 @@ def short_note(result):
         parts.append(f'{counts["failed"]}项原因见详情')
         return '，'.join(parts)
     return note
-
-
-def displayed_decision(bag):
-    """Keep processing failures in the existing run-error presentation."""
-    return 'failed' if bag['decision'] == 'unassessed' else bag['decision']
 
 
 def readable_log(bag):
@@ -103,20 +96,19 @@ def readable_log(bag):
 
 def page(bags, info, *, algorithm_ids=None, title='批量质检报告'):
     rank = list(DECISION)
-    bags = sorted(bags, key=lambda b: (rank.index(displayed_decision(b)) if displayed_decision(b) in rank else 9, b['name']))
-    decisions = Counter(displayed_decision(b) for b in bags)
+    bags = sorted(bags, key=lambda b: (rank.index(b['decision']) if b['decision'] in rank else 9, b['name']))
+    decisions = Counter(b['decision'] for b in bags)
     cards = ''.join(f'<div class="card {DECISION[d][1]}"><strong>{decisions[d]}</strong>{DECISION[d][0]}'
                     f'<small>{DECISION[d][2]}</small></div>' for d in DECISION if decisions[d])
     levels = {c['level'] for b in bags for c in b['algos'].values()}
     legend = ''.join(f'<li>{chip(v)} {esc(LEVEL[v][2])}</li>'
-                     for v in LEVEL if v != 'failed' and (v in ('PASS', 'REVIEW', 'SALVAGE', 'EXCLUDE') or v in levels))
+                     for v in LEVEL if (v in ('PASS', 'REVIEW', 'SALVAGE', 'EXCLUDE') or v in levels))
     algos = (list(algorithm_ids) if algorithm_ids is not None else
              list(ALGOS) + sorted({a for b in bags for a in b['algos']} - set(ALGOS)))
     head = ''.join(f'<th>{esc(NAMES.get(a, a))}</th>' for a in algos)
     rows, details, issues = [], [], {a: [] for a in algos}
     for i, b in enumerate(bags):
-        decision = displayed_decision(b)
-        word, tone, _ = DECISION.get(decision, (decision, 'na', ''))
+        word, tone, _ = DECISION.get(b['decision'], (b['decision'], 'na', ''))
         name = f'<a href="#bag{i}">{esc(b["name"])}</a> <span class="chip {tone}">{esc(word)}</span>'
         tds, lines = [], []
         for algo in algos:

@@ -4,13 +4,12 @@
 # clamp 在 608~1103，单位未知；action 和 state 完全相同；画面里能看到夹爪两指 → 手腕相机。
 robot:
   name: pepsi_sort
-  model: 单臂夹爪（只有末端位姿）
   confirmed_by: renxiaoshu
+  signature: d3fa8ed257750e73
 
 data:
   # 不写 time：用 LeRobot 标准的 timestamp（按帧号算，不是采集时间）；time_note 会显示在时间类检查“不适用”的原因里
   time_note: LeRobot 的 timestamp 按帧号生成；另存的 source_timestamp 是 float32，Unix 秒精度只剩约 128 秒，不能当采集时间
-  min_duration_s: 3.0
 
 arms:
   main:

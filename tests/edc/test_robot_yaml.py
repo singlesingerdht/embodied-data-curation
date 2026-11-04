@@ -37,8 +37,8 @@ def test_single_arm_compiles_to_standard_channels():
     assert profile['channels']['pose/arm/main/feedback']['unit'] == 'm'
     assert profile['camera_requirements'] == {'wrist': ['rgb']}
     assert profile['channels']['observation.images.wrist']['logical_name'] == 'rgb/wrist/main'
-    assert profile['channels']['*']['fields'] == []          # Data not in the yaml is not checked.
-    assert profile['numeric_review']['status'] == 'confirmed'
+    assert profile['declared_only'] and '*' not in profile['channels']   # Data not in the yaml is not checked.
+    assert profile['numeric_review']['confirmed_by']
     assert 'observation.state.value' in params['Numeric_Check']['finiteness_only']
     assert params['Numeric_Check']['joint_limits_pending']     # No URDF: limits not checked, said so.
     assert names['joint/arm/main/feedback'] == '关节' and profile['labels'] is names
@@ -57,10 +57,11 @@ def test_yaml_mistakes_are_explained():
     bad['arms']['main']['typo'] = 1
     with pytest.raises(CardError, match='typo'):
         compile_card(bad)
-    bad = card()
-    bad['arms']['main']['joint_velocity'] = {'source': 'v', 'index': '0-5', 'unit': 'rad/s'}
-    with pytest.raises(CardError, match='上限'):
-        compile_card(bad)
+    ok = card()   # 没有 URDF：速度不查超速，原始数据只查 NaN/无穷大
+    ok['arms']['main']['joint_velocity'] = {'source': 'v', 'index': '0-5', 'unit': 'rad/s'}
+    profile, params, _ = compile_card(ok)
+    assert 'velocity' not in profile['channels']['joint/arm/main/feedback']['fields']
+    assert 'v.value' in params['Numeric_Check']['finiteness_only']
 
 
 def test_x1pro_yaml_reads_urdf_limits_and_velocity():
@@ -71,7 +72,18 @@ def test_x1pro_yaml_reads_urdf_limits_and_velocity():
     assert speeds == {f'joint/arm/{side}/feedback': [4.188] * 3 + [3.77] * 3 for side in ('left', 'right')}
     velocity = profile['channels']['joint/arm/left/feedback']['select']['fields']['velocity']
     assert velocity == {'channel': 'follow_left_joint_velocity', 'field': 'value', 'indices': list(range(6))}
-    assert profile['calibration']['Reset_Detection']['unit'] == 'm'
+    assert profile['calibration']['Reset_Detection']['tolerance'] == 0.023 and 'unchecked' not in profile   # home 用师兄标定的；URDF 齐全
+
+
+def test_checks_skip_and_unchecked_note():
+    data = card()  # 没写 urdf
+    data['checks'] = {'skip': ['Reset_Detection']}
+    profile, params, _ = compile_card(data)
+    assert params['Reset_Detection'] == {'skip': True}
+    assert profile['unchecked']['Numeric_Check'] == '未查：关节限位（没写 urdf）'
+    data['checks'] = {'skip': ['Reset']}
+    with pytest.raises(CardError, match='checks.skip'):
+        compile_card(data)
 
 
 def test_urdf_joint_count_must_match():

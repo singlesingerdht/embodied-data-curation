@@ -36,9 +36,8 @@ def test_internal_imports_do_not_mutate_search_path():
 
 
 def test_imu_only_numeric_checks_measured_inputs(tmp_path):
-    from edc.robots.numeric_review import confirm_numeric_profile
     ep = episode(tmp_path, [{'imu': {'lin_acc': [0., 0., 9.81]}} for _ in range(40)],
-        confirm_numeric_profile(profile({'imu': {'modality':'imu', 'fields':['lin_acc'],
+        with_confirmer(profile({'imu': {'modality':'imu', 'fields':['lin_acc'],
             'unit':'m/s^2', 'calibration_status':'confirmed', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}}), 'test fixture author'))
     with ep.opened():
         p = plugin('Numeric_Check')
@@ -178,13 +177,12 @@ def test_all_cpu_adapters_execute_without_gpu(tmp_path):
     pytest.importorskip('av');pytest.importorskip('scipy');pytest.importorskip('cv2');pytest.importorskip('xxhash')
     from edc.data.readers.video import encode_frames
     rows=[{'timestamp':i*.05,'joint_pos':[.01*np.sin(i/5),.02*np.sin(i/5)],'pose':[min(i,30)*.001,0,.2]} for i in range(60)]  # Moves, then holds (smoothness judges holds)
-    from edc.robots.numeric_review import confirm_numeric_profile
     mapping=profile({'joint_pos':{'modality':'joint_state','fields':['position'],'unit':'rad','time_source':'acquisition','clock':'robot',
                                 'calibration_status':'confirmed','source_kind':'feedback', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}},
         'pose':{'modality':'pose','fields':['position'],'unit':'m','side':'right','time_source':'acquisition','clock':'robot',
                 'calibration_status':'confirmed', 'representation': {'quantity': 'fixture_value', 'semantic_status': 'confirmed'}}},
         timestamp_unit='s', calibration={'Reset_Detection':{'reference':{'joint_pos':[0,0]},'unit':'rad','tolerance':.1}})
-    mapping=confirm_numeric_profile(mapping, 'synthetic fixture author')
+    mapping=with_confirmer(mapping, 'synthetic fixture author')
     ep=episode(tmp_path,rows,mapping)
     encode_frames(({'index':i,'playback_time':i*.05,'source_time':i*.05,'image':np.full((32,32,3),i,dtype=np.uint8)} for i in range(60)),ep.path/'head_rgb.mp4',fps=20)
     with ep.opened():
@@ -355,3 +353,9 @@ def test_mcap_unsupported_encoding_exposes_only_container_time(tmp_path, with_su
         assert not channel.image_available and not channel.value_available
         assert preflight(plugin('Video_Integrity'), ep)[0] == 'missing_input'
         assert preflight(plugin('Dedup_Check'), ep)[0] == 'runnable'
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}

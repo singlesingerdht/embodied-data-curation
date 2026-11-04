@@ -52,14 +52,8 @@ def explain(report, labels):
                     f"（{'末端' if metres else ''}偏离 {amount(e[f'{key}_error'])}{where(e, key)}），{GUESS[key]}"
                     for e in report.get('evidence', []) if e.get('channel')
                     for key, label in (('start', '开头'), ('end', '结尾'))
-                    if key in report.get('checked_ends', ('start', 'end'))
-                    and tolerance is not None and e.get(f'{key}_error') is not None and e[f'{key}_error'] > tolerance)
+                    if tolerance is not None and e.get(f'{key}_error') is not None and e[f'{key}_error'] > tolerance)
 
 
 def note(reports, items, labels, common):
-    segment = next((r for r in reports if r.get('split_segment')), None)
-    if segment:
-        cut = segment['split_segment']
-        return (f"切片（原始第 {cut.get('start_frame')}–{cut.get('end_frame')} 帧），"
-                + ('只查开头' if segment.get('checked_ends') else '不查复位'))
     return common

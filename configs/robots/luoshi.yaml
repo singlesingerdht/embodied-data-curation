@@ -6,12 +6,11 @@
 # 没有 URDF：关节限位不检查；速度没有上限来源，只查有没有坏数。
 robot:
   name: luoshi
-  model: 珞石/开阳双臂
   confirmed_by: renxiaoshu
+  signature: 824d3c98eb563161
 
 data:
   time: {source: source.timestamp.t, unit: ms}
-  min_duration_s: 3.0
 
 arms:
   left:

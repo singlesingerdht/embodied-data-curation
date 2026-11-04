@@ -57,7 +57,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
                      params={k: v for k, v in params.items() if k in selected})
 ```
 
-Card parameters belong under `checks.<algorithm_id>`. `--params /path/to/params.json` accepts `{algorithm_id: {parameter: value}}`, overriding corresponding parameters. Use `arms: [left]` and `channels` according to each method's schema; rerun recommendations with the same updated scope. [Arm configuration](DATA_AND_CONFIGURATION.md#robot)
+Card parameters belong only under `checks.<algorithm_id>`; no separate parameter file overrides them. After the yaml changes, `edc batch` asks for a new signature. Use `arms: [left]` and `channels` according to each method's schema; rerun recommendations with the same updated scope. [Arm configuration](DATA_AND_CONFIGURATION.md#robot)
 
 ## Nine built-in quality algorithms
 
@@ -76,7 +76,7 @@ The following describes current inputs and primary behavior; implementation link
 ### Numeric_Check
 
 - **Input:** Declared numeric fields; physical checks additionally need confirmed semantics, SI units, calibration, and thresholds.
-- **Parameters:** `freeze_min_duration_s` defaults to 5. Cards support `range`, URDF joint limits, and `max_joint_velocity`; `joint_stuck` needs joint and end-effector feedback from the same arm.
+- **Parameters:** `freeze_min_duration_s` defaults to 5. Cards support `range`; joint limits and speed bounds come only from the URDF, and without a URDF they are not checked and the report says so; `joint_stuck` needs joint and end-effector feedback from the same arm.
 - **Output/rules:** Per-field finiteness, limit, and freeze findings. Nonfinite/out-of-range values can exclude data; freezes require review. Stuck joints with moving end effectors can produce a salvage item and remedy.
 - **Limits:** Unconfigured physical checks are not passes. Integrated IMU checks belong here; unknown effort is not inferred to be torque, and commands are not feedback.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Numeric_Check/)
@@ -95,7 +95,7 @@ The following describes current inputs and primary behavior; implementation link
 ### Check_Timestamp
 
 - **Input:** Valid time values with known units; cross-channel pairing additionally requires comparable clocks and reference inputs.
-- **Parameters:** `shared_row_max_gap_s` defaults to three times the median row interval; `scoring` controls existing method scoring.
+- **Parameters:** `shared_row_max_gap_s` defaults to three times the median row interval; scoring is the same for every robot: the error floor is 1/3 of the fastest color camera's frame interval, and interval variation is penalized from 0.3 and scores 0 at 0.6.
 - **Output/rules:** Intervals, gaps, and available pairing metrics. Single/shared-row timeline checks do not establish cross-device synchronization.
 - **Limits:** Missing independent time, units, or clocks produces an explicitly limited recommendation.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Check_Timestamp/)
@@ -133,7 +133,7 @@ The three timing methods share optional `record_header_deviation_threshold_ms` e
 ### Reset_Detection
 
 - **Input:** Selected feedback positions, matching Home references, and positive tolerances.
-- **Parameters:** Card `home` uses joint radians or end-effector metres; both arms use the same card reference type and tolerance. Complete profiles also support explicit per-channel calibration. `split_segments` skips reset based on supported segment markers.
+- **Parameters:** Card `home` uses joint radians or end-effector metres; both arms use the same card reference type and tolerance. Complete profiles also support explicit per-channel calibration. Fill `home` only with a pose the collection team has confirmed; otherwise, or for clips cut from longer recordings, use `checks.skip: [Reset_Detection]`.
 - **Output/rules:** Start/end deviations from references and reset decisions; out-of-tolerance conditions require review.
 - **Limits:** Do not transfer Home across incompatible joint counts, units, zero positions, or coordinate frames. Tasks with different valid initial/final states need appropriate scope.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Reset_Detection/)

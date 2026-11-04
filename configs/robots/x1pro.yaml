@@ -2,15 +2,14 @@
 # 依据：/mnt/public/datasets/x1pro 随机 200 条实测（input_example/tools/x1pro_survey.py、x1pro_values.py、x1pro_stats.py）
 robot:
   name: x1pro
-  model: Quanta X1 Pro（robot-bridge 轨迹 JSON + MP4）
   confirmed_by: renxiaoshu
+  signature: de87a64d08a5bc1b
 
 data:
   # JSON 每行的 timestamp 是 Unix 秒（首行 = 目录名里的录制时刻），相邻行中位间隔 32 ms
   time: {source: timestamp, unit: s}
   # 3 路 MP4 每帧对应 JSON 一行（200 条里 599/600 路帧数 = 行数）
   video_frame_time: rows
-  min_duration_s: 3.0
 
 arms:
   left:
@@ -31,8 +30,8 @@ arms:
       joints: [left_arm_joint1, left_arm_joint2, left_arm_joint3, left_arm_joint4, left_arm_joint5, left_arm_joint6]   # 数据 6 列依次对应的 URDF 关节
       base_link: left_arm_base_link
       tip_link: left_arm_link6
-    # 复位：开头和结尾末端离 Home 不超过 5 cm（200 条里 183 条两端都在 5 cm 内）
-    home: {eef_position: [-0.007010698318481445, 0.0028152498416602617, 0.002762031741440296], tolerance: 0.05}
+    # 师兄从这台机器标定的末端初始位置（米）；tolerance 取他各轴第二档容差的最大值（右臂 Y 0.0224）
+    home: {eef_position: [-0.00701, 0.00282, 0.00276], tolerance: 0.023}
   right:
     joints: {source: follow_right_joint_position, index: 0-5, unit: rad}
     joint_velocity: {source: follow_right_joint_velocity, index: 0-5, unit: rad/s}
@@ -46,7 +45,7 @@ arms:
       joints: [right_arm_joint1, right_arm_joint2, right_arm_joint3, right_arm_joint4, right_arm_joint5, right_arm_joint6]   # 数据 6 列依次对应的 URDF 关节
       base_link: right_arm_base_link
       tip_link: right_arm_link6
-    home: {eef_position: [-0.007658312562853098, 0.01540503278374672, -0.010580490343272686], tolerance: 0.05}
+    home: {eef_position: [-0.00766, 0.01541, -0.01058], tolerance: 0.023}
 
 cameras:
   # 抽帧看过：faceImg 是头部俯视整张桌子，leftImg/rightImg 是左/右夹爪上的相机
@@ -73,11 +72,6 @@ other:
 # 各算法参数，只写和默认值不同的（含义见 README“算法参数”一节）
 checks:
   Numeric_Check:
-    freeze_min_duration_s: 5
     joint_stuck: {min_move_m: 0.02, min_moving_s: 1.0, moving_speed_m_s: 0.02, verdict: DO_NOT_USE}
   Check_Timestamp:
-    count_each_source_once: true
-    scoring: {absolute_error_floor_ms: 11.1, dt_cv_no_penalty: 0.3, dt_cv_zero: 0.6}
     shared_row_max_gap_s: 0.1
-  Reset_Detection:
-    split_segments: true

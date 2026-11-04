@@ -11,7 +11,6 @@ Developer side: edc algorithms                               registered algorith
 import argparse
 import json
 import sys
-from pathlib import Path
 
 # Default shortest episode (user decision 2026-10-30); the robot yaml's data.min_duration_s overrides it.
 CLI_MIN_DURATION_S = 3.0
@@ -47,7 +46,6 @@ def main(argv=None):
     group = p.add_mutually_exclusive_group(required=True)
     group.add_argument('--robot', help='机器人 yaml 的路径，如 configs/robots/x1pro.yaml')
     group.add_argument('--profile', help='Robot yaml path')
-    p.add_argument('--params', help='JSON {algorithm: {parameter: value}}; overrides the yaml checks section')
     p.add_argument('--jobs', type=int, help='Episodes run at the same time (default: 16)')
     p.add_argument('--output', help='Report file (default: <robot>_report_<time>.html)')
     p.add_argument('--keep', help='Keep the full run output of every episode under this new folder')
@@ -58,7 +56,6 @@ def main(argv=None):
     group = p.add_mutually_exclusive_group()
     group.add_argument('--profile')
     group.add_argument('--robot')
-    p.add_argument('--params', help='JSON {algorithm: {parameter: value}}')
     p.add_argument('--output', required=True)
     p.add_argument('--algorithm', action='append', help='Only these algorithms')
     p.add_argument('--episode', type=int, help='Only the k-th episode (0-based) found in the input')
@@ -99,7 +96,7 @@ def main(argv=None):
             return 0 if result and all(r.get('verdict') != 'mismatch' for r in result.values()) else 1
         elif args.command == 'batch':
             from edc.execution.batch import run_batch
-            result = run_batch(args.inputs, profile=args.profile, robot=args.robot, params=args.params,
+            result = run_batch(args.inputs, profile=args.profile, robot=args.robot,
                                jobs=args.jobs, output=args.output, keep=args.keep, tmp=args.tmp)
             return 1 if result['failed'] else 0
         elif args.command == 'algorithms':
@@ -137,8 +134,6 @@ def run_one(args):
     from edc.algorithms.quality.adapters import cpu
     profile = robot_path(args.robot) if args.robot else args.profile
     params = robot_settings(profile)[0] if profile else {}
-    for algo, values in (json.loads(Path(args.params).read_text(encoding='utf-8')) if args.params else {}).items():
-        params.setdefault(algo, {}).update(values)
     if args.algorithm:
         params = {k: v for k, v in params.items() if k in args.algorithm}
     with open_dataset(args.input, profile=profile, backend=args.backend) as dataset:
