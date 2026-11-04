@@ -1,6 +1,6 @@
 # 参与开发
 
-本仓库是具身数据整理框架的私有协作基线。公共入口、CPU 方法与适配以此库为维护源；研究仓库保留 GPU 方法、真实数据环境和历史实验。请不要在两边长期手工复制同一核心。
+欢迎贡献数据读取器、算法、配置示例和文档。请先明确支持范围与输入条件，再通过独立验证提交修改。
 
 ## 开发环境
 
@@ -8,7 +8,6 @@
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[formats,test]'
-pip install -e examples/plugins/algorithm
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q
 python -m build
 ```
@@ -26,14 +25,14 @@ python -m build
 - 保留原评分、事件、分布或估值，不生成跨算法总分。处理失败与数据不合格独立；不完整评估不得放行。
 - 编辑／增强生成新副本和明确来源映射；变换校验后才交接，下游仍需质量复检。
 - 对契约、边界、插件、失败隔离或判断语义的变更添加有意义测试；低风险文案不必硬加测试。
-- 本次迁移不改原 CPU 方法、评分公式和阈值。若将来要改变方法，应单独提 PR、解释方法版本与历史结果不可直接比较的边界。
+- 修改算法方法、评分或阈值时，应单独提 PR，解释方法版本及结果比较边界。
 
 ## 新插件
 
-参考 [插件模板](examples/plugins/algorithm)、[读取器模板](examples/plugins/reader)、[接入教程](docs/framework/ONBOARDING.md)。先通过独立安装、可用／缺输入／缺依赖／失败隔离测试，再登记支持范围。
+参考 [插件模板](examples/plugins/algorithm)（新算法继承 `edc.algorithms.base.QualityAlgorithm`，见 `joint_jump.py`）、[读取器模板](examples/plugins/reader)、[输出基类与完整示例](docs/DEVELOPMENT.zh-CN.md)。先通过独立安装、可用／缺输入／缺依赖／失败隔离测试，再登记支持范围。
 
 质量、价值、编辑、增强类别独立；dataset 粒度需 `preflight_dataset(dataset, params)`，对当前子集调用一次。真实价值方法必须保留原输出，不以盘点数量代替实验收益。
 
 ## 提交前
 
-运行相关测试、打包及源码外安装检查，更新 [STATUS](docs/framework/STATUS.md)。核对新依赖、代码来源、数据及模型许可；未知许可保持待确认。完整规则见根目录 [AGENTS.md](AGENTS.md)。
+运行相关测试、打包及源码外安装检查。核对新依赖、代码来源、数据及模型许可；未知许可保持待确认。完整规则见根目录 [AGENTS.md](AGENTS.md)。

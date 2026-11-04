@@ -3,8 +3,13 @@ import json
 from types import SimpleNamespace
 import numpy as np
 from edc.data.ir.dataset import Channel
-from edc.robots.numeric_review import confirm_numeric_profile
 from edc.algorithms.quality.adapters.cpu import builtins
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}
 
 
 def evaluate(values, modality='joint_space', field='position', kind='feedback', confirmed=True, thresholds=None):
@@ -15,7 +20,7 @@ def evaluate(values, modality='joint_space', field='position', kind='feedback', 
     if thresholds:
         p['numeric_check'] = {'thresholds': thresholds}
     if confirmed:
-        p = confirm_numeric_profile(p, 'fixture owner')
+        p = with_confirmer(p, 'fixture owner')
     c = Channel('data', modality, [field], len(values), 'fixture.json', unit=unit,
         source_kind=kind, calibration_status='confirmed', value_available=True, representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
     ep = SimpleNamespace(profile=p, channels={'data': c}, read_signal=lambda *args: values)
@@ -74,13 +79,3 @@ def test_imu_range_and_bias_are_separate():
     assert checks['gyro_bias']['status'] == 'insufficient_input'
 
 
-def test_report_shows_subchecks_and_does_not_invent_historical_coverage(tmp_path):
-    from edc.reporting.html import numeric_panel
-    result, _ = evaluate(np.zeros((3,1)))
-    record = {'algorithm': {'id': 'Numeric_Check'}, 'status': 'completed', 'result': {'reports': [result]}}
-    page = numeric_panel([record], tmp_path)
-    assert '关节位置限位' in page and '未配置' in page and '已检查' in page
-    assert '位置差' in page and '不代表真实速度' in page
-    old = json.loads(json.dumps(record))
-    del old['result']['reports'][0]['check_coverage']
-    assert '历史记录未保存分项覆盖' in numeric_panel([old], tmp_path)

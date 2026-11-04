@@ -7,8 +7,11 @@ from .references import digest
 
 
 def subject_id(record, report_index):
-    return digest({'algorithm': record['algorithm'], 'object': record['object'],
-                   'report_index': report_index, 'report': record['result']['reports'][report_index]})
+    subject = {'algorithm': record['algorithm'], 'object': record['object'],
+               'report_index': report_index, 'report': record['result']['reports'][report_index]}
+    if record.get('instance_id') is not None:
+        subject['instance_id'] = record['instance_id']
+    return digest(subject)
 
 
 def read_reviews(path):
@@ -28,7 +31,7 @@ def read_reviews(path):
 
 
 def review(output, *, run_id, algorithm, object_id, report_index=0,
-           action, reviewer, reason, evidence):
+           action, reviewer, reason, evidence, instance_id=None):
     output = Path(output).resolve()
     if action not in {'confirmed', 'dismissed'} or any(not isinstance(v, str) or not v.strip()
             for v in (reviewer, reason, evidence)):
@@ -44,8 +47,11 @@ def review(output, *, run_id, algorithm, object_id, report_index=0,
             raise ValueError('Record reference escapes output')
         records.extend(json.loads(line) for line in path.read_text().splitlines() if line.strip())
     matches = [r for r in records if r['algorithm']['id'] == algorithm and r['object']['id'] == object_id]
+    if instance_id is not None:
+        matches = [r for r in matches if r.get('instance_id') == instance_id]
     if len(matches) != 1 or matches[0]['status'] != 'completed':
-        raise ValueError('Only a completed, uniquely identified report can be reviewed')
+        raise ValueError('Only a completed, uniquely identified report can be reviewed; '
+                         'specify instance_id when an algorithm has multiple arm instances')
     record = matches[0]
     reports = record['result']['reports']
     if type(report_index) is not int or not 0 <= report_index < len(reports):
@@ -59,6 +65,8 @@ def review(output, *, run_id, algorithm, object_id, report_index=0,
            'object_id': object_id, 'report_index': report_index, 'action': action,
            'reviewer': reviewer, 'reason': reason, 'evidence': evidence,
            'timestamp': datetime.now(timezone.utc).isoformat()}
+    if record.get('instance_id') is not None:
+        row['instance_id'] = record['instance_id']
     # Use the same output lock as execution to avoid interleaved concurrent writes.
     lock = output / '.edc.lock'
     with lock.open('x'):

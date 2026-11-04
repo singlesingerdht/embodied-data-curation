@@ -150,38 +150,3 @@ def test_reader_storage_declarations_do_not_materialize(tmp_path):
     assert [official.image_storage(k) for k in ('v', 'i', 'd')] == ['video', 'frames', 'unknown']
 
 
-def test_public_hdf5_and_official_lerobot_image_paths_without_timestamps(tmp_path):
-    import h5py
-    from edc import open_dataset, run, convert_to_lerobot, recommend
-    import json
-    source = tmp_path/'images.h5'
-    with h5py.File(source, 'w') as f:
-        f['rgb'] = np.random.default_rng(8).integers(0, 256, (3, 24, 32, 3), dtype=np.uint8)
-        f['raw_time'] = np.array([100, 101, 102], dtype=np.int64)
-    original = source.read_bytes()
-    profile = {'schema_version': 1, 'id': 'image_only', 'version': '1',
-               'timestamp_column': 'raw_time', 'timestamp_unit': 'unknown',
-               'channels': {'rgb': {'modality': 'rgb', 'logical_name': 'rgb/chest',
-                   'representation': {'camera_role': 'chest', 'camera_role_status': 'confirmed'}}}}
-    params = {'Video_Integrity': {'channels': ['rgb/chest'], 'sample_step': 1, 'downscale': 4}}
-    def execute(path, profile, name):
-        with open_dataset(path, profile=profile) as ds:
-            ep = next(ds.iter_episodes()); ep.open()
-            assert ep.image_storage('rgb') == 'frames'
-            assert ep.channels['rgb'].timestamps is None
-            row = next(r for r in recommend(ds, params=params)['episodes'][0]['algorithms']
-                       if r['algorithm']['id'] == 'Video_Integrity')
-            assert row['status'] == 'runnable' and row['availability'] == 'partial', row
-            run(ds, output=tmp_path/name, algorithm_ids=['Video_Integrity'], params=params)
-        record = json.loads(next((tmp_path/name/'_runs').glob('*/Video_Integrity/records.jsonl')).read_text())
-        assert record['status'] == 'completed'
-        report = record['result']['reports'][0]
-        assert report['input_mode'] == 'frames' and report['frame_quality']['real_frames'] == 3
-        assert not list((tmp_path/name).rglob('*.mp4'))
-        return report['frame_quality']
-    raw = execute(source, profile, 'hdf5-output')
-    pytest.importorskip('lerobot')
-    converted = tmp_path/'converted'
-    convert_to_lerobot(source, profile=profile, output=converted, fps=30)
-    assert execute(converted, None, 'official-output') == raw
-    assert source.read_bytes() == original

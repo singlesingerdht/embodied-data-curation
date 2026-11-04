@@ -47,42 +47,24 @@ def resample(values, timestamps, target_timestamps, *, method, max_gap=None):
         {'source_timestamps': source.tolist(), 'rows': rows})
 
 
-def align_signal(episode, channel, field, reference, *, method, max_gap=None, time_source=None):
+def align_signal(episode, channel, field, reference, *, method, max_gap=None):
     from .core import RobotTransforms
     from .episode import provenance
     episode.open()
-    from edc.algorithms.channel_names import resolve_channel
-    channel, reference = resolve_channel(episode, channel), resolve_channel(episode, reference)
     source, target = episode.channels[channel], episode.channels[reference]
-    source_times, target_times = source.timestamps, target.timestamps
-    source_clock, target_clock = source.clock, target.clock
-    source_origin, target_origin = source.time_source, target.time_source
-    axes = None
-    if time_source is not None:
-        from edc.data.ir.time_axis import time_axis
-        a = time_axis(episode, channel, time_source=time_source)
-        b = time_axis(episode, reference, time_source=time_source)
-        source_times, target_times = a.output, b.output
-        source_clock, target_clock = a.params['clock'], b.params['clock']
-        source_origin = target_origin = time_source
-        axes = {'source': a.describe(), 'reference': b.describe()}
-    if source_times is None or target_times is None:
+    if source.timestamps is None or target.timestamps is None:
         raise ValueError('Alignment requires both channel timelines')
-    if source_origin != target_origin:
-        raise ValueError('Alignment requires the same time source for both channels')
-    if len(source_times) != source.count or len(target_times) != target.count:
+    if len(source.timestamps) != source.count or len(target.timestamps) != target.count:
         raise ValueError('Alignment timeline counts must match channels')
-    clock = RobotTransforms(episode.profile).clock(source_times, source_clock, target_clock,
-                                                  time_source=source_origin)
-    result = resample(episode.read_signal(channel, field), clock.output, target_times,
+    clock = RobotTransforms(episode.profile).clock(source.timestamps, source.clock, target.clock,
+                                                  time_source=source.time_source)
+    result = resample(episode.read_signal(channel, field), clock.output, target.timestamps,
                       method=method, max_gap=max_gap)
-    result.params.update(clock_transform=clock.params, clock=target_clock,
-                         source_time_source=source_origin, reference_time_source=target_origin,
+    result.params.update(clock_transform=clock.params, clock=target.clock,
+                         source_time_source=source.time_source, reference_time_source=target.time_source,
                          input_semantics=source.field_spec(field), proves_acquisition_sync=False)
-    if axes is not None:
-        result.params['time_axes'] = axes
     result.source_mapping.update(provenance(episode, channel, field),
                                  reference=provenance(episode, reference),
-                                 original_source_timestamps=list(source_times),
+                                 original_source_timestamps=list(source.timestamps),
                                  rows=result.source_mapping['rows'])
     return result

@@ -4,13 +4,15 @@ import inspect
 import json
 import operator
 import platform
+import sysconfig
 import uuid
 from dataclasses import asdict
 from datetime import datetime, timezone
 from importlib.metadata import distributions
 from pathlib import Path
 from edc.execution.runner import run
-from edc.data.ir.dataset import Dataset, open_dataset
+from edc.data.ir.dataset import Dataset
+from edc.data.ir.canonical import open_dataset
 from edc.algorithms.registry import algorithms
 from edc.reporting.results import write_json
 from .references import DatasetView, dataset_reference, open_dataset_reference, digest, file_digest
@@ -32,6 +34,7 @@ def read_records(output, entry):
 
 def execution_identity(registry):
     root = Path(__file__).resolve().parents[1]
+    stdlib = Path(sysconfig.get_path('stdlib')).resolve()
     code = []
     code.extend((str(p.relative_to(root)), file_digest(p)) for p in sorted(root.rglob('*.py')))
     plugin_files = {}
@@ -42,14 +45,27 @@ def execution_identity(registry):
                 path = Path(dist.locate_file(item))
                 if path.suffix == '.py' and path.is_file():
                     plugin_files[str(path.resolve())] = file_digest(path)
+    scanned = set()
     for plugin in registry.plugins.values():
         try:
-            path = inspect.getsourcefile(type(plugin))
-            if path:
-                path = Path(path)
+            # Callable-backed plugins (e.g. SimpleNamespace) also need the actual
+            # implementation fingerprint, not just the stdlib container type.
+            sources = [inspect.getsourcefile(type(plugin))]
+            sources.extend(inspect.getsourcefile(method) for name in ('run', 'preflight', 'preflight_dataset')
+                           if inspect.isfunction(method := getattr(plugin, name, None)))
+            for source in filter(None, sources):
+                path = Path(source).resolve()
+                if path.is_relative_to(root):
+                    continue  # Framework source is already fingerprinted above.
                 # Installed flat modules share site-packages with unrelated
-                # libraries. Their helpers were collected by distribution above.
-                candidates = [path] if {'site-packages', 'dist-packages'} & set(path.parts) else path.parent.rglob('*.py')
+                # libraries; stdlib types share a directory with the whole Python
+                # environment. Never recurse into either as a plugin package.
+                flat = path.is_relative_to(stdlib) or bool({'site-packages', 'dist-packages'} & set(path.parts))
+                scope = path if flat else path.parent
+                if scope in scanned:
+                    continue
+                scanned.add(scope)
+                candidates = [path] if flat else path.parent.rglob('*.py')
                 for p in candidates:
                     if '__pycache__' not in p.parts:
                         plugin_files[str(p)] = file_digest(p)
@@ -96,12 +112,7 @@ def _select(stage, dataset, parent_records):
 def run_workflow(config, output='results', *, resume=False):
     cfg = validate_workflow(config)['config']
     output = Path(output).resolve()
-    if cfg.get('config_snapshot'):
-        from edc.configuration import open_config_dataset
-        source = open_config_dataset(cfg['config_snapshot'])
-    else:
-        source = open_dataset(**{'path': cfg['dataset']['path'],
-            **{k: v for k, v in cfg['dataset'].items() if k != 'path'}})
+    source = open_dataset(**cfg['dataset'])
     for ep in source.iter_episodes():
         if output == ep.path or ep.path.is_dir() and output.is_relative_to(ep.path):
             source.__exit__(None, None, None)
@@ -116,8 +127,7 @@ def run_workflow(config, output='results', *, resume=False):
     workflow_run = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:10]
     root = output / '_workflows' / workflow_run
     root.mkdir(parents=True)
-    if cfg.get('config_snapshot'):
-        write_json(root / 'resolved-config.json', cfg['config_snapshot'])
+    write_json(root / 'resolved-config.json', cfg)
     manifest = {'schema_version': 'edc_workflow_run_v1', 'workflow_id': cfg['id'],
                 'workflow_run_id': workflow_run, 'config': cfg, 'stages': []}
     previous = []
@@ -149,6 +159,12 @@ def run_workflow(config, output='results', *, resume=False):
                 row.update(status='blocked', reason='Upstream stage has no validated output')
                 write_json(root / 'workflow.json', manifest); continue
             try:
+                if not stage['algorithms']:
+                    row.update(status='skipped', reason='Optional stage has no configured method',
+                               selected_episodes=[], output_reference=parent['reference'])
+                    states[stage['id']] = parent
+                    write_json(root / 'workflow.json', manifest)
+                    continue
                 selected = _select(stage, parent['dataset'], parent['records'])
                 retained = []
                 awaiting_confirmation = []
@@ -190,6 +206,11 @@ def run_workflow(config, output='results', *, resume=False):
                     raise ValueError('Method subset includes episodes not released by the upstream stage')
                 pool = recommend(current, stage.get('params', {}), cfg.get('unit_policy', 'auto'),
                                  method_select=stage.get('method_select'))
+                for episode in pool['episodes']:
+                    episode['algorithms'] = [m for m in episode['algorithms']
+                        if m['algorithm']['id'] in stage['algorithms']]
+                pool['dataset_algorithms'] = [m for m in pool['dataset_algorithms']
+                    if m['algorithm']['id'] in stage['algorithms']]
                 if stage['kind'] == 'value':
                     row['method_subsets'] = {m['algorithm']['id']: m['eligible_episodes'] if m['status'] == 'runnable' else []
                         for m in pool['dataset_algorithms'] if m['algorithm']['id'] in stage['algorithms']}
@@ -230,7 +251,7 @@ def run_workflow(config, output='results', *, resume=False):
                     summary = run(current, output=output, algorithm_ids=stage['algorithms'],
                         params=stage.get('params', {}), unit_policy=cfg.get('unit_policy', 'auto'), upstream=upstream,
                         selection_policy=stage.get('selection_policy', 'explicit'),
-                        config_snapshot=cfg.get('config_snapshot'), method_select=stage.get('method_select'))
+                        config_snapshot=cfg, method_select=stage.get('method_select'))
                     catalog = json.loads(catalog_path.read_text())
                     entry = next(r for r in catalog['runs'] if r['run_id'] == summary['run_id'])
                 records = read_records(output, entry)
@@ -318,7 +339,7 @@ def run_workflow(config, output='results', *, resume=False):
             accepted = [e.id for e in state['dataset'].iter_episodes()
                         if state['quality'].get(e.id, {}).get('decision') == 'keep']
             final_stage = next(s for s in manifest['stages'] if s['id'] == ident)
-            if final_stage['kind'] == 'value':
+            if final_stage['kind'] == 'value' and final_stage['status'] != 'skipped':
                 accepted = [i for i in accepted if i in state.get('valued_ids', [])]
             manifest['outputs'].append({'stage': ident, 'data_reference': state['reference'],
                 'accepted_episodes': accepted, 'quality': state['quality'],
@@ -346,8 +367,6 @@ def run_workflow(config, output='results', *, resume=False):
             (output / '.edc.lock').unlink()
         from .report import render_workflow
         render_workflow(root, manifest, output)
-        from edc.reporting.results import report
-        report(output)
         return manifest
     except Exception as exc:
         manifest.update(status='processing_error', reason=f'{type(exc).__name__}: {exc}')
@@ -356,4 +375,4 @@ def run_workflow(config, output='results', *, resume=False):
     finally:
         for dataset in datasets:
             dataset.__exit__(None, None, None)
-        lock.unlink()
+        lock.unlink(missing_ok=True)

@@ -11,7 +11,6 @@ import yaml
 from edc import open_dataset, recommend, run
 from edc.data.ir.units import SIDataset, UnitInputError
 from edc.algorithms.registry import AlgorithmSpec, Registry
-from edc.robots.numeric_review import confirm_numeric_profile
 
 
 def fixture(tmp_path, unit=None, extra=None):
@@ -58,13 +57,12 @@ def test_blank_units_allowed_but_physics_blocked_and_partial_explicit(tmp_path, 
     assert record(tmp_path / 'out', 'Structure_Check')['status'] == 'completed'
 
 
-def test_si_length_joint_uses_length_detector_target(tmp_path):
+def test_si_length_joint_does_not_enter_angular_detector(tmp_path):
     path, p = fixture(tmp_path, 'm')
     with open_dataset(path, profile=p) as ds:
         field = next(x for x in entries(recommend(ds))['Numeric_Check']['fields'] if x['channel'] == 'joint_pos')
-        assert field['required_unit'] == 'm'
-        assert not field['physical_checks_available']  # author confirmation is still pending
-        assert not any('dimensions do not match' in r for r in field['reasons'])
+        assert not field['physical_checks_available'] and field['required_unit'] == 'rad'
+        assert any('dimensions do not match' in r for r in field['reasons'])
         run(ds, algorithm_ids=['Numeric_Check'], output=tmp_path / 'out')
     result = record(tmp_path / 'out', 'Numeric_Check')['result']['reports'][0]
     assert not result['physical_checks_applied'] and result['unit'] == 'm'
@@ -90,8 +88,7 @@ def test_explicit_head_tilt_and_extension_split_convert_independently(tmp_path, 
             assert ep.channels['head_extension'].field_spec('position')['source_kind'] == 'feedback'
         es = entries(recommend(ds))
         field = next(f for f in es['Numeric_Check']['fields'] if f['channel'] == 'head_extension')
-        assert field['required_unit'] == 'm'
-        assert not any('dimensions do not match' in r for r in field['reasons'])
+        assert any('dimensions do not match' in r for r in field['reasons'])
 
 
 def test_video_preflight_does_not_depend_on_unknown_numeric_units(tmp_path, monkeypatch):
@@ -113,8 +110,6 @@ def test_video_preflight_does_not_depend_on_unknown_numeric_units(tmp_path, monk
 def test_unknown_quantity_with_filled_unit_is_still_blocked(tmp_path):
     path, p = fixture(tmp_path, 'rad')
     p['channels']['joint_pos']['representation'] = {'quantity': 'unknown', 'semantic_status': 'pending_owner_confirmation'}
-    with pytest.raises(ValueError, match='physical quantity'):
-        confirm_numeric_profile(p, 'owner')
     with open_dataset(path, profile=p) as ds:
         with next(SIDataset(ds).iter_episodes()).opened() as ep:
             assert ep.unit_evidence()['fields'][0]['status'] == 'blocked'
@@ -131,7 +126,7 @@ def test_unrelated_unknown_hand_and_joint_do_not_block_selected_pose(tmp_path):
         'hand': {'modality': 'other', 'fields': ['recorded_values'], 'unit': None,
                  'body_part': 'hand', 'representation': {'quantity': 'unknown'}}})
     with open_dataset(path, profile=p) as ds:
-        assert entries(recommend(ds, params={'Action_Smoothness': {'expected_rate_hz': 20}}))['Action_Smoothness']['availability'] == 'available'
+        assert entries(recommend(ds, params={'Action_Smoothness': {'min_rate_hz': 5}}))['Action_Smoothness']['availability'] == 'available'
         run(ds, algorithm_ids=['Action_Smoothness'], output=tmp_path / 'out')
         left = entries(recommend(ds, params={'Action_Smoothness': {'side': 'left'}}))['Action_Smoothness']
         assert left['status'] == 'missing_input' and 'left_pose.position' in left['reason']
@@ -180,14 +175,6 @@ def test_broken_plugin_preflight_is_isolated_and_snapshot_is_preserved(tmp_path,
     before = snapshot.read_bytes()
     assert entries(json.loads(before))['fixture__broken']['availability'] == 'unavailable'
     assert entries(json.loads(before))['Structure_Check']['selected'] is True
-    from edc.reporting.results import report
-    monkeypatch.setattr('edc.algorithms.registry.algorithms', lambda: pytest.fail('historical report must not discover plugins'))
-    page = report(tmp_path / 'out').read_text()
-    assert 'content="edc_batch_report_v1"' in page and '结构完整性' in page
-    assert '推荐算法池' not in page
-    assert 'bad plugin hook' in entries(json.loads(before))['fixture__broken']['reason']
-    run_ref = snapshot.parent.relative_to(tmp_path / 'out').as_posix()
-    assert f'href="{run_ref}/"' in page
     assert snapshot.read_bytes() == before
 
 
@@ -202,7 +189,7 @@ def test_plugin_unit_contract_requires_explicit_si_dimension():
 
 def test_luoshi_profile_does_not_invent_gripper_or_head_units():
     root = Path(__file__).resolve().parents[2]
-    p = yaml.safe_load((root / 'examples/robots/luoshi_intake.yaml').read_text())
+    p = yaml.safe_load((root / 'tests/edc/fixtures/luoshi_intake.yaml').read_text())
     assert not any('gripper' in name for name in p['channels'])
     for name in ('action/effector/position', 'observation/state/effector/position',
                  'action/head/position', 'observation/state/head/position'):
@@ -213,14 +200,3 @@ def test_luoshi_profile_does_not_invent_gripper_or_head_units():
     assert p['channels']['action/effector/position']['representation']['device_type'] == 'dexterous_hand'
 
 
-def test_cli_recommend_pool_is_included_in_inspect(tmp_path, capsys):
-    from edc.execution.cli import main
-    path, p = fixture(tmp_path)
-    config = tmp_path / 'robot.yaml'
-    config.write_text(yaml.safe_dump(p))
-    assert main(['recommend', str(path), '--profile', str(config)]) == 0
-    pool = json.loads(capsys.readouterr().out)
-    assert 'Numeric_Check' in pool['episodes'][0]['partial_algorithms']
-    assert main(['inspect', str(path), '--profile', str(config)]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result['episodes'][0]['algorithm_pool'] == pool['episodes'][0]

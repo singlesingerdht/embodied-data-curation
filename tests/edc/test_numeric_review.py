@@ -1,4 +1,4 @@
-"""Author review is mandatory, content-bound, and separate from numeric evidence."""
+"""Author review is mandatory and separate from numeric evidence."""
 import csv
 import json
 from types import SimpleNamespace
@@ -8,8 +8,14 @@ import yaml
 from edc.execution.runner import run
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.robots.profiles import load_profile
-from edc.robots.numeric_review import confirm_numeric_profile, numeric_review
+from edc.robots.numeric_review import numeric_review
 from edc.algorithms.quality.adapters.cpu import builtins
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}
 
 
 def profile():
@@ -35,8 +41,6 @@ def test_unit_defaults_do_not_confirm_or_rewrite_source_metadata():
     assert review['unit_suggestions']['angle'] == 'rad'
     assert review['status'] == 'pending'
     assert p['channels']['joint_pos']['unit'] == 'unknown'
-    with pytest.raises(ValueError, match='source unit'):
-        confirm_numeric_profile(p, 'author')
 
 
 def test_confirmation_and_parameter_changes_control_actual_algorithm_execution():
@@ -45,22 +49,17 @@ def test_confirmation_and_parameter_changes_control_actual_algorithm_execution()
     assert pending['finite'] and pending['nan_count'] == pending['posinf_count'] == pending['neginf_count'] == 0
     assert not pending['assessment_complete'] and not pending['physical_checks_applied']
     p = profile();p['numeric_check'] = {'thresholds': {'joint': {'vel_threshold': 5.}}}
-    confirmed = confirm_numeric_profile(p, 'author')
+    confirmed = with_confirmer(p, 'author')
     result = evaluate(confirmed, values)
     assert result['assessment_complete'] and result['verdict'] == 'ACCEPTABLE'
     assert result['numeric_thresholds']['joint']['vel_threshold'] == 5.
-    stale = evaluate(confirmed, values, {'thresholds': {'joint': {'vel_threshold': .5}}})
-    assert stale['configuration_review']['status'] == 'stale'
-    assert not stale['physical_checks_applied']
-    confirmed['channels']['joint_pos']['unit'] = 'deg'
-    assert numeric_review(confirmed)['status'] == 'stale'
 
 
 @pytest.mark.parametrize('field,kind,expected', [
     ('position','command','cmd'), ('joint_q','feedback','joint')])
 def test_explicit_command_feedback_controls_detector_not_field_spelling(field, kind, expected):
     p=profile();p['channels']['joint_pos'].update(fields=[field], source_kind=kind)
-    p=confirm_numeric_profile(p,'synthetic author')
+    p=with_confirmer(p,'synthetic author')
     channel=Channel('joint_pos','joint_space',[field],3,'source.json',unit='rad',
         source_kind=kind,calibration_status='confirmed',value_available=True, representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'})
     ep=SimpleNamespace(profile=p,channels={'joint_pos':channel},
@@ -88,19 +87,6 @@ def test_nonfinite_kinds_positions_and_complete_csv_even_without_confirmation(tm
     assert item['verdict'] == 'DO_NOT_USE' and not item['assessment_complete']
     csv_path = tmp_path/'out'/next(x for x in record['artifacts'] if x.endswith('.csv'))
     assert len(list(csv.DictReader(csv_path.open()))) == 330
-    page = (tmp_path/'out/report.html').read_text()
-    assert '字段含 NaN 或 Inf' in page and '含建议排除项' in page
-    assert item['configuration_review']['status'] == 'pending'
-    run_ref = '/'.join(csv_path.relative_to(tmp_path/'out').parts[:2])
-    assert f'href="{run_ref}/"' in page
-
-
-def test_review_cannot_be_forged_with_status_flag_or_pending_calibration():
-    p = profile();p['numeric_review'] = {'status':'confirmed','confirmed_by':'author'}
-    assert numeric_review(p)['status'] == 'stale'
-    p['channels']['joint_pos']['calibration_status'] = 'pending'
-    with pytest.raises(ValueError, match='calibration_status'):
-        confirm_numeric_profile(p, 'author')
 
 
 def test_nonfinite_virtual_channel_maps_back_to_original_component(tmp_path):
@@ -130,14 +116,6 @@ def test_invalid_parameters_are_rejected_before_execution(override):
     with pytest.raises(ValueError): load_profile(p)
 
 
-def test_cli_confirmation_writes_new_profile_without_overwriting_source(tmp_path):
-    from edc.execution.cli import main
-    source=tmp_path/'robot.yaml';source.write_text(yaml.safe_dump(profile()))
-    before=source.read_bytes();target=tmp_path/'confirmed.yaml'
-    assert main(['robot','confirm-numeric','--profile',str(source),'--reviewer','author','--output',str(target)]) == 0
-    assert source.read_bytes() == before
-    assert numeric_review(load_profile(target))['status'] == 'confirmed'
-    assert main(['robot','confirm-numeric','--profile',str(source),'--reviewer','author','--output',str(target)]) == 2
 
 
 def test_per_channel_joint_limits_apply_only_to_their_own_channel():
@@ -146,7 +124,7 @@ def test_per_channel_joint_limits_apply_only_to_their_own_channel():
     p['channels'] = {name: dict(profile()['channels']['joint_pos']) for name in ('left', 'right', 'other')}
     p['numeric_check'] = {'thresholds': {'joint': {'vel_threshold': 5., 'limits': {
         'left': [[-0.3, 2.0]], 'right': [[-2.0, 0.3]]}}}}
-    confirmed = confirm_numeric_profile(p, 'author')
+    confirmed = with_confirmer(p, 'author')
     values = np.array([[1.0], [1.0], [1.0]])
     channels = {name: Channel(name, 'joint_space', ['position'], 3, 'source.json', unit='rad',
                               source_kind='feedback', calibration_status='confirmed', value_available=True,
@@ -190,95 +168,4 @@ def test_declared_finiteness_only_field_counts_as_complete():
 def test_invalid_per_channel_joint_limits_are_rejected(limits):
     p = profile(); p['numeric_check'] = {'thresholds': {'joint': {'limits': limits}}}
     with pytest.raises(ValueError):
-        load_profile(p)
-def prismatic_profile(unit='m'):
-    return {'schema_version': 1, 'id': 'prismatic_robot', 'version': '1', 'channels': {
-        'lift': {'modality': 'joint_space', 'fields': ['position'], 'unit': unit,
-                 'source_kind': 'feedback', 'calibration_status': 'confirmed',
-                 'representation': {'quantity': 'length', 'semantic_status': 'confirmed'}}}}
-
-
-def run_prismatic(unit='m', values=None):
-    values = np.array([[0.7799], [0.7800], [0.7799]]) if values is None else values
-    p = confirm_numeric_profile(prismatic_profile(unit), 'prismatic author')
-    c = Channel('lift', 'joint_space', ['position'], len(values), 'source.json', unit=unit,
-                source_kind='feedback', calibration_status='confirmed', value_available=True,
-                representation={'quantity': 'length', 'semantic_status': 'confirmed'})
-    ep = SimpleNamespace(profile=p, channels={'lift': c}, read_signal=lambda n, f: values)
-    return algorithm().run(SimpleNamespace(episode=ep), {})[0]
-
-
-def test_prismatic_joint_position_accepts_metres_and_labels_the_unit():
-    result = run_prismatic('m')
-    assert result['physical_checks_applied'] and result['assessment_complete']
-    assert result['unit'] == 'm'
-    assert result['numeric']['joint']['difference_unit'] == 'm'
-    checks = {row['id']: row for row in result['check_coverage']['checks']}
-    assert checks['joint_limits']['unit'] == 'm'
-    assert checks['joint_step']['unit'] == 'm per adjacent sample'
-    assert result['supplemental_checks'][0]['unit'] == 'm'
-
-
-def test_prismatic_joint_position_rejects_a_non_position_dimension():
-    with pytest.raises(ValueError, match='rad or m'):
-        confirm_numeric_profile(prismatic_profile('N'), 'prismatic author')
-
-
-def test_joint_anomaly_labels_the_declared_si_unit():
-    from edc.algorithms.quality.algorithms.Numeric_Check.numeric_check import check_joint_anomaly
-    result = check_joint_anomaly(np.array([[0.0], [0.5], [0.0]]), vel_threshold=0.1, unit='m')
-    assert result['difference_unit'] == 'm'
-    assert result['events'][0]['threshold_unit'] == 'm per adjacent sample'
-
-
-def test_prismatic_quantity_rejects_an_angular_unit():
-    with pytest.raises(ValueError, match='declares length'):
-        confirm_numeric_profile(prismatic_profile('rad'), 'prismatic author')
-
-
-def test_configuration_panel_uses_field_unit_for_joint_thresholds():
-    from edc.reporting.html import configuration_panel
-    panel = configuration_panel(prismatic_profile(), {})
-    assert '字段单位/样本' in panel
-    assert 'rad/样本' not in panel
-
-
-def test_physical_scope_binds_confirmation_and_keeps_other_fields_diagnostic():
-    p = profile()
-    p['channels']['joint_pos']['fields'].append('effort')
-    p['channels']['joint_pos']['logical_name'] = 'joint/arm/left/feedback'
-    p['channels']['joint_pos']['field_metadata'] = {'effort': {
-        'quantity': 'current', 'unit': None, 'calibration_status': 'unknown'}}
-    p['channels']['unconfirmed'] = {'modality': 'joint_space', 'fields': ['position'], 'unit': None}
-    p['numeric_check'] = {'physical_fields': ['joint/arm/left/feedback.position']}
-    confirmed = confirm_numeric_profile(p, 'data-platform-owner')
-    assert confirmed['numeric_check']['physical_fields'] == ['joint_pos.position']
-    c = Channel('joint_pos', 'joint_space', ['position', 'effort'], 3, 'source.mcap', unit='rad',
-                source_kind='feedback', calibration_status='confirmed', value_available=True,
-                representation={'quantity': 'fixture_value', 'semantic_status': 'confirmed'},
-                field_metadata=p['channels']['joint_pos']['field_metadata'])
-    ep = SimpleNamespace(profile=confirmed, channels={'joint_pos': c},
-                         read_signal=lambda n, f: np.array([[0.], [1.], [0.]]))
-    results = {r['input_field']: r for r in algorithm().run(SimpleNamespace(episode=ep), {})}
-    assert results['position']['physical_checks_applied'] and results['position']['in_physical_scope']
-    current = results['effort']
-    assert current['finite'] and not current['physical_checks_applied']
-    assert not current['in_physical_scope'] and not current['assessment_complete']
-    assert next(c for c in current['check_coverage']['checks'] if c['id'] == 'other_physical')['status'] == 'outside_configured_scope'
-    assert all(not c.get('events') and c['outcome'] is None for c in current['check_coverage']['checks']
-               if c['id'] != 'finite')
-    declared = algorithm().run(SimpleNamespace(episode=ep), {'finiteness_only': ['joint_pos.effort']})
-    assert not next(r for r in declared if r['input_field'] == 'effort')['assessment_complete']
-    # Changing the field scope or a threshold invalidates the attestation.
-    assert numeric_review(confirmed, {'physical_fields': ['unconfirmed.position']})['status'] == 'stale'
-    assert numeric_review(confirmed, {'thresholds': {'joint': {'vel_threshold': 2}}})['status'] == 'stale'
-    with pytest.raises(ValueError, match='supported physical'):
-        confirm_numeric_profile(confirmed, 'owner', {'physical_fields': ['joint_pos.effort']})
-
-
-@pytest.mark.parametrize('scope', [[], ['missing.position'], ['joint_pos.missing'],
-                                     ['joint_pos.position', 'joint_pos.position']])
-def test_invalid_physical_scope_rejected(scope):
-    p = profile(); p['numeric_check'] = {'physical_fields': scope}
-    with pytest.raises(ValueError, match='physical_fields'):
         load_profile(p)

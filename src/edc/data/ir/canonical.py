@@ -180,10 +180,6 @@ class CanonicalEpisode:
         from edc.data.transforms.resampling import align_signal
         return align_signal(self, channel, field, reference, **kwargs)
 
-    def time_axis(self, channel, *, time_source):
-        from edc.data.ir.time_axis import time_axis
-        return time_axis(self, channel, time_source=time_source)
-
 
 class CanonicalDataset:
     def __init__(self, source):
@@ -217,15 +213,15 @@ class CanonicalDataset:
             ep.close()
 
 
-def open_dataset(path, profile=None, robot=None, *, backend='auto'):
+def open_dataset(path, profile=None, *, backend='auto'):
     from edc.data.ir.dataset import open_dataset as open_source_dataset
-    return CanonicalDataset(open_source_dataset(path, profile, robot, backend=backend))
+    return CanonicalDataset(open_source_dataset(path, profile, backend=backend))
 
 
-def open_source_dataset(path, profile=None, robot=None, *, backend='auto'):
+def open_source_dataset(path, profile=None, *, backend='auto'):
     """Compatibility/source audit entry; ordinary consumers use open_dataset."""
     from edc.data.ir.dataset import open_dataset as read_source
-    return read_source(path, profile, robot, backend=backend)
+    return read_source(path, profile, backend=backend)
 
 
 def open_dataset_reference(reference):

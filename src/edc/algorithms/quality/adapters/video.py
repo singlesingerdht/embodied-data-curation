@@ -36,6 +36,15 @@ def assess(episode, params, context):
                 'processing_status': 'missing_dependency' if missing else 'processing_error',
                 'ir_unavailable': {'dependency_missing' if missing else 'error': f'{type(exc).__name__}: {exc}'},
                 'reasons': [f'{type(exc).__name__}: {exc}']}
+        motion_mapping = params.get('freeze_motion_review') or {}
+        if channel.name in motion_mapping:
+            from .freeze_review import attach
+            # Optional association must not convert a completed image check into a failure.
+            try:
+                attach(result, channel, context.episode, motion_mapping[channel.name], params, context, len(reports))
+            except Exception as exc:
+                result['freeze_motion_review'] = {'status': 'unavailable', 'informational_only': True,
+                    'reason': f'{type(exc).__name__}: {exc}'}
         result.update(input_channel=channel.name, input=str(episode.path),
             camera_role=role, camera_role_status=(channel.representation or {}).get('camera_role_status', 'unknown'),
             side=channel.side, threshold_set='camera_agnostic', input_mode=mode, requested_input_mode=requested_mode,

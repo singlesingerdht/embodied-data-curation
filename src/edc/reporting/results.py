@@ -1,4 +1,4 @@
-"""Versioned records and relocatable local reports. No cross-algorithm score."""
+"""Versioned JSON records written by a run."""
 import json
 import math
 import os
@@ -32,14 +32,3 @@ def write_json(path, value):
 def append_record(path, record):
     with Path(path).open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(clean(record), ensure_ascii=False, allow_nan=False) + "\n")
-
-
-def report(output):
-    output = Path(output).resolve()
-    catalog = json.loads((output / "catalog.json").read_text())
-    if catalog.get("schema_version") != "dqs_catalog_v1":
-        raise ValueError("Unsupported catalog; legacy results use their original report tools")
-    from edc.reporting.catalog import render
-    page = render(output, catalog)
-    (output / "report.html").write_text(page, encoding="utf-8")
-    return output / "report.html"

@@ -12,9 +12,14 @@ from edc.algorithms.quality.algorithms.Numeric_Check.run_check import assess
 from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.execution.runner import run
-from edc.robots.numeric_review import confirm_numeric_profile, numeric_review, review_digest
 from edc.workflows.gates import quality_gate
 from edc.workflows.reviews import subject_id
+
+
+def with_confirmer(profile, who):
+    """给测试配置写上确认人（等同 yaml 里写 robot.confirmed_by）。"""
+    from edc.robots.profiles import load_profile
+    return {**load_profile(profile), 'numeric_review': {'confirmed_by': who}}
 
 
 def algorithm():
@@ -38,7 +43,7 @@ def fixture(values, target='cmd_positions', confirmed=True, settings=None):
     profile = {'schema_version': 1, 'id': 'numeric_supplement_fixture', 'version': '1',
                'channels': {'signal': metadata}, 'numeric_check': {'thresholds': configured}}
     if confirmed:
-        profile = confirm_numeric_profile(profile, 'synthetic fixture owner')
+        profile = with_confirmer(profile, 'synthetic fixture owner')
     channel = Channel('signal', modality, [field], len(values), 'synthetic.json',
         unit=unit, source_kind=kind, calibration_status='confirmed',
         representation=metadata['representation'], value_available=True)
@@ -57,7 +62,7 @@ def checks(report):
 
 
 def record(report):
-    return {'algorithm': {'id': 'Numeric_Check', 'version': 'ir-adapter-21'},
+    return {'algorithm': {'id': 'Numeric_Check', 'version': 'ir-adapter-16'},
             'object': {'type': 'episode', 'id': 'e'}, 'status': 'completed',
             'result': {'reports': [report]}}
 
@@ -197,13 +202,12 @@ def test_near_constant_suffix_is_retained_when_earlier_sample_exceeds_window_ran
 
 
 @pytest.mark.parametrize('kind,status', [('unconfirmed', 'pending_confirmation'),
-    ('stale', 'pending_confirmation'), ('unknown_unit', 'pending_confirmation'),
+    ('unknown_unit', 'pending_confirmation'),
     ('nonfinite', 'blocked_nonfinite'), ('short', 'insufficient_input'),
     ('count_mismatch', 'insufficient_input'), ('bad_shape', 'insufficient_input')])
 def test_unusable_inputs_do_not_claim_completed_subchecks(kind, status):
     ep, c, values = fixture([[0.], [.1], [.2], [.2], [.2]], confirmed=kind != 'unconfirmed')
     params = {}
-    if kind == 'stale': params = {'thresholds': {'cmd_freeze': {'min_run': 4}}}
     if kind == 'unknown_unit': c.unit = 'unknown'
     if kind == 'nonfinite': values[1, 0] = np.nan
     if kind == 'short': ep.read_signal = lambda *args: values[:2]; c.count = 2
@@ -217,20 +221,6 @@ def test_unusable_inputs_do_not_claim_completed_subchecks(kind, status):
         assert checks(report)['command_difference']['status'] == 'insufficient_input'
 
 
-def test_prior_confirmation_requires_explicit_review_of_added_defaults():
-    ep, _, _ = fixture([[0.], [.1], [.2]])
-    old_settings = copy.deepcopy(ep.profile['numeric_check'])
-    for group in ('command_limits', 'joint_freeze', 'cmd_freeze', 'gyro_freeze', 'accel_freeze'):
-        old_settings['thresholds'].pop(group)
-    ep.profile['numeric_check'] = old_settings
-    ep.profile['numeric_review']['configuration_sha256'] = review_digest(ep.profile, old_settings)
-    assert numeric_review(ep.profile)['status'] == 'stale'
-    assert not evaluate(ep)['physical_checks_applied']
-    confirmed = confirm_numeric_profile(ep.profile, 'synthetic fixture owner')
-    assert numeric_review(confirmed)['status'] == 'confirmed'
-    assert numeric_review(confirmed, {'thresholds': {'command_limits': {'limits': [[-2, 2]]}}})['status'] == 'stale'
-
-
 @pytest.mark.parametrize('override', [{'command_limits': {'limits': [[1, 0]]}},
     {'command_limits': {'limits': [[0, float('inf')]]}}, {'cmd_freeze': {'min_run': True}},
     {'joint_freeze': {'freeze_eps': -1}}, {'gyro_freeze': {'lookback': 0}},
@@ -242,7 +232,6 @@ def test_invalid_supplement_thresholds_are_rejected(override):
 
 @pytest.mark.parametrize('last,expected', [(30., 'keep'), (90., 'exclude')])
 def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expected):
-    from edc.reporting.html import brief
     source = tmp_path / 'episode'
     source.mkdir()
     path = source / 'trajectory.json'
@@ -251,7 +240,7 @@ def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expecte
     ep, _, _ = fixture([[0.], [.1], [.2]])
     p = copy.deepcopy(ep.profile)
     p['channels'] = {'joint_pos': {**p['channels']['signal'], 'unit': 'deg'}}
-    p = confirm_numeric_profile(p, 'synthetic fixture owner')
+    p = with_confirmer(p, 'synthetic fixture owner')
     output = tmp_path / 'output'
     with open_dataset(source, profile=p) as ds:
         run(ds, algorithm_ids=['Numeric_Check'], output=output)
@@ -265,18 +254,6 @@ def test_real_execution_si_conversion_catalog_and_report(tmp_path, last, expecte
     if expected == 'exclude':
         assert report['score'] == 100 and report['verdict'] == 'ACCEPTABLE'
         assert checks(report)['command_limits']['events'][0]['value'] == pytest.approx(np.pi / 2)
-        assert '独立限位' in brief(row)
         assert any(ref.endswith('.csv') and (output / ref).is_file() for ref in row['artifacts'])
-        page = (output / 'report.html').read_text()
-        assert '含建议排除项' in page and '动作指令超出已确认的独立限位' in page
 
 
-def test_report_displays_observations_and_candidate_evidence(tmp_path):
-    from edc.reporting.html import numeric_panel, configuration_panel, brief
-    ep, _, _ = fixture([[0., 0.], [.1, 0.], [.2, 0.], [.2, 0.], [.2, 0.]])
-    row = record(evaluate(ep, tmp_path))
-    page = numeric_panel([row], tmp_path)
-    assert '动作指令数值冻结候选' in page and 'source_component_index' in page
-    assert '正常保持' in page and '区间 [start, stop)' in page
-    assert '需要复核' in brief(row)
-    assert '动作指令独立限位' in configuration_panel(ep.profile, {})

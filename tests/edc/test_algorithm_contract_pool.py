@@ -110,18 +110,6 @@ def test_builtin_parameter_rules_and_fixed_report_snapshot(tmp_path):
         crossed=entry(recommend(ds,params={'Dedup_Check':{'dedup_ratio_low':.2,'dedup_ratio_high':.1}}),'Dedup_Check')
         assert crossed['status']=='missing_input'
         run(ds,output=tmp_path/'out',algorithm_ids=['Dedup_Check'])
-    from edc.reporting.results import report
-    page=report(tmp_path/'out').read_text()
-    assert 'content="edc_batch_report_v1"' in page and '时间／序列重复检查' in page
-    assert '参数与输入要求' not in page and '本次生效参数' not in page
-    record_path=next((tmp_path/'out/_runs').glob('*/Dedup_Check/records.jsonl'))
-    record=json.loads(record_path.read_text())
-    assert record['effective_params']==entry(pool,'Dedup_Check')['parameters']['effective']
-    result=record['result']['reports'][0]
-    assert result['dedup']['timestamp_dedup']['extra_duplicate_count']==3
-    assert result['time_evidence']['timestamp_field']=='time' and result['input_channel']=='left'
-    run_ref=record_path.parent.parent.relative_to(tmp_path/'out').as_posix()
-    assert f'href="{run_ref}/"' in page
     evidence=next((tmp_path/'out/_runs').glob('*/Dedup_Check/artifacts/*/timestamp-reuse-*.csv')).read_text().splitlines()
     assert len(evidence)==4
 

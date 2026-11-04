@@ -9,7 +9,6 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
     n = len(values) if values.ndim else 0
     finite = bool(np.isfinite(values).all())
     blockers = '; '.join(filter(None, [unit_reason, *eligibility['reasons']]))
-    unit_label = eligibility.get('required_unit') or 'unknown'
 
     def add(ident, name, *, applicable=True, configured=True, enough=True,
             events=(), group=None, threshold=None, unit=None, reason=''):
@@ -36,7 +35,7 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
     # applicable with that reason instead of leaving the whole field unassessed.
     pending = bool(limits_pending) and joint['limits'] is None
     add('joint_limits', '关节位置限位', applicable=target == 'joint_positions' and not pending,
-        configured=joint['limits'] is not None, threshold=joint['limits'], unit=unit_label,
+        configured=joint['limits'] is not None, threshold=joint['limits'], unit='rad',
         events=('joint_range',), group='joint',
         reason=f'本机型暂无关节限位，暂不检查越限：{limits_pending}' if pending else
                '未填写 joint.limits，不判断是否越过关节机械限位。' if joint['limits'] is None else '')
@@ -46,10 +45,10 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
                 ('joint_step_peak', '最大相邻关节位置差', 'velocity_peak', ('joint_step_peak',), n >= 2),
                 ('frequent_joint_steps', '位置差超阈值的区间比例', 'reset_ratio', ('frequent_joint_steps',), n >= 3)):
             add(ident, name, enough=enough, threshold=joint[key],
-                unit='ratio' if key == 'reset_ratio' else f'{unit_label} per adjacent sample',
+                unit='ratio' if key == 'reset_ratio' else 'rad per adjacent sample',
                 events=events, group='joint', reason='按相邻样本计算，未除以时间，不代表真实速度或复位。')
     add('command_difference', '指令位置二阶样本差', applicable=target == 'cmd_positions', enough=n >= 3,
-        threshold=settings['cmd']['jerk_threshold'], unit=f'{unit_label} per sample-index squared',
+        threshold=settings['cmd']['jerk_threshold'], unit='rad per sample-index squared',
         events=('cmd_second_sample_difference',), group='cmd', reason='需要至少 3 个样本；未使用时间，不代表物理 jerk。')
     for kind, label, key, event, required in (
             ('gyro', 'IMU 角速度幅值', 'gyro_max', 'imu_gyro_over', 'rad/s'),
@@ -90,11 +89,6 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
             'status': 'pending_confirmation' if blockers else 'unsupported', 'outcome': None,
             'reason': blockers or '现有 Numeric_Check 未实现此字段的物理检查，仅查有限值。'})
     rows.extend(extra_checks)
-    if not eligibility.get('in_physical_scope', True):
-        for row in rows:
-            if row['id'] != 'finite' and row['status'] != 'not_applicable':
-                row.update(status='outside_configured_scope', outcome=None,
-                           reason='Outside physical_fields; finiteness diagnostic does not constitute physical acceptance')
     return {'schema_version': 'dqs_numeric_coverage_v1', 'checks': rows,
         'coverage_complete': all(row['status'] in {'evaluated', 'not_applicable'} for row in rows),
         'legacy_completeness_scope': 'assessment_complete retains the existing configured-detector eligibility rule; use checks for actual subcheck coverage',

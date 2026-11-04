@@ -60,6 +60,12 @@ def test_unconfigured_cameras_never_claim_configuration_pass(tmp_path):
     assert next(s for s in r['sub_indicators'] if s['name']=='相机通道配置一致性')['score'] is None
 
 
+def test_no_cameras_in_data_or_yaml_is_nothing_to_check():
+    t={'/joint_states':TopicInfo(name='/joint_states',modality='joint_state',count=10)}
+    result=check_camera_configuration(t,{},{})
+    assert result['severity']=='pass' and '没有相机' in result['reason']
+
+
 @pytest.mark.parametrize('requirements',[[],{'head':[]},{'head':['rgb','rgb']},{'head':['foo']}])
 def test_invalid_camera_requirement_rejected(requirements):
     p=profile();p['camera_requirements']=requirements
@@ -143,35 +149,6 @@ def test_mcap_retains_both_axes_and_zero_clock_does_not_block_other_channels(tmp
         reader_frame=next(ep._reader.iter_frames('/head'))
         assert reader_frame['source_time']==10. and reader_frame['container_time']==20.
     assert hashlib.sha256(source.read_bytes()).hexdigest()==before
-
-
-def test_explicit_time_axis_and_alignment_preserve_recorded_origins(tmp_path):
-    source = tmp_path/'axes.mcap'; axes = write_mcap(source)
-    with next(open_dataset(source, profile=native_profile()).iter_episodes()).opened() as ep:
-        acquisition = ep.time_axis('/fast', time_source='acquisition')
-        container = ep.time_axis('/fast', time_source='container')
-        np.testing.assert_array_equal(acquisition.output, [t*1e-9 for t in axes['/fast']])
-        assert acquisition.params['clock'] is None
-        assert acquisition.source_mapping['timestamps_ns'] == axes['/fast']
-        assert container.output[0] == 20 and container.params['time_source'] == 'container'
-        assert container.source_mapping['rows'] == 'identity'
-        assert not container.params['proves_acquisition_sync']
-        with pytest.raises(ValueError, match='no fallback'):
-            ep.time_axis('/zero', time_source='acquisition')
-        assert len(ep.time_axis('/zero', time_source='container').output) == 12
-        with pytest.raises(ValueError, match='clocks'):
-            ep.align_signal('/head', 'value', '/fast', method='linear')
-        # A reference extends beyond the source support: never extrapolate.
-        with pytest.raises(ValueError, match='extrapolation'):
-            ep.align_signal('/fast', 'position', '/head', method='linear', time_source='container')
-        result = ep.align_signal('/fast', 'position', '/duplicate', method='linear',
-                                 max_gap=.01, time_source='container')
-        np.testing.assert_allclose(result.output[:, 0], [0, .01, .02])
-        assert result.params['source_time_source'] == result.params['reference_time_source'] == 'container'
-        assert result.params['time_axes']['source']['source_mapping']['timestamps_ns'][0] == 20_000_000_000
-        assert ep.channels['/fast'].timestamps[0] == 10.
-        assert preflight(plugin('Sync_Check'), ep)[0] == 'missing_input'
-        assert preflight(plugin('Root_Cause'), ep)[0] == 'missing_input'
 
 
 def test_missing_headers_never_fallback_or_drop_rows():

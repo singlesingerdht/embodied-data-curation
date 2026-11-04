@@ -8,17 +8,13 @@ from edc.algorithms.registry import algorithms
 
 
 def validate_workflow(config):
-    original = config
     base = Path.cwd()
     if isinstance(config, (str, Path)):
         path = Path(config).resolve()
         base = path.parent
         config = yaml.safe_load(path.read_text())
-    if isinstance(config, dict) and config.get('schema_version') == 'edc_config_v1':
-        from edc.configuration import workflow_config
-        config = workflow_config(original)
     cfg = copy.deepcopy(config)
-    if not isinstance(cfg, dict) or set(cfg) - {'schema_version', 'id', 'dataset', 'unit_policy', 'stages', 'config_snapshot'}:
+    if not isinstance(cfg, dict) or set(cfg) - {'schema_version', 'id', 'dataset', 'unit_policy', 'stages'}:
         raise ValueError('Invalid workflow configuration keys')
     if cfg.get('schema_version') != 'edc_workflow_v1':
         raise ValueError('Workflow requires schema_version: edc_workflow_v1')
@@ -31,12 +27,26 @@ def validate_workflow(config):
     if data.get('profile') is not None and data.get('robot') is not None:
         raise ValueError('Use either profile or robot')
     data['path'] = str((base / data['path']).resolve())
-    if isinstance(data.get('profile'), str):
+    if 'robot' in data:
+        # The workflow user supplies the same robot YAML as edc run/batch.
+        if not isinstance(data['robot'], str):
+            raise ValueError('dataset.robot must be a robot YAML path')
+        data['profile'] = str((base / data.pop('robot')).resolve())
+    elif isinstance(data.get('profile'), str):
         data['profile'] = str((base / data['profile']).resolve())
     if data.get('backend', 'auto') not in {'auto', 'official', 'compat'}:
         raise ValueError('Invalid dataset backend')
     if cfg.get('unit_policy', 'auto') not in {'auto', 'manual'}:
         raise ValueError('Invalid unit policy')
+    defaults = {}
+    profile = data.get('profile')
+    if isinstance(profile, str):
+        from edc.execution.batch import robot_settings
+        defaults = robot_settings(profile)[0]
+    elif isinstance(profile, dict):
+        from edc.robots.card import is_card, compile_card
+        if is_card(profile):
+            defaults = compile_card(profile, base)[1]
     stages = cfg.get('stages')
     if not isinstance(stages, list) or not stages:
         raise ValueError('Workflow requires a nonempty finite stage list')
@@ -63,11 +73,14 @@ def validate_workflow(config):
         if 'method_select' in stage and (kind != 'value' or not isinstance(stage['method_select'], dict)):
             raise ValueError('method_select is a value method -> episode ID list mapping')
         ids = stage.get('algorithms')
-        if not isinstance(ids, list) or (not ids and stage.get('selection_policy') != 'runnable') or any(not isinstance(i, str) for i in ids) or len(ids) != len(set(ids)):
+        if not isinstance(ids, list) or (not ids and kind == 'quality') or any(not isinstance(i, str) for i in ids) or len(ids) != len(set(ids)):
             raise ValueError('Select unique algorithm IDs for each stage')
         params = stage.get('params', {})
         if not isinstance(params, dict) or any(k not in ids for k in params):
             raise ValueError('Stage params must reference selected algorithms')
+        params = {name: {**copy.deepcopy(defaults.get(name, {})), **params.get(name, {})}
+                  for name in ids}
+        stage['params'] = params
         for name in ids:
             if name not in registry.plugins:
                 raise ValueError(f'Algorithm unavailable: {name}; install its plugin first')
@@ -103,6 +116,11 @@ def validate_workflow(config):
                         not isinstance(condition['algorithm'], str) or not condition['algorithm']):
                     raise ValueError('where requires algorithm/path/op/value predicates')
         quality, valued = lineage[parent]
+        if not ids:
+            if params or stage.get('method_select') or stage.get('select') or stage.get('when'):
+                raise ValueError('An empty optional stage cannot carry selection or execution parameters')
+            lineage[ident] = (quality, valued)
+            continue
         if kind == 'value' and not quality:
             raise ValueError('Value stage requires a quality stage for this data version')
         if kind == 'augmentation' and not valued:
@@ -118,7 +136,7 @@ def validate_workflow(config):
     # A new version cannot be terminal or feed another operation before recheck.
     # Checking only terminal lineage would miss an abandoned transform branch.
     for stage in stages:
-        if stage['kind'] not in {'editing', 'augmentation'}:
+        if stage['kind'] not in {'editing', 'augmentation'} or not stage['algorithms']:
             continue
         consumers = [child for child in stages if child['input'] == stage['id']]
         if not consumers or any(child['kind'] != 'quality' for child in consumers):

@@ -1,13 +1,11 @@
-"""Leju additions: IMU block of kuavo sensorsData via select.fields, and the reference_rate timeline."""
+"""Leju additions: IMU block of kuavo sensorsData via select.fields, and the joint velocity limit."""
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from edc.algorithms.quality.adapters.action import validate_options
 from edc.data.ir.values import ros_values_to_dict
 from edc.robots.mapping import select_field_rows, select_values, validate_mapping_config
-from test_smoothness_timeline import execute, fixture
 
 
 def _vec(x, y, z):
@@ -64,30 +62,6 @@ def test_field_selection_missing_source_field_is_an_error():
         select_field_rows(episode, 'imu/main')
 
 
-def test_reference_rate_requires_a_reference_channel():
-    with pytest.raises(ValueError, match='reference_channel'):
-        validate_options({'timeline': {'mode': 'reference_rate'}})
-    with pytest.raises(ValueError, match='Unknown timeline mode'):
-        validate_options({'timeline': {'mode': 'uniform'}})
-
-
-def test_reference_rate_borrows_only_the_camera_interval_across_unaligned_clocks(tmp_path):
-    source, profile, params, ts, camera, positions = fixture(tmp_path)
-    profile['channels']['/camera']['clock'] = 'camera_clock'  # Not a common clock: reference_channel would refuse.
-    params['timeline'] = {'mode': 'reference_rate', 'reference_channel': 'rgb/head', 'time_source': 'acquisition'}
-    row, records, evidence = execute(tmp_path, source, profile, params)
-    plan = evidence[0]
-    assert row['availability'] == 'available'
-    assert plan['clock_status'] == 'not_required_interval_only' and not plan['issues']
-    assert plan['stride'] == 8 and plan['source_rows'] == list(range(0, len(ts), 8))  # 250 Hz / 30 Hz
-    np.testing.assert_allclose(plan['target_timestamps_s'], ts[::8])  # Own original timestamps, no new times.
-    assert plan['source_mapping'] == {'rows': 'every_kth', 'stride': 8}
-    result = records[0]['result']['reports'][0]
-    assert result['assessment_complete'] and result['timeline']['calibration_rate_compatible']
-
-
-# ── Joint velocity limit (adapter-only Numeric supplement) ──
-
 def test_field_selection_with_indices_picks_same_components_from_every_field():
     profile = {'parts': {'left': {'type': 'arm', 'side': 'left', 'dof': 2}},
                'channels': {'/state': {'modality': 'other', 'fields': ['q', 'v']},
@@ -142,15 +116,3 @@ def test_joint_velocity_limit_counts_frames_and_merges_contiguous_rows():
     assert joint_velocity_limit(values, None, _velocity_channel(10), 'velocity', {'max_abs': 3.0}, False)['status'] == 'pending_confirmation'
 
 
-def test_joint_velocity_renders_in_html_report(tmp_path):
-    from edc.algorithms.quality.adapters.numeric_supplements import joint_velocity_limit
-    from edc.reporting.html import configuration_panel, numeric_panel
-    values = np.zeros((10, 2))
-    values[2:5, 0] = 3.5
-    check = joint_velocity_limit(values, None, _velocity_channel(10), 'velocity', {'max_abs': 3.0}, True)
-    item = {'input_channel': 'joint/arm/left/feedback', 'input_field': 'velocity', 'finite': True, 'shape': [10, 2],
-            'check_coverage': {'checks': [check]}, 'supplemental_checks': [check]}
-    page = numeric_panel([{'algorithm': {'id': 'Numeric_Check'}, 'artifacts': [], 'result': {'reports': [item]}}], tmp_path)
-    assert '关节速度上限' in page and '1 段超限' in page and '3.50 rad/s' in page
-    panel = configuration_panel({'numeric_check': {'thresholds': {'joint_velocity': {'max_abs': 3.0}}}}, {})
-    assert 'max_abs' in panel and 'rad/s' in panel

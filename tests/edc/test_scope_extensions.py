@@ -76,7 +76,7 @@ def mapped_episode(tmp_path):
     root = tmp_path/'data';root.mkdir()
     (root/'trajectory.json').write_text(json.dumps({'data': [
         {'timestamp': t, 'state': list(range(14))} for t in [0, 1, 2]]}))
-    profile = load_profile(ROOT/'examples/onboarding/joint_split.yaml')
+    profile = load_profile(ROOT/'tests/edc/fixtures/joint_split.yaml')
     return root, profile
 
 
@@ -151,21 +151,6 @@ def test_unknown_timestamp_unit_has_no_seconds_axis(tmp_path):
         assert ep.channels['left_arm_position'].timestamps is None
 
 
-def test_batch_uses_registered_plugin_and_preserves_old_results(tmp_path, monkeypatch):
-    from edc.algorithms.registry import Registry, AlgorithmSpec
-    from types import SimpleNamespace
-    from edc.algorithms.quality.batch_check import main
-    root,_=mapped_episode(tmp_path)
-    registry=Registry('edc.algorithms')
-    registry.register(SimpleNamespace(spec=AlgorithmSpec('team__test','1','test','team','test'),
-        run=lambda context,params: {'verdict':'ACCEPTABLE','seen':context.episode.id}))
-    monkeypatch.setattr('edc.execution.runner.algorithms',lambda:registry)
-    out=tmp_path/'results'
-    assert main(['--input',str(root),'--output',str(out),'--algorithm','team__test'])==0
-    assert (out/'catalog.json').exists()
-    old=tmp_path/'old';old.mkdir();(old/'fast.ndjson').write_text('old data')
-    assert main(['--input',str(root),'--output',str(old),'--algorithm','team__test'])==2
-    assert (old/'fast.ndjson').read_text()=='old data'
 
 
 def test_urdf_episode_binding_uses_named_joint_and_preserves_source(tmp_path):
@@ -214,19 +199,6 @@ def test_video_missing_timeline_is_missing_input_not_processing_error(tmp_path):
     assert status=='missing_input' and 'FPS' in reason
 
 
-def test_batch_preset_discovers_new_registration_without_dispatch_edit(tmp_path,monkeypatch):
-    from edc.algorithms.registry import Registry,AlgorithmSpec
-    from types import SimpleNamespace
-    from edc.algorithms.quality.batch_check import main
-    root,_=mapped_episode(tmp_path)
-    registry=Registry('edc.algorithms')
-    registry.register(SimpleNamespace(spec=AlgorithmSpec('team__new','1','test','team','test',presets=('quality_cpu',)),
-                                     run=lambda context,params: {'verdict':'ACCEPTABLE'}))
-    monkeypatch.setattr('edc.algorithms.registry.algorithms',lambda:registry)
-    monkeypatch.setattr('edc.execution.runner.algorithms',lambda:registry)
-    assert main(['--input',str(root),'--output',str(tmp_path/'out'),'--fast-only'])==0
-    summary=json.loads(next((tmp_path/'out/_runs').glob('*/summary.json')).read_text())
-    assert summary['status_counts']=={'completed':1}
 
 
 def test_fk_rejects_binding_contradicting_declared_joint_order(tmp_path):

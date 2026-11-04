@@ -148,6 +148,9 @@ def check_camera_configuration(topics, requirements=None, channel_config=None):
     """Validate explicit sensor/modalities, never infer cross-camera symmetry."""
     import fnmatch
     from edc.data.ir.modalities import normalize_modality
+    if not requirements and not any(t.modality in {"image", "rgb", "depth"} for t in topics.values()):
+        return {"evaluated": True, "severity": "pass", "checks": [],
+                "reason": "数据里没有相机，机器人 yaml 也没写 cameras：没有相机要查"}
     if not requirements:
         return {"evaluated": False, "severity": "not_evaluated", "checks": [],
                 "reason": "未配置 camera_requirements；不推断各相机应具有相同通道"}

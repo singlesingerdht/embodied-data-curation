@@ -1,20 +1,17 @@
 """Robot profiles are explicit data mappings, never calibration guesses."""
-import os
 import copy
 import re
 from pathlib import Path
-import yaml
 from edc.data.channel_registry import read_unique_yaml
-
-
-def profile_dir():
-    return Path(os.environ.get("EDC_CONFIG_HOME", Path.home() / ".config" / "edc")) / "robots"
 
 
 def load_profile(value=None, *, base=None):
     if value is None:
         return {}
-    profile = copy.deepcopy(value) if isinstance(value, dict) else read_unique_yaml(Path(value).read_text())
+    profile = copy.deepcopy(value) if isinstance(value, dict) else read_unique_yaml(Path(value).read_text(encoding='utf-8'))
+    from edc.robots.card import is_card, compile_card
+    if is_card(profile):  # The robot yaml a user writes, compiled in memory.
+        profile, _, _ = compile_card(profile, Path(value).resolve().parent if not isinstance(value, dict) else base)
     if not isinstance(profile, dict):
         raise ValueError("Robot profile must be a mapping")
     if profile.get("schema_version") != 1 or not profile.get("version"):
@@ -103,15 +100,5 @@ def load_profile(value=None, *, base=None):
     return profile
 
 
-def add_profile(path):
-    profile = load_profile(path)
-    target = profile_dir() / (profile["id"] + ".yaml")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    # Never silently overwrite a previously registered configuration.
-    with target.open("x") as stream:
-        yaml.safe_dump(profile, stream, allow_unicode=True, sort_keys=False)
-    return target
-
-
 # Public compatibility exports through edc.robots.profiles; implementation remains internal.
-from edc.robots.numeric_review import confirm_numeric_profile, numeric_review
+from edc.robots.numeric_review import numeric_review

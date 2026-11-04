@@ -7,7 +7,7 @@ from edc.data.transforms import RobotTransforms, convert_units
 from edc.robots.profiles import load_profile
 from edc.data.ir.dataset import open_dataset
 
-EXAMPLE=Path(__file__).resolve().parents[2]/'examples/onboarding/transforms.yaml'
+EXAMPLE=Path(__file__).resolve().parents[2]/'tests/edc/fixtures/transforms.yaml'
 
 
 def profile(): return load_profile(EXAMPLE)

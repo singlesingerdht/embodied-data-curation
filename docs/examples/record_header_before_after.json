@@ -1,0 +1,117 @@
+{
+  "input_kind": "controlled synthetic ROS2 MCAP; 300 rows per channel; ~30 Hz",
+  "source_unchanged": true,
+  "algorithms": [
+    {
+      "id": "Check_Timestamp",
+      "before": {
+        "score": 99.844,
+        "verdict": "ACCEPTABLE",
+        "median_difference_ms": 20.0,
+        "per_message_deviation": "not reported"
+      },
+      "after": {
+        "score": 99.844,
+        "verdict": "ACCEPTABLE",
+        "paired_time_evidence": {
+          "channel": "/arm",
+          "threshold_ms": null,
+          "basis": "raw container minus raw header; before clock mapping",
+          "source_row_mapping": "identity",
+          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "status": "available",
+          "paired_count": 300,
+          "invalid_pair_count": 0,
+          "median_difference_ms": 20.0,
+          "min_difference_ms": 20.0,
+          "max_difference_ms": 500.0,
+          "max_absolute_deviation_ms": 480.0,
+          "max_deviation_message": {
+            "source_row": 150,
+            "message_number": 151,
+            "record_ns": 1773741610501999950,
+            "header_ns": 1773741610001999950,
+            "difference_ms": 500.0,
+            "deviation_ms": 480.0
+          },
+          "summary": "/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。"
+        },
+        "readable_note": "/head 第1条：通常差值20 ms，本条差值20 ms，偏离通常水平+0 ms。；差值范围 [20, 20] ms；最大绝对偏离 0 ms。；/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。；差值范围 [20, 500] ms；最大绝对偏离 480 ms。"
+      }
+    },
+    {
+      "id": "Sync_Check",
+      "before": {
+        "score": 100.0,
+        "verdict": "ACCEPTABLE",
+        "median_difference_ms": 20.0,
+        "per_message_deviation": "not reported"
+      },
+      "after": {
+        "score": 100.0,
+        "verdict": "ACCEPTABLE",
+        "paired_time_evidence": {
+          "channel": "/arm",
+          "threshold_ms": null,
+          "basis": "raw container minus raw header; before clock mapping",
+          "source_row_mapping": "identity",
+          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "status": "available",
+          "paired_count": 300,
+          "invalid_pair_count": 0,
+          "median_difference_ms": 20.0,
+          "min_difference_ms": 20.0,
+          "max_difference_ms": 500.0,
+          "max_absolute_deviation_ms": 480.0,
+          "max_deviation_message": {
+            "source_row": 150,
+            "message_number": 151,
+            "record_ns": 1773741610501999950,
+            "header_ns": 1773741610001999950,
+            "difference_ms": 500.0,
+            "deviation_ms": 480.0
+          },
+          "summary": "/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。"
+        },
+        "readable_note": "/head 第1条：通常差值20 ms，本条差值20 ms，偏离通常水平+0 ms。；差值范围 [20, 20] ms；最大绝对偏离 0 ms。；/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。；差值范围 [20, 500] ms；最大绝对偏离 480 ms。"
+      }
+    },
+    {
+      "id": "Root_Cause",
+      "before": {
+        "score": 100.0,
+        "verdict": "ACCEPTABLE",
+        "median_difference_ms": 20.0,
+        "per_message_deviation": "not reported"
+      },
+      "after": {
+        "score": 100.0,
+        "verdict": "ACCEPTABLE",
+        "paired_time_evidence": {
+          "channel": "/arm",
+          "threshold_ms": null,
+          "basis": "raw container minus raw header; before clock mapping",
+          "source_row_mapping": "identity",
+          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "status": "available",
+          "paired_count": 300,
+          "invalid_pair_count": 0,
+          "median_difference_ms": 20.0,
+          "min_difference_ms": 20.0,
+          "max_difference_ms": 500.0,
+          "max_absolute_deviation_ms": 480.0,
+          "max_deviation_message": {
+            "source_row": 150,
+            "message_number": 151,
+            "record_ns": 1773741610501999950,
+            "header_ns": 1773741610001999950,
+            "difference_ms": 500.0,
+            "deviation_ms": 480.0
+          },
+          "summary": "/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。"
+        },
+        "readable_note": "/head 第1条：通常差值20 ms，本条差值20 ms，偏离通常水平+0 ms。；差值范围 [20, 20] ms；最大绝对偏离 0 ms。；/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。；差值范围 [20, 500] ms；最大绝对偏离 480 ms。"
+      }
+    }
+  ]
+}

@@ -36,8 +36,7 @@ def assess(joint_positions: np.ndarray = None,
            gyro: np.ndarray = None, accel: np.ndarray = None,
            cmd_positions: np.ndarray = None,
            pose_freeze_positions: np.ndarray = None,
-           weights: dict = None, thresholds: dict = None,
-           unit: str = 'rad') -> dict:
+           weights: dict = None, thresholds: dict = None) -> dict:
     from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds as resolve_thresholds
     settings = resolve_thresholds(thresholds)
     n_weights, n_warns = normalize_weights(NUM_DEFAULTS, weights, "数值内容检查")
@@ -45,7 +44,7 @@ def assess(joint_positions: np.ndarray = None,
     if joint_positions is not None and settings['joint']['limits'] is not None:
         if joint_positions.ndim != 2 or len(settings['joint']['limits']) != joint_positions.shape[1]:
             raise ValueError('Joint limits must match every component of this input field')
-    joint = check_joint_anomaly(joint_positions, unit=unit, **settings['joint']) if joint_positions is not None and joint_positions.size > 0 else None
+    joint = check_joint_anomaly(joint_positions, **settings['joint']) if joint_positions is not None and joint_positions.size > 0 else None
     imu = check_imu_anomaly(gyro if gyro is not None else np.empty((0, 3)), accel if accel is not None else np.empty((0, 3)), **settings['imu']) if any(x is not None and x.size > 0 for x in (gyro, accel)) else None
     cmd = check_cmd_anomaly(cmd_positions, **settings['cmd']) if cmd_positions is not None and cmd_positions.size > 0 else None
     pose = check_pose_freeze(pose_freeze_positions, **settings['pose_freeze']) if pose_freeze_positions is not None and pose_freeze_positions.size > 0 else None

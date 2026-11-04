@@ -1,0 +1,142 @@
+# ═══ 双臂机器人 yaml 模板 ═══（共三个模板：single_arm 单臂、dual_arm 双臂、dual_arm_hand 双臂+灵巧手，注释都一样）
+# 例子：configs/robots/x1pro.yaml（双臂 6 关节，JSON+MP4）、luoshi.yaml（双臂 7 关节，LeRobot）
+#
+# 用法（命令在 /mnt/public/rxs/code/embodied-data-curation 下运行）
+#   1. 复制到 configs/robots/<机器人名>.yaml，按注释改
+#   2. 不知道数据里叫什么名字：.venv/bin/edc channels <一条数据>
+#   3. 核对每一项都读得出来：  .venv/bin/edc robot check --robot configs/robots/<机器人名>.yaml --data <一条数据>
+#   4. 有 URDF 时：按 arms 里“URDF”一段的步骤写进来并核对
+#   5. 质检：.venv/bin/edc batch <数据目录> --robot configs/robots/<机器人名>.yaml --output reports/<名字>.html
+#      第一次运行、或 yaml 改过（改注释不算）时会提示签名：核对无误后输入签名人（直接回车 = confirmed_by 里的人），然后照常运行
+#
+# 数据格式（LeRobot、ROS bag、MCAP、HDF5、JSON+MP4……）不用写，程序按文件自动识别。
+# 没写进本文件的数据不检查，也不参与时间类检查。
+#
+# 每一项数据的写法：{source: 数据里的名字, field: 字段名, index: 下标, unit: 单位}
+#   source  必填。edc channels 列出来的名字：LeRobot 是特征名（observation.state）；HDF5 是数据集路径；
+#           ROS bag/MCAP 是话题名（/joint_states）；JSON 是列名
+#   field   ROS 消息必填（如 /joint_states 的 position）；表格数据（LeRobot、Parquet、HDF5、JSON）不写
+#   index   选填。这一项在数组里的位置：一个数（7）、一段（0-6，含两端）或列表（[0, 2, 4]）；整列就是这一项时不写
+#   unit    必填。每一项能用哪些单位见该项注释；两种特殊写法：
+#             raw      没有物理单位的原始数值（如 0~255 的夹爪读数），要同时写 range
+#             unknown  不清楚单位，只查有没有 NaN/无穷大（查清了再改）
+#   range   选填（夹爪、灵巧手、other 可写）：正常范围 [最小, 最大]，超出判排除；unit 是 raw 时必填
+#   scale   选填：数据存的是原始数值、能线性换算成 unit 的物理单位时，写两点定一条直线，
+#           如 12 位编码器 0~4095 对应 -π~π rad：scale: {raw: [0, 4095], value: [-3.1416, 3.1416]}
+#   label   选填：报告里显示的中文名
+
+robot:                         # 必填
+  name: my_dual_arm            # 必填：机型编号，英文字母开头，只含字母、数字、_、-；和文件名一致（my_dual_arm.yaml）
+  confirmed_by: zhangsan       # 必填：对本文件里单位和含义负责的人；签名时输入的签名人会写到这里
+  # signature: ...             # 不用写：签名时自动写入，不要手改
+
+data:                          # 表格数据（LeRobot、JSON、HDF5、Parquet）必须写 time 或 time_note 二选一；ROS bag / MCAP 可以不写
+  # time: {source: source_timestamp, unit: s}
+  #   原始采集时间（每行数据被采集的时刻）。source 写存这个时间的那一列（或字段）的名字，就是 edc channels 列出来的名字；
+  #   unit：s / ms / us / ns。按格式：
+  #     ROS bag / MCAP：不写。每个话题自带采集时间（header.stamp）和电脑录包时间，程序自动读；只检查本文件里写到的话题，
+  #       想查哪路的时间就把它写进来。几台设备的时钟对不对得上，程序自动比对
+  #     LeRobot：标准的 timestamp 是“帧号 ÷ 帧率”，不是采集时间；另存了采集时间列就写它（例：luoshi.yaml），没有就写 time_note
+  #     JSON、HDF5、Parquet：有时间列就写（例：x1pro.yaml），没有就写 time_note
+  # time_note: LeRobot 的 timestamp 按帧号生成，没有原始采集时间
+  #   没有原始采集时间时写一句原因，时间类检查“不适用”的格子里会显示它（例：pepsi_sort.yaml）
+  # video_frame_time: rows
+  #   单条目录（JSON+MP4）里第 i 帧视频对应第 i 行数据时写 rows（例：x1pro.yaml）
+  # episode_group: data
+  #   一个 HDF5 里装了多条数据时，写装它们的组名，每个子组算一条（如 robomimic 的 data/demo_0、data/demo_1……）；
+  #   写了之后 source 写子组里面的名字（obs/robot0_joint_pos），不带 data/demo_0/（例：franka_panda.yaml）
+  # min_duration_s: 3.0
+  #   最短时长（秒），默认 3；短于它的数据判排除，其余检查不做
+
+arms:                          # 必填，至少一条手臂
+  left:                        # 手臂名：双臂用 left / right；单臂随便起名（如 main）
+    #   ── 每一项的写法 ──
+    # joints                   关节角（建议写）：数值检查（限位、跳变、冻结）、复位检测、URDF 都用它。
+    #                            index 个数 = 关节数；unit：rad / deg
+    # joint_velocity           选填：关节速度，index 个数和 joints 一样；unit：rad/s / deg/s。
+    #                            URDF 写了速度上限就查超速，否则只查 NaN/无穷大
+    # joint_command            选填：关节指令（发给机器人的目标角），index 个数和 joints 一样；unit：rad / deg。
+    #                            有 URDF 就按关节限位查越限
+    # eef_position             末端位置 x y z（建议写）：动作平滑度、复位检测（home 按末端写时）用它。unit：m / cm / mm；
+    #                            数据没录末端时写 eef_position: fk，用 URDF 从关节角算（要写 urdf）
+    # eef_orientation          选填：末端姿态。unit：quaternion（要写 order: xyzw 或 wxyz）/ rpy_rad / rpy_deg / unknown；
+    #                            只查 NaN/无穷大；写清楚后 edc robot urdf 会用它验算 URDF 的姿态
+    # eef_command              选填：末端位置指令，unit 同 eef_position
+    # gripper                  选填：夹爪（不需要 URDF）。unit：m / cm / mm（开口宽度）、rad / deg（夹爪转角）、raw（要写 range）、unknown
+    # gripper_command          选填：夹爪指令，写法同 gripper
+    # hand                     选填：灵巧手（不需要 URDF）。unit：rad / deg / m / mm / raw（要写 range）/ unknown；
+    #                            多是 0~100 这样的原始数值，写 raw 和 range
+    # hand_command             选填：灵巧手指令，写法同 hand
+    #
+    #   ── URDF（厂家给了就一定要写；没有才不写）──
+    #   用途：关节限位、速度上限、指令限位都从 URDF 读；数据没录末端时用它算末端（eef_position: fk）。
+    #   不写时：这三项不检查，也不能写 eef_position: fk
+    #   第 0 步 把 .urdf 文件放到 configs/robots/<机器人名>/ 下（只要这一个文件，meshes 不用）
+    #   第 1 步 查名字：.venv/bin/edc robot urdf --urdf <URDF 文件>                     列出连杆树，选 base_link、tip_link
+    #   第 2 步 生成：  .venv/bin/edc robot urdf --urdf <URDF 文件> --base <起点> --tip <末端>
+    #           打印 5 行 urdf:，原样粘贴到这条手臂下（每条手臂各运行一次、各贴一段）
+    #   第 3 步 核对：  .venv/bin/edc robot urdf --robot configs/robots/<机器人名>.yaml --data <数据1> <数据2>
+    #           第一条求坐标系，第二条验证；结论只有 对得上 / 对不上 / 末端未验证
+    #   urdf 里每一项：
+    #     file          必填：URDF 文件，相对本文件所在目录
+    #     joints        必填：数据第 1、2……个关节各是 URDF 里哪个关节，按 joints 的顺序写
+    #     base_link     必填：起点连杆（手臂装在身上的那节，或数据里末端位置的坐标系）
+    #     tip_link      必填：末端连杆（手的工作点）
+    #     tip_offset    选填：数据记录的末端点在 tip_link 坐标系里的位置 [x, y, z]（m），如两指中间比法兰往前 10 cm；
+    #                   从数据说明里查，核对不会替你算
+    #     limit_margin  选填：关节限位上下各放宽多少 rad，默认 0.01
+    #
+    #   ── home 复位位置（选填）：录制开头和结尾离它超过 tolerance 就复核；各条手臂要用同一种写法、同一个 tolerance ──
+    #     home: {joints: [...], tolerance: 0.6}            按关节角：个数 = 关节数，单位 rad，tolerance 也是 rad
+    #     home: {eef_position: [x, y, z], tolerance: 0.05}  或按末端位置：单位 m，tolerance 也是 m
+    #     home 只填采集团队确认过的姿态（比如采集规范里写的），不要用 URDF 零位或厂家默认值去猜；给不出就在 checks 写 skip: [Reset_Detection]
+    joints: {source: observation.state, index: 0-5, unit: rad}
+    # joint_velocity: {source: observation.velocity, index: 0-5, unit: rad/s}
+    # joint_command: {source: action, index: 0-5, unit: rad}
+    eef_position: {source: observation.eef, index: 0-2, unit: m}
+    # eef_orientation: {source: observation.eef, index: 3-6, unit: quaternion, order: xyzw}
+    # eef_command: {source: action, index: 0-2, unit: m}
+    gripper: {source: observation.state, index: 6, unit: m}
+    # gripper_command: {source: action, index: 6, unit: raw, range: [0, 1000]}
+    # urdf:                    # 只管手臂（joints 那几个关节）；夹爪不用 URDF
+    #   file: my_dual_arm/left_arm.urdf
+    #   joints: [l_joint1, l_joint2, l_joint3, l_joint4, l_joint5, l_joint6]
+    #   base_link: left_base_link
+    #   tip_link: left_link6
+    # home: {joints: [0, 0, 0, 0, 0, 0], tolerance: 0.6}   # 全 0 只是占位，不是真的 home
+  right:                       # 右臂：每一项的写法和 left 一样
+    joints: {source: observation.state, index: 7-12, unit: rad}
+    eef_position: {source: observation.eef, index: 7-9, unit: m}
+    gripper: {source: observation.state, index: 13, unit: m}
+
+cameras:                       # 建议写：每路相机一项，相机名随意
+  head: {source: observation.images.cam_high, mount: head, label: 头部相机}
+  left_wrist: {source: observation.images.cam_left_wrist, mount: wrist, arm: left, label: 左手腕相机}
+  right_wrist: {source: observation.images.cam_right_wrist, mount: wrist, arm: right, label: 右手腕相机}
+  # head_depth: {source: observation.images.cam_high_depth, mount: head, type: depth}
+  #   source  必填：相机的话题 / 特征名
+  #   mount   必填：装在哪：head / chest / wrist / main
+  #   arm     手腕相机必填：装在哪条手臂（写手臂名）
+  #   type    选填：rgb（默认）/ depth（深度图，只参与时间检查）
+  #   label   选填：报告里显示的名字
+  #   info    建议写：这路相机内参的名字（edc channels 里找，ROS 一般是 /相机名/color/camera_info）；
+  #           不写或数据里没有，结构检查的“相机配对”扣分
+
+# imu:                         # 选填：IMU，名字随意（如 main）
+#   main: {source: /imu, gyro: {field: angular_velocity, unit: rad/s}, accel: {field: linear_acceleration, unit: m/s^2},
+#          orientation: {field: orientation, order: xyzw}}
+#   source       必填：IMU 的话题 / 特征名
+#   gyro         角速度：field 写字段名，unit：rad/s / deg/s
+#   accel        加速度：field 写字段名，unit：m/s^2（含重力）
+#   orientation  姿态四元数：field 写字段名，order：xyzw / wxyz（只查 NaN/无穷大）
+#   三项至少写一项；label 选填
+
+# other:                       # 选填：其他数值（腰、头、底盘、力矩……），一行一项
+#   - {source: observation.waist, label: 腰, unit: m}
+#   写法同开头（source、field、index、unit、range、scale、label）；unit：m / cm / mm / rad / deg / m/s / rad/s / deg/s /
+#   m/s^2 / A / N / N*m / s / quaternion / rpy_rad / rpy_deg / raw（要写 range）/ unknown。
+#   只查 NaN/无穷大，写了 range 再查范围
+
+# checks:                      # 选填：算法参数，只写和默认值不同的（全部参数见 README.zh-CN.md“算法参数”）
+#   Numeric_Check: {freeze_min_duration_s: 8}     # 例：冻结时长默认 5 秒，改成 8 秒
+#   skip: [Reset_Detection]                       # 例：不查的算法（报告里记“不适用”）；可写的算法名见 README

@@ -91,6 +91,8 @@ class Episode:
                 info = reader.open(str(self.path))
             from edc.robots.mapping import add_selected_topics
             add_selected_topics(info, self.profile)
+            if self.profile.get('declared_only'):  # 机器人 yaml：没写进去的数据（含时间）不读、不检查
+                info.topics = {n: t for n, t in info.topics.items() if n in self.profile['channels']}
             channels = {}
             for name, topic in info.topics.items():
                 mapping = next((v for pattern, v in self.profile.get("channels", {}).items()
@@ -259,8 +261,11 @@ class Episode:
     def read_values(self, channel, indices=None):
         self.open()
         if 'fields' in self.channels[channel].selection:
-            from edc.robots.mapping import select_field_rows
+            from edc.robots.mapping import select_field_rows, scaled
             rows = select_field_rows(self, channel)
+            spec = self.profile['channels'][channel]
+            if any('scale' in (m or {}) for m in (spec.get('field_metadata') or {}).values()):
+                rows = [{k: scaled(spec, k, np.asarray(v, dtype=float)) for k, v in row.items()} for row in rows]
             return rows if indices is None else [rows[i] for i in indices]
         if self.channels[channel].selection:
             from edc.robots.mapping import select_values, check_joint_shape
@@ -328,14 +333,9 @@ class Episode:
         check_joint_shape(c, field, result, self.profile)
         return result
 
-    def time_axis(self, channel, *, time_source):
-        from edc.data.ir.time_axis import time_axis
-        return time_axis(self, channel, time_source=time_source)
-
-    def align_signal(self, channel, field, reference, *, method, max_gap=None, time_source=None):
+    def align_signal(self, channel, field, reference, *, method, max_gap=None):
         from edc.data.transforms.resampling import align_signal
-        return align_signal(self, channel, field, reference, method=method, max_gap=max_gap,
-                            time_source=time_source)
+        return align_signal(self, channel, field, reference, method=method, max_gap=max_gap)
 
     def transform_signal(self, channel, field, *, target_unit=None, target_frame=None, kind=None):
         from edc.data.transforms.episode import signal
@@ -451,11 +451,20 @@ def _set_episode_backend(episode, backend):
         raise ValueError("The official backend requires a LeRobot dataset")
     version = episode.selector.get("info", {}).get("codebase_version")
     episode.backend = ("official" if episode.format == "lerobot" and
-        (backend == "official" or backend == "auto" and version == "v3.0") else "compat")
+        (backend == "official" or backend == "auto" and version == "v3.0" and _official_installed()) else "compat")
 
 
-def open_dataset(path, profile=None, robot=None, *, backend="auto"):
-    from edc.robots.profiles import profile_dir
+def _official_installed():
+    """auto uses the official LeRobot reader only when the validated version is installed."""
+    from importlib.metadata import version, PackageNotFoundError
+    from edc.data.readers.lerobot_official import OFFICIAL_VERSION
+    try:
+        return version('lerobot') == OFFICIAL_VERSION
+    except PackageNotFoundError:
+        return False
+
+
+def open_dataset(path, profile=None, *, backend="auto"):
     from edc.data.readers.structured import discover
     from edc.algorithms.registry import Registry
     path = Path(path).resolve()
@@ -469,12 +478,6 @@ def open_dataset(path, profile=None, robot=None, *, backend="auto"):
         state = json.loads(acceptance.read_text())
         if state.get('conversion_status') == 'failed':
             raise ValueError('Conversion acceptance failed; inspect catalog diagnostics instead of running detection')
-    if profile is not None and robot is not None:
-        raise ValueError("Use either profile or robot")
-    if robot is not None:
-        if Path(robot).name != robot:
-            raise ValueError("Invalid robot id")
-        profile = profile_dir() / f"{robot}.yaml"
     if profile is None and path.is_dir() and (path / "robot.yaml").exists():
         profile = path / "robot.yaml"
     profile = load_profile(profile)
@@ -503,6 +506,9 @@ def open_dataset(path, profile=None, robot=None, *, backend="auto"):
         raise ValueError("Dataset must contain unique, nonempty episode IDs")
     for ep in episodes:
         _set_episode_backend(ep, backend)
+        if profile.get('time_declared') is False and ep.format in {'hdf5', 'parquet', 'lerobot', 'episode'}:
+            raise ValueError('表格数据（JSON、HDF5、Parquet、LeRobot）要在 yaml 的 data 里写 time（采集时间列）'
+                             '或 time_note（没有采集时间的原因）')
     mapping_path = path / "dqs-source-mapping.json" if path.is_dir() else None
     if mapping_path is not None and mapping_path.is_file():
         import json

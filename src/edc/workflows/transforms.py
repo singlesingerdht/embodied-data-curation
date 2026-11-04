@@ -6,6 +6,10 @@ from .references import dataset_reference, open_dataset_reference
 
 
 def validate_transform(record, parents, output_root):
+    # Integrity compares recorded payloads and recorded declarations, not the SI
+    # execution view (which may have a different dtype, unit or representation).
+    while getattr(parents, '_source', None) is not None:
+        parents = parents._source
     output_root = Path(output_root).resolve()
     if record['status'] != 'completed':
         raise ValueError('Transform did not complete')
@@ -57,6 +61,12 @@ def validate_transform(record, parents, output_root):
                 if not isinstance(changed, list):
                     raise ValueError('changed_channels must be explicit')
                 parent = parent_index[parent_id]
+                # DatasetView can retain wrapped episodes even when the dataset
+                # itself has no _source. Compare storage on both sides.
+                while getattr(parent, '_source', None) is not None:
+                    parent = parent._source
+                while getattr(child, '_source', None) is not None:
+                    child = child._source
                 with parent.opened(), child.opened():
                     if set(parent.channels) != set(child.channels) or not set(changed).issubset(parent.channels):
                         raise ValueError('Transform lost or invented channels')

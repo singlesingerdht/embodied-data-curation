@@ -1,0 +1,27 @@
+# franka_panda：Franka Emika Panda 单臂 + 二指夹爪
+# 数据：robomimic（robosuite 仿真），/mnt/public/datasets/robomimic/datasets/<任务>/<ph|mh>/low_dim.hdf5
+#   一个 hdf5 里有多条演示（data/demo_0、data/demo_1……），每条一个子组；20 Hz 控制，没有采集时间
+
+robot:
+  name: franka_panda
+  confirmed_by: renxiaoshu
+  signature: 75e5a1bc20ade6d0
+
+data:
+  episode_group: data          # data/demo_0、data/demo_1……各算一条
+  time_note: robomimic 只按 20 Hz 存帧，没有采集时间
+  min_duration_s: 1.0          # 演示很短（lift 约 3 秒，50~60 帧）
+
+arms:
+  main:
+    joints: {source: obs/robot0_joint_pos, index: 0-6, unit: rad}
+    joint_velocity: {source: obs/robot0_joint_vel, index: 0-6, unit: rad/s}
+    eef_position: {source: obs/robot0_eef_pos, index: 0-2, unit: m}
+    eef_orientation: {source: obs/robot0_eef_quat, index: 0-3, unit: quaternion, order: xyzw}
+    gripper: {source: obs/robot0_gripper_qpos, index: 0, unit: m}
+    urdf:
+      file: franka_panda/panda.urdf
+      joints: [panda_joint1, panda_joint2, panda_joint3, panda_joint4, panda_joint5, panda_joint6, panda_joint7]
+      base_link: panda_link0
+      tip_link: panda_hand
+      tip_offset: [0, 0, 0.0965]   # robosuite 记录的末端是两指中间，在 panda_hand 前 9.65 cm

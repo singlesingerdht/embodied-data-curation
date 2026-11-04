@@ -100,7 +100,6 @@ DIRECTION = {
     'Compression Artifacts': 'forward', 'Poor Exposure': 'forward',
     'Good Aesthetics': 'forward', 'Flicker': 'forward',
     'Overall': 'forward', 'Trajectory': 'forward',
-    'Jerk': 'inverse',
 }
 
 

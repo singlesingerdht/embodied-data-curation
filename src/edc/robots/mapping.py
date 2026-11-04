@@ -57,7 +57,7 @@ def validate_mapping_config(profile):
             raise ValueError(f'{name}: selection rule is shadowed by an earlier channel pattern')
         if binding['channel'] == name or source.get('select') is not None:
             raise ValueError('Selected channels must refer directly to an original channel')
-        if part and parts[part].get('dof') and len(indices) != parts[part]['dof']:
+        if spec.get('modality') == 'joint_space' and part and parts[part].get('dof') and len(indices) != parts[part]['dof']:
             raise ValueError(f'{name}: selected indices do not match {part} dof')
 
 
@@ -108,8 +108,20 @@ def validate_field_selection(profile, name, spec):
             raise ValueError(f'{name}: selected indices do not match {part} dof')
     if not isinstance(binding['channel'], str) or not isinstance(fields, dict) or not fields:
         raise ValueError(f'{name}: select.fields must map output fields to source fields')
-    if any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in fields.items()):
-        raise ValueError(f'{name}: select.fields keys and values must be field names')
+    # A field may also come from another recorded channel with the same rows (e.g. joint velocity in
+    # its own column): {channel, field, indices}. select.channel stays the timeline source.
+    for key, value in fields.items():
+        if isinstance(value, dict):
+            other = profile['channels'].get(value.get('channel'))
+            index = value.get('indices')
+            if (set(value) - {'channel', 'field', 'indices'} or other is None or other.get('select') is not None
+                    or not isinstance(value.get('field'), str) or not value['field']):
+                raise ValueError(f'{name}.{key}: field source needs an original channel, field and optional indices')
+            if index is not None and (not isinstance(index, list) or not index
+                                      or any(type(i) is not int or i < 0 for i in index)):
+                raise ValueError(f'{name}.{key}: indices must be nonnegative integers')
+        elif not isinstance(key, str) or not isinstance(value, str) or not value:
+            raise ValueError(f'{name}: select.fields keys and values must be field names')
     if list(fields) != list(spec.get('fields', [])) or any(c in name for c in '*?['):
         raise ValueError(f'{name}: select.fields must list exactly the declared fields, in order, on a literal channel')
     first_match = next((v for pat, v in profile['channels'].items() if fnmatch.fnmatchcase(name, pat)), None)
@@ -178,7 +190,7 @@ def check_joint_shape(channel, field, values, profile):
         actual = list(values.shape[1:])
         raise ValueError(f'{channel.name}.{field}: DOF mismatch: observed {actual}, {part} declares {dof}; '
                          'use channels.<new_name>.select with explicit channel/field/indices. '
-                         'See examples/onboarding/joint_split.yaml; never infer left/right indices')
+                         'in the robot yaml give each arm its joints index; never infer left/right indices')
     names = channel.field_spec(field).get('joint_names')
     if names and len(names) != dof:
         raise ValueError(f'{channel.name}.{field}: joint_names dimension mismatch with declared DOF')
@@ -189,14 +201,29 @@ def select_field_rows(episode, channel):
     binding = episode.profile['channels'][channel]['select']
     fields, indices = binding['fields'], binding.get('indices')
     rows = episode.read_values(binding['channel'])
-    missing = sorted({src for row in rows for src in fields.values() if src not in row})
-    if missing:
-        raise ValueError(f'{channel}: selection source fields absent: {", ".join(missing)}')
-    if indices is None:
-        return [{out: row[src] for out, src in fields.items()} for row in rows]
-    if any(len(row[src]) <= max(indices) for row in rows for src in fields.values()):
-        raise ValueError(f'{channel}: selection indices outside source array dimensions')
-    return [{out: [row[src][i] for i in indices] for out, src in fields.items()} for row in rows]
+    columns = {}
+    for out, src in fields.items():
+        if isinstance(src, dict):  # Another recorded channel with the same rows.
+            source, key, picks = episode.read_values(src['channel']), src['field'], src.get('indices')
+        else:
+            source, key, picks = rows, src, indices
+        if len(source) != len(rows):
+            raise ValueError(f'{channel}.{out}: source rows differ from {binding["channel"]}')
+        if any(key not in row for row in source):
+            raise ValueError(f'{channel}: selection source fields absent: {key}')
+        values = [row[key] for row in source]
+        if picks is not None:
+            if any(len(v) <= max(picks) for v in values):
+                raise ValueError(f'{channel}: selection indices outside source array dimensions')
+            values = [[v[i] for i in picks] for v in values]
+        columns[out] = values
+    return [{out: columns[out][i] for out in fields} for i in range(len(rows))]
+
+
+def scaled(spec, field, data):
+    """Raw numbers mapped to the declared unit (robot yaml `scale`: value = k * raw + b)."""
+    scale = ((spec.get('field_metadata') or {}).get(field) or {}).get('scale')
+    return data * scale[0] + scale[1] if scale else data
 
 
 def select_values(episode, channel, field=None):
@@ -205,7 +232,7 @@ def select_values(episode, channel, field=None):
     if 'fields' in binding:
         field = field or spec['fields'][0]
         data = np.asarray([row[field] for row in select_field_rows(episode, channel)], dtype=float)
-        return data.reshape(len(data), -1) if data.ndim == 1 else data
+        return scaled(spec, field, data.reshape(len(data), -1) if data.ndim == 1 else data)
     if 'fk' in binding:
         cache = episode.__dict__.setdefault('_fk_positions', {})
         if channel not in cache:
@@ -221,4 +248,4 @@ def select_values(episode, channel, field=None):
         raise ValueError(f'{channel}: selection indices outside source array dimensions')
     if data.dtype.kind not in 'fiu':
         raise ValueError('Selection requires numeric arrays')
-    return data[:, indices].copy()
+    return scaled(spec, spec['fields'][0], data[:, indices].astype(float))

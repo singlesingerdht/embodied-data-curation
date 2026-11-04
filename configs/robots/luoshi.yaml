@@ -1,0 +1,37 @@
+# 珞石/开阳双臂（luoshi），LeRobot v3.0（同事由 HDF5 转换），30 Hz，3 路 RealSense 彩色 + 深度（图片列）
+# 数据：/mnt/public/rxs/data/Lerobotv30/luoshi_1ep
+# 依据（2026-10-31 看了这 1 条）：arm.position 14 维 = 左 7 + 右 7，-0.8~0.4，按 rad；arm.velocity 同序，按 rad/s；
+# action.end.position 14 维 = 每臂 7 个（前 3 个 -0.45~1.0，按 m 的位置），只有指令、没有实际末端；
+# source.timestamp.t 是毫秒 Unix 时间（1779082894431 = 2026-05-18），比 LeRobot 按帧号算的 timestamp 真实。
+# 没有 URDF：关节限位不检查；速度没有上限来源，只查有没有坏数。
+robot:
+  name: luoshi
+  confirmed_by: renxiaoshu
+  signature: 824d3c98eb563161
+
+data:
+  time: {source: source.timestamp.t, unit: ms}
+
+arms:
+  left:
+    joints: {source: source.observation.state.arm.position, index: 0-6, unit: rad}
+    joint_command: {source: source.action.arm.position, index: 0-6, unit: rad}
+    eef_command: {source: source.action.end.position, index: 0-2, unit: m}
+    gripper: {source: source.observation.state.effector.position, index: 0, unit: unknown}
+  right:
+    joints: {source: source.observation.state.arm.position, index: 7-13, unit: rad}
+    joint_command: {source: source.action.arm.position, index: 7-13, unit: rad}
+    eef_command: {source: source.action.end.position, index: 7-9, unit: m}
+    gripper: {source: source.observation.state.effector.position, index: 1, unit: unknown}
+
+cameras:
+  head: {source: source.observation.images.rs.cam_high.color, mount: head, label: 头部相机}
+  left_wrist: {source: source.observation.images.rs.cam_left_wrist.color, mount: wrist, arm: left, label: 左手腕相机}
+  right_wrist: {source: source.observation.images.rs.cam_right_wrist.color, mount: wrist, arm: right, label: 右手腕相机}
+
+other:
+  - {source: source.observation.state.arm.velocity, label: 双臂关节速度, unit: rad/s}
+  - {source: source.observation.state.arm.torque, label: 双臂关节力矩, unit: unknown}
+  - {source: source.observation.state.waist.position, label: 腰, unit: unknown}
+  - {source: source.observation.state.head.position, label: 头, unit: unknown}
+  - {source: source.observation.state.base.velocity, label: 底盘速度, unit: unknown}

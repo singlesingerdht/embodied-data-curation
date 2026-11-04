@@ -5,9 +5,10 @@ import hashlib
 from importlib.metadata import version, PackageNotFoundError
 import json
 from pathlib import Path
+from time import perf_counter
 import uuid
 from edc.algorithms.registry import algorithms
-from edc.reporting.results import write_json, append_record, report
+from edc.reporting.results import write_json, append_record
 from edc.algorithms.recommendations import recommend_episode, recommend_dataset
 
 
@@ -40,7 +41,8 @@ class Context:
 
 
 def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, params=None, on_preflight=None,
-        unit_policy="auto", *, upstream=None, selection_policy="explicit", config_snapshot=None, method_select=None):
+        unit_policy="auto", *, upstream=None, selection_policy="explicit", config_snapshot=None, method_select=None,
+        html_report=True):
     from edc.data.ir.units import SIDataset, UnitInputError, validate_unit_policy
     from edc.data.ir.canonical import OrientationInputError, QUATERNION
     if selection_policy not in {"explicit", "runnable"}:
@@ -69,6 +71,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
     with lock.open("x"):
         pass
     try:
+        started = perf_counter()
         catalog_path = output / "catalog.json"
         catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {"schema_version": "dqs_catalog_v1", "runs": []}
         if catalog.get("schema_version") != "dqs_catalog_v1":
@@ -101,9 +104,11 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
         counts = {}
         selection = []
         recommendations = []
+        episode_seconds = {}
         from edc.execution.media import MediaCache
         media_cache = MediaCache(root / '_media')
         for episode in execution_dataset.iter_episodes():
+            episode_started = perf_counter()
             records = []
             try:
                 open_error = None
@@ -208,6 +213,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             decision = quality_gate(quality, [episode.id], run_id)[episode.id]['decision']
             selection.append({"episode_id": episode.id, "source": str(episode.path), "decision": decision,
                               "assessment_complete": complete, "policy_version": "episode_filter_v3"})
+            episode_seconds[episode.id] = perf_counter() - episode_started
         dataset_checks = recommend_dataset(execution_dataset, registry.plugins, params,
                                             selected=ids, method_select=method_select)
         try:
@@ -233,8 +239,17 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             'discovery_errors': registry.discovery_errors})
         summary = {"run_id": run_id, "episodes": len(selection), "status_counts": counts,
             "status": "partial_success" if any(k != "completed" for k in counts) else "completed"}
+        from edc.algorithms.quality.adapters.results import write_quality
+        quality = write_quality(root, [s["episode_id"] for s in selection],
+                                (dataset.profile or {}).get('notes'))
         write_json(root / "summary.json", summary)
+        report = None
+        if html_report:
+            from edc.reporting.run import write_run_report
+            report = write_run_report(output, root, quality, seconds=perf_counter() - started,
+                                      episode_seconds=episode_seconds)
         catalog["runs"].append({"run_id": run_id, "records": records_paths,
+            **({'report': report} if report else {}),
             **({'media_manifest': (media_cache.root / 'manifest.json').relative_to(output).as_posix()}
                if (media_cache.root / 'manifest.json').is_file() else {}),
             "run": (root / "run.json").relative_to(output).as_posix(),
@@ -242,7 +257,6 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             "recommendations": (root / "recommendations.json").relative_to(output).as_posix(),
             "selection": (root / "selection.json").relative_to(output).as_posix()})
         write_json(catalog_path, catalog)
-        report(output)
         return summary
     finally:
         lock.unlink(missing_ok=True)

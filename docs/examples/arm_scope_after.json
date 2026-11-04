@@ -1,0 +1,209 @@
+{
+  "input_kind": "controlled synthetic HDF5; right row500 contains NaN",
+  "results": [
+    {
+      "layout": "shared",
+      "explicit_channels": false,
+      "status": "completed",
+      "scope": {
+        "arms": [
+          "left"
+        ],
+        "selection": [
+          "left"
+        ],
+        "mode": "numeric",
+        "channels": [
+          "joint/arm/left/feedback"
+        ],
+        "missing_arms": [],
+        "missing_channels": [],
+        "excluded_inputs": [
+          {
+            "channel": "joint_pos",
+            "status": "not_checked",
+            "reason": "covered_by_derived_fields"
+          },
+          {
+            "channel": "joint/arm/right/feedback",
+            "status": "not_checked",
+            "reason": "unselected_arm",
+            "arms": [
+              "right"
+            ]
+          }
+        ],
+        "missing_ownership": [],
+        "source_expansions": {},
+        "channels_by_arm": {
+          "left": [
+            "joint/arm/left/feedback"
+          ]
+        },
+        "shared_channels": []
+      },
+      "reports": [
+        {
+          "input_channel": "joint/arm/left/feedback",
+          "input_field": "position",
+          "shape": [
+            1000,
+            1
+          ],
+          "verdict": "ACCEPTABLE",
+          "nonfinite_count": 0
+        }
+      ],
+      "record": "<audit_root>/four-items-arm/shared-default/_runs/20261103T113839Z-5be34860f8/Numeric_Check/records.jsonl"
+    },
+    {
+      "layout": "shared",
+      "explicit_channels": true,
+      "status": "completed",
+      "scope": {
+        "arms": [
+          "left"
+        ],
+        "selection": [
+          "left"
+        ],
+        "mode": "numeric",
+        "channels": [
+          "joint/arm/left/feedback"
+        ],
+        "missing_arms": [],
+        "missing_channels": [],
+        "excluded_inputs": [],
+        "missing_ownership": [],
+        "source_expansions": {
+          "joint/arm/left/feedback": []
+        },
+        "channels_by_arm": {
+          "left": [
+            "joint/arm/left/feedback"
+          ]
+        },
+        "shared_channels": []
+      },
+      "reports": [
+        {
+          "input_channel": "joint/arm/left/feedback",
+          "input_field": "position",
+          "shape": [
+            1000,
+            1
+          ],
+          "verdict": "ACCEPTABLE",
+          "nonfinite_count": 0
+        }
+      ],
+      "record": "<audit_root>/four-items-arm/shared-explicit/_runs/20261103T113839Z-0a44b1611b/Numeric_Check/records.jsonl"
+    },
+    {
+      "layout": "separate",
+      "explicit_channels": false,
+      "status": "completed",
+      "scope": {
+        "arms": [
+          "left"
+        ],
+        "selection": [
+          "left"
+        ],
+        "mode": "numeric",
+        "channels": [
+          "joint/arm/left/feedback"
+        ],
+        "missing_arms": [],
+        "missing_channels": [],
+        "excluded_inputs": [
+          {
+            "channel": "left_joints",
+            "status": "not_checked",
+            "reason": "covered_by_derived_fields"
+          },
+          {
+            "channel": "right_joints",
+            "status": "not_checked",
+            "reason": "unselected_arm",
+            "arms": [
+              "right"
+            ]
+          },
+          {
+            "channel": "joint/arm/right/feedback",
+            "status": "not_checked",
+            "reason": "unselected_arm",
+            "arms": [
+              "right"
+            ]
+          }
+        ],
+        "missing_ownership": [],
+        "source_expansions": {},
+        "channels_by_arm": {
+          "left": [
+            "joint/arm/left/feedback"
+          ]
+        },
+        "shared_channels": []
+      },
+      "reports": [
+        {
+          "input_channel": "joint/arm/left/feedback",
+          "input_field": "position",
+          "shape": [
+            1000,
+            1
+          ],
+          "verdict": "ACCEPTABLE",
+          "nonfinite_count": 0
+        }
+      ],
+      "record": "<audit_root>/four-items-arm/separate-default/_runs/20261103T113839Z-5bfcacd823/Numeric_Check/records.jsonl"
+    },
+    {
+      "layout": "separate",
+      "explicit_channels": true,
+      "status": "completed",
+      "scope": {
+        "arms": [
+          "left"
+        ],
+        "selection": [
+          "left"
+        ],
+        "mode": "numeric",
+        "channels": [
+          "joint/arm/left/feedback"
+        ],
+        "missing_arms": [],
+        "missing_channels": [],
+        "excluded_inputs": [],
+        "missing_ownership": [],
+        "source_expansions": {
+          "joint/arm/left/feedback": []
+        },
+        "channels_by_arm": {
+          "left": [
+            "joint/arm/left/feedback"
+          ]
+        },
+        "shared_channels": []
+      },
+      "reports": [
+        {
+          "input_channel": "joint/arm/left/feedback",
+          "input_field": "position",
+          "shape": [
+            1000,
+            1
+          ],
+          "verdict": "ACCEPTABLE",
+          "nonfinite_count": 0
+        }
+      ],
+      "record": "<audit_root>/four-items-arm/separate-explicit/_runs/20261103T113839Z-3cd15b2466/Numeric_Check/records.jsonl"
+    }
+  ]
+}

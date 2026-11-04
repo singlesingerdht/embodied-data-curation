@@ -1,118 +1,159 @@
 # Embodied Data Curation Framework
 
-**EDC (Embodied Data Curation)** provides robot data ingestion, input-based algorithm recommendations, CPU inspection, auditable plugin workflows, and evidence reports.
+**EDC = Embodied Data Curation**. Read robot data, choose suitable algorithms, and inspect the results. Developers can also add their own algorithms.
 
-[简体中文](README.zh-CN.md) · [Configuration](docs/framework/CONFIGURATION.md) · [Algorithms](docs/framework/ALGORITHMS.md) · [Three-person collaboration](FRIEND_VALIDATION.md)
+[简体中文](README.zh-CN.md) · [Quick start](docs/QUICKSTART.md) · [Data integration](docs/DATA_AND_CONFIGURATION.md) · [Algorithms](docs/ALGORITHMS.md) · [Development](docs/DEVELOPMENT.md)
 
-## News
+## Overview
 
-- 2026-10-27 (0.2.0a2): automatic XYZW quaternion orientation reads; configurable 107-name channel registry with IMU, odometry, hand, gripper and tactile templates. [Contract and migration](docs/framework/ORIENTATION_HAND_TACTILE.md).
+Provide a data path and robot configuration. EDC lists available algorithms and produces a web report and JSON results after execution. The current focus is **reading robot data in different formats and providing nine CPU quality checks**.
 
-- 2026-10-26: Python/CLI `edc`, distribution `embodied-data-curation`, and `src/edc` module layout.
-- Four reusable configuration components with standalone export; explicit single/dual arm scope; one robot across multiple task datasets.
-- Editing and augmentation create validated copies and return to quality checks. See [verified status and limits](docs/framework/STATUS.md).
+| Capability | Current support |
+|---|---|
+| Data reading | Read joint, camera, and other data from each robot operation, and locate detected problems in the corresponding records and original files |
+| Robot configuration | Specify which arm or camera each recording belongs to, its units, and whether it is a command or measured feedback |
+| Algorithm selection | List what can run, what can only be checked in part, and which data or settings are missing |
+| Quality checks | Check missing data, unusual numbers and timing, vibration while holding still, reset positions, and images/videos |
+| Results | Inspect conclusions and problem locations in a web report; save measurements and references to original records in JSON |
+| Selected data export | Copy or symlink data marked for retention in a batch report, with a manifest mapping original data to exported data |
 
-## Quick start: X1 Pro MCAP
+Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, and more**. See [supported formats](docs/DATA_AND_CONFIGURATION.md#formats) for backends and message types.
 
-The `data-platform` branch starts from `leju-kuavo` commit `87c5e6f`. This example reads a real MCAP directly, including embedded images and numeric signals. The source remains on the server; its redistribution license is unknown.
+## What's New
 
-Use Python 3.10+ and run from this branch's repository root:
+> 🚀 The Embodied Data Curation Framework repository is coming soon. Stay tuned!
+
+## Architecture and Modules
+
+![EDC architecture](docs/assets/architecture.svg)
+
+The framework serves two groups:
+
+| Audience | How to use the framework | Get started |
+|---|---|---|
+| **Data users** | Provide data and configuration → Review available algorithms and missing requirements → Choose algorithms and parameters → Run and inspect reports | [Quick start](docs/QUICKSTART.md) · [Data configuration](docs/DATA_AND_CONFIGURATION.md) |
+| **Algorithm developers** | Write an algorithm → Declare required data, parameters, and outputs → Register and validate it → Make it available for recommendation and execution | [Algorithm development guide](docs/DEVELOPMENT.md) |
+
+Both paths share algorithm recommendation, execution, and result recording. [Modules and extensions](docs/DEVELOPMENT.md#interfaces)
+
+## Installation and Quick Start
+
+Python 3.10 or later is required. Run these commands from a local repository checkout; replace `/path/to/...` with your own paths.
+
+**1. Install**
 
 ```bash
+cd /path/to/embodied-data-curation
 python -m venv .venv
-.venv/bin/pip install -e '.[formats]'
-. .venv/bin/activate
+source .venv/bin/activate
+pip install '.[formats]'
 ```
 
-The documentation uses the following path placeholders consistently. Replace them with actual values and pass the input through `--input`; no dataset YAML edit is needed:
+**2. Prepare data**
 
-| Placeholder | Meaning |
-|---|---|
-| `<DATASET_DIR>` | Absolute path to the dataset directory containing the MCAP |
-| `<MCAP_FILE>` | MCAP filename including `.mcap`, without a directory |
+This example uses an MCAP recording collected from an X1 Pro dual-arm robot with [`x1pro_mcap.yaml`](configs/robots/x1pro_mcap.yaml). Place the recording at `/path/to/dataset/episode.mcap`; data names in the configuration must match the file. [Sample details and availability](docs/QUICKSTART.md#data)
 
-The full input path is `<DATASET_DIR>/<MCAP_FILE>`; the batch command below uses the same placeholders.
-
-The example configuration explicitly registers one Episode (`x1_pro_reference_0001`), retaining all 32 source channels. Keep the explicit ID and selector. The task is unconfirmed (`tasks: []`); directory names do not establish it.
+**3. Run and view results**
 
 ```bash
-MCAP_PATH='<DATASET_DIR>/<MCAP_FILE>'
-edc config check configs/x1_pro.yaml --input "$MCAP_PATH"
-edc config recommend configs/x1_pro.yaml --input "$MCAP_PATH"
-edc config run configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-mcap
-python -m http.server 8000 --directory results/x1-pro-mcap
+edc batch /path/to/dataset/episode.mcap \
+  --robot configs/robots/x1pro_mcap.yaml \
+  --output /path/to/results/report.html --jobs 1
 ```
 
-All three commands use the same input path. `--input` overrides only this invocation, preserving the explicit Episode ID, format and selector; the effective path is saved in the run snapshot. Omitting it uses the path in `configs/datasets/x1_pro_mcap.yaml`. Relative input paths resolve from the command's working directory. For other captures, check the applicability of robot declarations, units and calibration. Register multiple explicit episodes in the dataset YAML, or use the batch command below.
+Open `report.html` in a browser. The accompanying `report.json` provides machine-readable results. Successful execution does not mean all data passed. [Full quick start and reference results](docs/QUICKSTART.md)
 
-Open [the report](http://localhost:8000/report.html). In VS Code Remote-SSH, forward port 8000 in the Ports panel, then append `/report.html` to the forwarded local address. Keep the whole output directory so evidence links work.
+**4. Export selected data (optional)**
 
-**One episode and many episodes share the batch report layout.** `config run`, `edc run` and `edc batch` show decision counts, an episode-by-algorithm table and findings grouped by algorithm. This example has one row; click its episode name to expand the original per-episode detail table. The layout matches the `leju-kuavo` reference: four verdict explanations and four main sections. Checks use the existing pass/review/salvage/exclude verdicts; checks without the conditions needed for a judgment display not applicable. Full records and evidence remain in `_runs`, indexed by `catalog.json`. The `report.html` path is unchanged. Refresh an existing output with `edc report results/x1-pro-mcap` without rerunning algorithms.
-
-Expect a report with **delivery suspended**: all nine methods have status records, smoothness has separate left/right instances, and `Sync_Check` / `Root_Cause` explicitly run recording-time diagnostics; these do not establish acquisition synchronization or device root causes. Consequently `config run` returns exit code **1** for unmet release conditions; check individual records for actual processing failures. See the [measured acceptance results](docs/validation/x1_pro_mcap_20261102/README.md).
-
-| File | Purpose |
-|---|---|
-| `configs/x1_pro.yaml` | Unified entry referencing four components |
-| `configs/datasets/x1_pro_mcap.yaml` | Location, stable Episode ID, provenance and unknown task |
-| `configs/robots/x1_pro.yaml` | Dual arms, 32 channel semantics, units, separate command/feedback limits, reset calibration and numeric confirmation |
-| `configs/algorithms/x1_pro_mcap.yaml` | Head-frame reference, 0.1 s maximum interpolation span, physical field scope and image parameters |
-| `configs/workflows/x1_pro_mcap.yaml` | Nine explicit CPU checks, including blocked methods |
-
-Master joints are commands; follower joints are feedback. Arm positions and velocities are confirmed rad and rad/s. The master velocity/position derivative inconsistency remains a diagnostic; units rely on owner confirmation. Arm effort is current with unknown source units and never enters torque checks. Physical numeric checks cover the four arm position/velocity pairs and two follower XYZ fields (10 fields); other numeric fields retain finiteness diagnostics. The `data-platform-owner` attestation binds the thresholds and field scope. Changes require renewed owner review and confirmation.
-
-Each head RGB frame's MCAP `log_time` supplies the intermediate reference. Follower XYZ is linearly interpolated on the file's container clock, using overlapping real head frames, no extrapolation, and a maximum source bracket of 0.1 s. Images use original embedded frames. **Device clock relationships remain unknown: container alignment cannot prove acquisition synchronization.** Smoothness, sync and root-cause checks retain their original scores and judgments for the selected recording-time input. Sync and root-cause checks select `timeline: {time_source: container}` to inspect recording coverage, relative timing stability and correlated gaps. Acquisition synchronization and device fault causes remain unassessed; recording anomalies alone do not establish acquisition faults. Nine records do not imply nine passes. Original acquisition/container nanoseconds, source rows and interpolation weights remain available.
-
-`results/x1-pro-mcap/catalog.json` discovers outputs. `report.html` presents results; `_workflows/<id>/resolved-config.json` stores the workflow and effective configuration; `_runs/<id>/run.json` stores run parameters and versions. Algorithm directories contain `records.jsonl`, `errors.jsonl` and `artifacts/`; smoothness interpolation evidence is `Action_Smoothness/artifacts/<id>/timeline.json`; sync/root-cause recording timestamps and source rows are in their respective `artifacts/<id>/container_timeline.json`. Outputs never overwrite the source MCAP.
-
-Optional standalone configuration export (use a new output file):
+Use the batch `report.json` to export only data marked for retention (`keep`) by default. Choose one mode:
 
 ```bash
-edc config export configs/x1_pro.yaml --input "$MCAP_PATH" --output results/x1-pro-resolved.yaml
+# Copy data
+edc regenerate /path/to/results/report.json --output /path/to/selected --mode copy
+
+# Or create symbolic links to the original data
+edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
 ```
 
-## Batch inspection example (optional)
+The output directory contains copies or links and a `manifest.json` recording sources and selection criteria. Original data stays unchanged; symbolic links require the sources to remain available. See [selection and export](docs/SELECTION.md) for limits when selecting episodes from shared files.
 
-The quick start above already generates a report. To inspect one or more files with `edc batch`, replace the path placeholders in the following command with actual values. This command uses the supplied file paths, the same robot and the matching nine-method parameters in `configs/robots/x1_pro/params.json`. Supply explicit MCAP file paths: recursive directory discovery currently does not scan `.mcap`.
+## Data and Configuration
 
-This example assumes **one complete trajectory (Episode) per MCAP file**, with embedded images and numeric signals; no companion JSON or MP4 files are required. A dataset directory can be organized as follows:
+Configuration describes where the data is stored, which task was recorded, and where each operation starts and ends; which records contain joints, cameras, or other sensors and what units they use; and which algorithms, robot parts, and parameters to use for this run.
+
+**Robot configuration declares which arms exist; algorithm configuration selects which arms to inspect.** `arms: all` selects all declared arms. Use `[left]` or `[right]` for one side of a dual-arm robot, or declare `main` for an independent single arm. The same robot configuration can be reused across task datasets.
+
+| Task | Documentation |
+|---|---|
+| Inspect available data and specify where each operation starts and ends | [Dataset integration](docs/DATA_AND_CONFIGURATION.md#dataset) |
+| Configure one or two arms and their joint, camera, and other recordings | [Robot configuration](docs/DATA_AND_CONFIGURATION.md#robot) |
+| Specify units, how time was recorded, and whether device clocks can be compared | [Units and time](docs/DATA_AND_CONFIGURATION.md#units-time) |
+| Obtain joint information from URDF and validate mappings | [URDF usage and limits](docs/DATA_AND_CONFIGURATION.md#urdf) |
+| Configure algorithm inputs, scope, and parameters | [Algorithm configuration](docs/ALGORITHMS.md#selection) |
+
+Numbers with unknown units can be retained as described in the guide. For example, they can be checked for NaN or infinity, but joint speed cannot be compared against a physical limit until its units are known.
+
+## Algorithm Recommendation and Execution
+
+Recommendations tell you which checks your data can support. **Available** means the required data and settings are present; **partial** explains what can and cannot be checked; **unavailable** lists missing data, settings, or software. Whether the data passes is determined by the execution results.
+
+```bash
+# Data-specific recommendations: this script calls edc.recommend()
+python examples/quickstart/recommend.py /path/to/dataset/episode.mcap \
+  --robot configs/robots/x1pro_mcap.yaml
+
+# Select algorithms and execute in the specified order
+edc run /path/to/dataset/episode.mcap \
+  --robot configs/robots/x1pro_mcap.yaml \
+  --algorithm Structure_Check --algorithm Numeric_Check \
+  --output /path/to/results/selected
+```
+
+Without an explicit selection, execution runs quality algorithms that are fully or partly available and explains what cannot be checked. Use `batch` for batch quality checks, or `run` and the Python API to select individual algorithms. `edc algorithms` only lists installed algorithms. [Selection, Python API, and batch execution](docs/ALGORITHMS.md#selection)
+
+`run` writes `report.html` in its output directory by default, using the same four report sections as `batch` and showing only the selected algorithms. For the example above, open `/path/to/results/selected/report.html`. Full JSON records and evidence are stored under `_runs/<run_id>/` and located through `catalog.json`; each run also retains its own report there. Add `--no-html` to skip HTML generation while keeping JSON and evidence, or use `edc.run(..., html_report=False)` in Python.
+
+`batch` accepts a single recording, multiple recordings, or a directory. It disables HTML generation in its internal `run` calls and produces one combined report. Even with `--keep`, per-episode output retains JSON and evidence without extra HTML reports. Its `report.json` can be used for the export commands above.
+
+| Algorithm | Checks | Minimum input | Details |
+|---|---|---|---|
+| `Structure_Check` | Missing required data and insufficient duration | Available data list and configured requirements | [Structure](docs/ALGORITHMS.md#structure-check) |
+| `Numeric_Check` | NaN, infinity, and values outside configured limits | Numeric data; limit checks also need units and bounds | [Numeric validity](docs/ALGORITHMS.md#numeric-check) |
+| `Action_Smoothness` | End-effector vibration while holding still and stuck position readings | XYZ feedback, or positions calculated from joints as configured, with timestamps | [Smoothness](docs/ALGORITHMS.md#action-smoothness) |
+| `Check_Timestamp` | Unusual recording intervals and gaps | Timestamps and their units | [Timestamps](docs/ALGORITHMS.md#check-timestamp) |
+| `Sync_Check` | Differences between device acquisition times | Each stream's acquisition times and a confirmed relationship between device clocks | [Synchronization](docs/ALGORITHMS.md#sync-check) |
+| `Root_Cause` | Which recordings have timing problems at the same time | Comparable timestamps and device groups | [Timing attribution](docs/ALGORITHMS.md#root-cause) |
+| `Dedup_Check` | Repeated timestamps or record numbers | Original timestamps or sequence numbers | [Duplicates](docs/ALGORITHMS.md#dedup-check) |
+| `Reset_Detection` | Whether the robot starts and ends at the specified position | Actual positions, reference positions, and allowed error | [Reset](docs/ALGORITHMS.md#reset-detection) |
+| `Video_Integrity` | Black frames, blur, suspected frozen images, and damaged video files | Readable images or video | [Images and video](docs/ALGORITHMS.md#video-integrity) |
+
+Each algorithm reports its own results and supporting evidence. Results are not combined into one overall score. [Reading reports](docs/ALGORITHMS.md#results)
+
+## Developers and Project Structure
+
+Follow the examples to write an algorithm, declare its required data and parameters, and return conclusions, reasons, and problem locations. Quality algorithms can use the existing output base classes. After registration, the framework runs the algorithm and generates reports. Other algorithm categories use the [general plugin interface](docs/DEVELOPMENT.md#interfaces).
+
+[Output classes and a complete algorithm example](docs/DEVELOPMENT.md#quality-example) · [Reader plugins](docs/DEVELOPMENT.md#readers) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
-<DATASET_DIR>/
-├── <MCAP_FILE_1>    # e.g. episode_001.mcap
-└── <MCAP_FILE_2>    # e.g. episode_002.mcap
+src/edc/
+├── data/          # Read data formats and handle units and time
+├── robots/        # Read robot configuration and associate parts with data
+├── algorithms/    # Register algorithms, check inputs, quality methods and output classes
+├── execution/     # CLI, single-run, and batch execution
+├── workflows/     # Run algorithms in stages and repeat quality checks
+└── reporting/     # Reports and evidence
+configs/
+├── robots/        # Robot YAML and associated URDF
+└── templates/     # Single-arm, dual-arm, and other templates
+examples/          # Usage and plugin examples
+docs/              # Topic guides
+tests/             # Functionality and interface tests
 ```
 
-Replace `<MCAP_FILE_1>` and `<MCAP_FILE_2>` with distinct `.mcap` filenames, following the same convention as `<MCAP_FILE>` above. Files may also reside in subdirectories; supply their corresponding paths in the command. Filenames must be unique across all inputs.
+### Roadmap
 
-```bash
-edc batch \
-  '<DATASET_DIR>/<MCAP_FILE_1>' \
-  '<DATASET_DIR>/<MCAP_FILE_2>' \
-  --robot x1_pro --jobs 1 \
-  --output results/x1-pro-batch.html --keep results/x1-pro-batch-runs
-```
-
-The batch HTML has a companion JSON summary. `--keep` preserves per-file reports and evidence and requires a new directory. Multiple explicit MCAP paths are accepted. Verify hardware, units, calibration and clock declarations before using another capture. Batch IDs follow file names; use unified configuration for custom stable Episode IDs.
-
-The existing JSON + MP4 reader remains available through the separate `x1pro_episode` profile, whose clock declarations and reset tolerances differ from this MCAP profile. See the [JSON + MP4 configuration](configs/robots/x1pro_episode.yaml). For a synthetic SDK demonstration without real data, run `python examples/curation/make_example.py --output /tmp/edc-demo`.
-
-## Contracts
-
-Dataset → Episode → Channel preserves explicit boundaries, original values, sources, task metadata and time evidence. Confirmed physical inputs use SI; unknown semantics block physical computation. Selecting a reference camera does not establish a common clock.
-
-`arms: all` selects arm parts explicitly declared by the robot. A neutral single arm uses `main`; dual arms use `left/right`. Missing declared arms remain missing. Algorithms preserve independent results without cross-arm or cross-method average scores.
-
-The default workflow runs one round of runnable quality methods and can finish at its quality report. The base distribution contains repository-owned CPU methods and modality indicators; it has no external algorithm or model dependency. Value assessment is opt-in after the quality gate. Every editing or augmentation output creates a new version and must pass consistency validation and a quality recheck before delivery. Missing selected inputs, partial assessment, and execution failures cannot count as passing. Future GPU and value implementations require separate integration and acceptance.
-
-All algorithms in the shipped pool are implemented and registered in this repository; the base distribution does not require an external algorithm package, model, private wheel, or GPU runtime. `AlgorithmSpec`/`run(context, params)` and the `edc.algorithms`/`edc.readers` entry-point groups remain development interfaces for adding future repository modules or explicitly installed integrations. They do not add algorithms to the shipped pool automatically. Production auto-selection excludes SDK examples, and real value/edit/augmentation methods require separate acceptance.
-
-## Repository
-
-`src/edc/{data,robots,algorithms,execution,workflows,reporting}` contains the runtime. `configs/{datasets,robots,algorithms,workflows}`, `examples`, `tests/edc`, and `docs` provide configuration, demonstrations and evidence. The base install requires only NumPy/PyYAML; format and model dependencies are optional.
-
-CPU methods: Structure_Check, Numeric_Check, Action_Smoothness, Check_Timestamp, Sync_Check, Root_Cause, Dedup_Check, Reset_Detection, Video_Integrity.
-
-The core pool currently contains 66 repository-owned algorithms: 9 default CPU methods and 57 modality indicators (46 implemented, 11 registered with missing implementation or input coverage). The three-person validation plan covers data configuration, algorithm inputs and workflow acceptance. Each round uses the same `main` commit; see [roles and deliverables](FRIEND_VALIDATION.md).
-
-This repository is a private development delivery. Licensing and redistribution of code, algorithms, models and data must be verified before publication; see the [release checklist](docs/RELEASE_CHECKLIST.md). The persisted record protocol remains `dqs_record_v1` (DQS: Data Quality Service); the public interface is EDC. The default `quality_cpu` preset contains the original nine CPU methods, while the repository-owned `quality_indicators` preset exposes the modality indicator pool.
+- Add value assessment algorithms and select operation recordings that meet each algorithm's requirements.
+- Add editing and augmentation algorithms, then recheck the quality of modified or generated data copies.
+- Extend examples that run algorithms in sequence; [workflow interfaces and synthetic examples (Chinese)](docs/WORKFLOWS.md) already exist, with the algorithms above and full-flow validation to follow.
+- Add research and GPU algorithms as needed, documenting required software, hardware, and licenses.

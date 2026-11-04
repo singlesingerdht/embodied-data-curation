@@ -190,14 +190,14 @@ class McapReader(DataReader):
             raise ValueError(f"Image decoder unavailable: {name}")
         from .rosbag import decode_ros_image
         topic = self._topics_cache[name]
-        start = None
+        start, decoders = None, {}
         for index, (container_time, message, typename) in enumerate(self._iter_ros_messages(name)):
             if start is None:
                 start = container_time
             yield {'index': index, 'source_time': topic.timestamps[index] if topic.timestamps is not None else None,
                    'container_time': container_time, 'playback_time': container_time-start,
                    'time_source': topic.time_source, 'clock': getattr(topic, 'clock', None),
-                   'playback_time_source': 'container', 'image': decode_ros_image(message, typename)}
+                   'playback_time_source': 'container', 'image': decode_ros_image(message, typename, decoders)}
 
     def materialize_image_channel(self, info, name, output_path=None):
         from .video import encode_frames, cache_path

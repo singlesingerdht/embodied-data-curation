@@ -1,5 +1,0 @@
-schema_version: edc_config_v1
-dataset: {ref: datasets/x1_pro_mcap.yaml}
-robot: {ref: robots/x1_pro.yaml}
-algorithms: {ref: algorithms/x1_pro_mcap.yaml}
-workflow: {ref: workflows/x1_pro_mcap.yaml}

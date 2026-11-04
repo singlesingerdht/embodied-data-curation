@@ -1,18 +1,16 @@
-"""SI suggestions and a configuration confirmation tied to Numeric_Check."""
+"""Numeric_Check 的阈值，以及 yaml 里写的确认人（robot.confirmed_by）。"""
 import copy
-from datetime import datetime, timezone
-import hashlib
-import json
 
 SI_UNITS = {'length': 'm', 'angle': 'rad', 'time': 's', 'angular_velocity': 'rad/s',
             'acceleration': 'm/s^2', 'force': 'N', 'torque': 'N*m', 'current': 'A'}
-JOINT_POSITION_UNITS = ('rad', 'm')
-TARGETS = {('pose', 'position'): ('pose_freeze_positions', 'm'),
+TARGETS = {('joint_space', 'position'): ('joint_positions', 'rad'),
+           ('pose', 'position'): ('pose_freeze_positions', 'm'),
+           ('joint_space', 'joint_q'): ('cmd_positions', 'rad'),
            ('imu', 'ang_vel'): ('gyro', 'rad/s'), ('imu', 'lin_acc'): ('accel', 'm/s^2'),
            # Adapter-only target: recorded joint velocity, checked in numeric_supplements, never by the method.
            ('joint_space', 'velocity'): ('joint_velocities', 'rad/s')}
 # Threshold groups the adapter owns. Stripped before the method validates or receives thresholds,
-# and only present when configured, so existing confirmation digests are unchanged.
+# and only present when configured.
 ADAPTER_GROUPS = {'joint_velocity': {'max_abs'}}
 ADAPTER_TARGETS = {'joint_velocities': 'joint_velocity'}
 
@@ -20,63 +18,22 @@ ADAPTER_TARGETS = {'joint_velocities': 'joint_velocity'}
 def method_settings(settings):
     """Settings for the original Numeric_Check method: adapter-only threshold groups removed."""
     result = copy.deepcopy(settings)
-    result.pop('physical_fields', None)
     for group in ADAPTER_GROUPS:
         result['thresholds'].pop(group, None)
     return result
-
-
-def joint_position_unit(spec, quantity=None):
-    """Resolve the declared SI unit for a joint position field.
-
-    Returns ``(unit, reason)``. A joint position may be rotational (rad) or
-    prismatic (m); any other physical dimension is outside Numeric_Check.
-    ``quantity`` may be supplied when it is declared in channel representation
-    rather than in the field metadata. Missing or unknown source units are left
-    to ``require_si_field`` so the caller gets the existing source-unit message.
-    """
-    from edc.data.ir.units import UnitInputError, si_unit
-    try:
-        unit = si_unit(spec.get('unit'))
-    except UnitInputError:
-        return None, None
-    if unit not in JOINT_POSITION_UNITS:
-        return None, (f"joint position requires SI unit rad or m; declared "
-                      f"{spec.get('unit')!r} maps to {unit}")
-    quantity = quantity if quantity is not None else spec.get('quantity')
-    if quantity == 'angle' and unit != 'rad':
-        return None, (f"joint position declares angle but unit {spec.get('unit')!r} "
-                      f"maps to {unit}")
-    if quantity == 'length' and unit != 'm':
-        return None, (f"joint position declares length but unit {spec.get('unit')!r} "
-                      f"maps to {unit}")
-    return unit, None
-
-
-def numeric_target(channel, field, spec):
-    """Detector target and its SI unit; never silently assumes an angle."""
-    if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
-        unit, _ = joint_position_unit(spec)
-        kind = 'cmd_positions' if spec.get('source_kind') == 'command' else 'joint_positions'
-        return (kind, unit)
-    return TARGETS.get((channel.modality, field))
 
 
 def numeric_field_status(episode, channel, field, review):
     """Shared metadata eligibility for recommendations and the existing detector."""
     from edc.data.ir.units import UnitInputError, require_si_field
     spec = channel.field_spec(field)
-    target = numeric_target(channel, field, spec)
-    reasons = []
-    scope = review['settings'].get('physical_fields')
-    in_scope = scope is None or f'{channel.name}.{field}' in scope
-    if not in_scope:
-        reasons.append('Outside configured physical_fields; recorded finiteness diagnostic only')
+    target = TARGETS.get((channel.modality, field))
     if channel.modality == 'joint_space' and field in {'position', 'joint_q'}:
-        quantity = (channel.representation or {}).get('quantity') or spec.get('quantity')
-        _, unit_reason = joint_position_unit(spec, quantity=quantity)
-        if unit_reason:
-            reasons.append(f'{channel.name}.{field}: {unit_reason}')
+        if spec['source_kind'] == 'command':
+            target = ('cmd_positions', 'rad')
+        elif spec['source_kind'] == 'feedback':
+            target = ('joint_positions', 'rad')
+    reasons = []
     try:
         require_si_field(episode, channel.name, field, target[1] if target else None)
     except UnitInputError as exc:
@@ -89,47 +46,26 @@ def numeric_field_status(episode, channel, field, review):
         if channel.modality == 'joint_space' and spec['source_kind'] not in {'command', 'feedback'}:
             reasons.append(f'{channel.name}.{field}: declare command or feedback')
         if review['status'] != 'confirmed':
-            reasons.append('Numeric_Check: configuration confirmation for the current fields and thresholds is pending/stale')
+            reasons.append('Numeric_Check: 没有确认人（yaml 的 robot.confirmed_by）')
         group = ADAPTER_TARGETS.get(target[0])
         if group and group not in review['settings']['thresholds']:
             reasons.append(f'numeric_check.thresholds.{group} is not configured; no default threshold is assumed')
     return {'channel': channel.name, 'field': field, 'source_unit': spec.get('source_unit', spec['unit']),
             'execution_unit': spec['unit'], 'required_unit': target[1] if target else None,
-            'physical_checks_available': bool(target) and target[1] is not None and not reasons,
-            'in_physical_scope': in_scope,
-            'reasons': reasons, 'target': target}
-
-
-def physical_field_scope(profile, fields):
-    """Normalize exact source/logical field addresses before attesting a scope."""
-    if not isinstance(fields, list) or not fields:
-        raise ValueError('physical_fields requires a nonempty list of channel.field addresses')
-    channels = profile.get('channels', {})
-    aliases = {c['logical_name']: name for name, c in channels.items() if c.get('logical_name')}
-    resolved = []
-    for address in fields:
-        if not isinstance(address, str) or '.' not in address:
-            raise ValueError('physical_fields requires channel.field addresses')
-        name, field = address.rsplit('.', 1)
-        name = aliases.get(name, name)
-        if name not in channels or field not in channels[name].get('fields', []):
-            raise ValueError(f'Unknown physical_fields address: {address}')
-        resolved.append(f'{name}.{field}')
-    if len(set(resolved)) != len(resolved):
-        raise ValueError('physical_fields resolves to duplicate fields')
-    return sorted(resolved)
+            'physical_checks_available': bool(target) and not reasons, 'reasons': reasons,
+            'target': target}
 
 
 def numeric_settings(profile=None, params=None):
     configured = (profile or {}).get('numeric_check', {})
     params = params or {}
-    # Topic scope and the finiteness-only declaration change no threshold or configuration confirmation.
+    # Topic scope and the finiteness-only declaration are not thresholds.
     params = {k: v for k, v in params.items()
               if k not in {'channels', 'arms', 'finiteness_only', 'freeze_min_duration_s', 'joint_limits_pending',
-                           'joint_stuck'}}
+                           'joint_stuck', 'ranges'}}
     for value in (configured, params):
-        if not isinstance(value, dict) or set(value) - {'thresholds', 'weights', 'physical_fields'}:
-            raise ValueError('Numeric_Check accepts thresholds, weights and physical_fields')
+        if not isinstance(value, dict) or set(value) - {'thresholds', 'weights'}:
+            raise ValueError('Numeric_Check accepts thresholds and weights')
     base = _thresholds(configured.get('thresholds'))
     overrides = params.get('thresholds', {})
     if not isinstance(overrides, dict):
@@ -144,11 +80,7 @@ def numeric_settings(profile=None, params=None):
     weights = params.get('weights', configured.get('weights'))
     if weights is not None and not isinstance(weights, dict):
         raise ValueError('Numeric_Check weights must be a mapping')
-    result = {'thresholds': _thresholds(merged), 'weights': copy.deepcopy(weights)}
-    if 'physical_fields' in params or 'physical_fields' in configured:
-        result['physical_fields'] = physical_field_scope(profile or {},
-            params.get('physical_fields', configured.get('physical_fields')))
-    return result
+    return {'thresholds': _thresholds(merged), 'weights': copy.deepcopy(weights)}
 
 
 def _thresholds(overrides):
@@ -168,8 +100,10 @@ def _thresholds(overrides):
             values = overrides.pop(group)
             if not isinstance(values, dict) or set(values) != names:
                 raise ValueError(f'{group} requires exactly {sorted(names)}')
-            # One number for every joint, or one per joint (e.g. the URDF <limit velocity>).
-            numbers = [x for v in values.values() for x in (v if isinstance(v, list) and v else [v])]
+            # One number for every joint, or one per joint (e.g. the URDF <limit velocity>);
+            # or {channel or logical_name: either of these}, one table per arm.
+            tables = [t for v in values.values() for t in (v.values() if isinstance(v, dict) and v else [v])]
+            numbers = [x for t in tables for x in (t if isinstance(t, list) and t else [t])]
             if any(type(x) not in (int, float) or not math.isfinite(x) or x <= 0 for x in numbers):
                 raise ValueError(f'{group} thresholds must be finite and positive (a number or a list of numbers)')
             adapter[group] = dict(values)
@@ -202,102 +136,28 @@ def _method_thresholds(overrides, thresholds):
 
 def channel_settings(settings, channel):
     """Settings for one input channel; a channel without its own limits table stays unconfigured."""
-    tables = [g for g in LIMIT_GROUPS if isinstance(settings['thresholds'][g]['limits'], dict)]
-    if not tables:
+    found = [(g, 'limits') for g in LIMIT_GROUPS if isinstance(settings['thresholds'][g]['limits'], dict)]
+    if isinstance(settings['thresholds'].get('joint_velocity', {}).get('max_abs'), dict):
+        found.append(('joint_velocity', 'max_abs'))  # One speed table per arm.
+    if not found:
         return settings
     result = copy.deepcopy(settings)
     names = (channel.name, getattr(channel, 'logical_name', None))
-    for group in tables:
-        limits = settings['thresholds'][group]['limits']
-        result['thresholds'][group]['limits'] = next((limits[n] for n in names if n in limits), None)
+    for group, key in found:
+        tables = settings['thresholds'][group][key]
+        result['thresholds'][group][key] = next((tables[n] for n in names if n in tables), None)
     return result
 
 
-def review_digest(profile, settings):
-    # Logical addressing cannot change a previously attested physical contract.
-    # Omit only this new metadata key, retaining existing pre-alias digests.
-    channels = {name: {k: v for k, v in spec.items() if k != 'logical_name'}
-                for name, spec in profile.get('channels', {}).items()}
-    payload = {'unit_system': 'SI', 'channels': channels,
-               'timestamp_column': profile.get('timestamp_column'),
-               'timestamp_unit': profile.get('timestamp_unit'), 'settings': settings}
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False,
-                                    allow_nan=False).encode()).hexdigest()
-
-
 def numeric_review(profile=None, params=None):
+    """当前阈值和确认人；写了确认人（非空）才做物理检查，否则只查 NaN/无穷大。"""
     profile = profile or {}
     settings = numeric_settings(profile, params)
-    digest = review_digest(profile, settings)
     approval = profile.get('numeric_review') or {}
     if not isinstance(approval, dict):
         raise ValueError('numeric_review must be a mapping')
-    confirmed = (approval.get('status') == 'confirmed'
-                 and isinstance(approval.get('confirmed_by'), str)
-                 and bool(approval['confirmed_by'].strip())
-                 and approval.get('configuration_sha256') == digest)
-    return {'status': 'confirmed' if confirmed else 'stale' if approval.get('status') == 'confirmed' else 'pending',
-            'confirmed_by': approval.get('confirmed_by') if confirmed else None,
-            'configuration_sha256': digest, 'unit_system': 'SI',
-            'unit_suggestions': dict(SI_UNITS), 'settings': settings,
-            'required_action': None if confirmed else '请配置确认人确认字段单位、指令/反馈与数值阈值；修改配置后需重新确认。'}
-
-
-def confirm_numeric_profile(profile, reviewer, params=None):
-    """Explicit configuration-owner confirmation; never infer or rewrite source units/calibration."""
-    from edc.robots.profiles import load_profile
-    from edc.data.ir.modalities import normalize_modality
-    profile = load_profile(profile)
-    if not isinstance(reviewer, str) or not reviewer.strip():
-        raise ValueError('A nonempty reviewer name is required')
-    settings = numeric_settings(profile, params)
-    scope = settings.get('physical_fields')
-    eligible = 0
-    for name, channel in profile.get('channels', {}).items():
-        modality = normalize_modality(channel.get('modality', 'other'))
-        for field in channel.get('fields', []):
-            if scope is not None and f'{name}.{field}' not in scope:
-                continue
-            metadata = {**channel, **channel.get('field_metadata', {}).get(field, {})}
-            semantic = {**channel.get('representation', {}),
-                        **{key: metadata.get(key) for key in ('quantity', 'semantic_status')
-                           if key in metadata}}
-            if modality == 'joint_space' and field in {'position', 'joint_q'}:
-                unit, unit_reason = joint_position_unit(metadata,
-                                                        quantity=semantic.get('quantity'))
-                if unit is None:
-                    detail = unit_reason or 'explicitly confirm source unit convertible to rad or m'
-                    raise ValueError(f'{name}.{field}: {detail} and calibration_status first')
-                target = ('cmd_positions' if metadata.get('source_kind') == 'command'
-                          else 'joint_positions', unit)
-                allowed = 'rad or m'
-            else:
-                target = TARGETS.get((modality, field))
-                if not target:
-                    if scope is not None:
-                        raise ValueError(f'{name}.{field}: no supported physical check for this field')
-                    continue
-                allowed = target[1]
-            eligible += 1
-            if (semantic.get('quantity') == 'unknown' or semantic.get('semantic_status') in
-                    {'unknown', 'pending', 'pending_owner_confirmation'}):
-                raise ValueError(f'{name}.{field}: confirm physical quantity before numeric approval')
-            from edc.data.ir.units import si_unit, UnitInputError
-            if modality == 'joint_space' and field in {'position', 'joint_q'}:
-                compatible = True
-            else:
-                try:
-                    compatible = si_unit(metadata.get('unit')) == target[1]
-                except UnitInputError:
-                    compatible = False
-            if not compatible or metadata.get('calibration_status') != 'confirmed':
-                raise ValueError(f'{name}.{field}: explicitly confirm source unit convertible to {allowed} and calibration_status first')
-            if modality == 'joint_space' and metadata.get('source_kind') not in {'command', 'feedback'}:
-                raise ValueError(f'{name}.{field}: explicitly declare command/feedback first')
-    if not eligible:
-        raise ValueError('No declared fields supported by Numeric_Check physical checks')
-    profile['numeric_check'] = settings
-    profile['numeric_review'] = {'status': 'confirmed', 'confirmed_by': reviewer.strip(),
-        'confirmed_at': datetime.now(timezone.utc).isoformat(),
-        'configuration_sha256': review_digest(profile, settings)}
-    return profile
+    who = approval.get('confirmed_by')
+    confirmed = isinstance(who, str) and bool(who.strip())
+    return {'status': 'confirmed' if confirmed else 'pending', 'confirmed_by': who if confirmed else None,
+            'unit_system': 'SI', 'unit_suggestions': dict(SI_UNITS), 'settings': settings,
+            'required_action': None if confirmed else '请在 yaml 的 robot.confirmed_by 写上确认单位和含义的人。'}

@@ -1,7 +1,0 @@
-robot: franka_panda_dual_arm
-formats: [bag, mcap]
-note: Franka Panda 双臂
-topics:
-  "*/joint_states": {modality: joint_state}
-  "*/arm_pose": {modality: pose}
-required_channels: []
