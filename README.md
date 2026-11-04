@@ -127,7 +127,7 @@ Without an explicit selection, execution runs quality algorithms that are fully 
 | `Reset_Detection` | Whether the robot starts and ends at the specified position | Actual positions, reference positions, and allowed error | [Reset](docs/ALGORITHMS.md#reset-detection) |
 | `Video_Integrity` | Black frames, blur, suspected frozen images, and damaged video files | Readable images or video | [Images and video](docs/ALGORITHMS.md#video-integrity) |
 
-Each algorithm reports its own results and supporting evidence. Results are not combined into one overall score. [Reading reports](docs/ALGORITHMS.md#results)
+Each algorithm reports its own results and supporting evidence. Results are not combined into one overall score. [Reading reports](docs/ALGORITHMS.md#results) · [Check rationale and selection validation](docs/QUALITY_VALIDATION.md)
 
 ## Developers and Project Structure
 

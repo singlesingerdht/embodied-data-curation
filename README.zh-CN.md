@@ -120,7 +120,7 @@ edc run /path/to/dataset/episode.mcap \
 | `Reset_Detection` | 开头、结尾与 Home 的距离 | 反馈位置、Home 及容差 | [复位检测](docs/ALGORITHMS.zh-CN.md#reset-detection) |
 | `Video_Integrity` | 图像内容与视频完整性 | 可解码图像帧或视频 | [图像／视频检查](docs/ALGORITHMS.zh-CN.md#video-integrity) |
 
-每项保留自身指标与证据，不生成跨算法总分。[报告阅读](docs/ALGORITHMS.zh-CN.md#results)
+每项保留自身指标与证据，不生成跨算法总分。[报告阅读](docs/ALGORITHMS.zh-CN.md#results) · [检查依据与筛选验证](docs/QUALITY_VALIDATION.zh-CN.md)
 
 ## 开发者与组织结构
 
