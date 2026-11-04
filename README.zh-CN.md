@@ -17,7 +17,7 @@
 | 结果追溯 | HTML 定位问题；JSON 保存检查项、指标、证据及实际输入 |
 | 筛选导出 | 根据 batch 报告选择建议保留的数据，复制或创建软链接，并保存原始数据与输出数据的对应清单 |
 
-读取器覆盖 LeRobot、HDF5、Parquet、ROS bag、MCAP 和 JSON＋视频目录；具体后端、消息类型及语义条件见[支持范围](docs/DATA_AND_CONFIGURATION.zh-CN.md#formats)。能打开文件不等于每项算法都能检查。
+读取器覆盖 LeRobot、HDF5、Parquet、ROS bag、MCAP等；具体后端、消息类型见[支持范围](docs/DATA_AND_CONFIGURATION.zh-CN.md#formats)。
 
 ## 最新动态
 

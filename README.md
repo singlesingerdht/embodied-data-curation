@@ -17,7 +17,7 @@ Provide a data path and robot configuration. EDC lists available algorithms and 
 | Results | Inspect conclusions and problem locations in a web report; save measurements and references to original records in JSON |
 | Selected data export | Copy or symlink data marked for retention in a batch report, with a manifest mapping original data to exported data |
 
-Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, JSON with video directories, and standalone MP4 video**. See [supported formats and robot configurations](docs/DATA_AND_CONFIGURATION.md#formats) for their requirements.
+Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, and more**. See [supported formats](docs/DATA_AND_CONFIGURATION.md#formats) for backends and message types.
 
 ## What's New
 
