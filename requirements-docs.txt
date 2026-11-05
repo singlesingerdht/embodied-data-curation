@@ -1,0 +1,7 @@
+# Documentation only; Python >=3.13. Does not install EDC or model dependencies.
+Sphinx==9.2.0
+myst-parser==5.1.0
+pydata-sphinx-theme==0.24.0
+sphinx-design==0.7.0
+sphinxcontrib-mermaid==2.1.1
+jieba==0.42.1

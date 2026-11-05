@@ -1,0 +1,7 @@
+{% for locale, href in edc_search_links.items() %}
+<form class="edc-search edc-locale edc-locale-{{ locale }}" action="{{ href.split('?')[0] }}" method="get" role="search">
+  <label class="visually-hidden" for="edc-search-{{ locale }}">{{ '搜索' if locale == 'zh-CN' else 'Search' }}</label>
+  <input id="edc-search-{{ locale }}" type="search" name="q" placeholder="{{ '搜索 EDC…' if locale == 'zh-CN' else 'Search EDC…' }}">
+  <input type="hidden" name="lang" value="{{ locale }}">
+</form>
+{% endfor %}

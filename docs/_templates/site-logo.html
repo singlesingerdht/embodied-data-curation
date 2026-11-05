@@ -1,0 +1,3 @@
+{% for locale, href in edc_home_links.items() %}
+<a class="navbar-brand logo edc-locale edc-locale-{{ locale }}" href="{{ href }}" aria-label="EDC {{ '首页' if locale == 'zh-CN' else 'Home' }}"><p class="title logo__title">EDC</p></a>
+{% endfor %}

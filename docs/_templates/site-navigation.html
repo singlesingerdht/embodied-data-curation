@@ -1,0 +1,15 @@
+<nav class="edc-site-nav" aria-label="Guides / 使用指南">
+  {% for locale, groups in edc_navigation.items() %}
+  <div class="edc-locale edc-locale-{{ locale }}" lang="{{ locale }}">
+    <p class="edc-version">{{ '版本' if locale == 'zh-CN' else 'Version' }} {{ release }}</p>
+    {% for group in groups %}
+    <p class="edc-nav-group">{{ group.title }}</p>
+    <ul>
+      {% for item in group['items'] %}
+      <li><a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</nav>

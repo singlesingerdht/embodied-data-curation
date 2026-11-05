@@ -1,0 +1,38 @@
+html[data-theme="light"] {
+  --pst-color-primary: #245ac7;
+  --pst-color-secondary: #386b78;
+}
+html[data-theme="dark"] {
+  --pst-color-primary: #91b8ff;
+  --pst-color-secondary: #8dced9;
+}
+.bd-main .bd-content .bd-article-container { max-width: 58rem; }
+.bd-article h1 { font-weight: 700; letter-spacing: -0.025em; }
+.bd-article p, .bd-article li { line-height: 1.85; }
+.sd-card { border-radius: 0.7rem; }
+.sd-card-title { font-size: 1.1rem; }
+.edc-intro { color: var(--pst-color-text-muted); font-size: 1.2rem; margin-bottom: 1.5rem; }
+.edc-version { color: var(--pst-color-text-muted); font-size: 0.85rem; }
+.bd-article img, .mermaid svg { max-width: 100%; }
+@media (max-width: 575px) {
+  .bd-article h1 { font-size: 1.9rem; }
+  .edc-intro { font-size: 1.05rem; }
+}
+
+/* Language is a header control; the sidebar contains only the active guides. */
+html[data-edc-language="en"] .edc-locale-zh-CN,
+html:not([data-edc-language="en"]) .edc-locale-en { display: none !important; }
+.edc-language { display: flex; align-items: center; gap: 0.65rem; white-space: nowrap; font-size: 0.88rem; }
+.edc-language a { color: var(--pst-color-text-muted); text-decoration: none; }
+.edc-language a[aria-current="true"] { color: var(--pst-color-primary); font-weight: 700; border-bottom: 2px solid currentColor; }
+.edc-site-nav ul { list-style: none; padding: 0; margin: 0 0 1.2rem; }
+.edc-site-nav li { margin: 0.25rem 0; }
+.edc-site-nav li a { display: block; padding: 0.4rem 0.6rem; border-left: 2px solid transparent; text-decoration: none; color: var(--pst-color-text-base); }
+.edc-site-nav li a[aria-current="page"] { border-color: var(--pst-color-primary); background: var(--pst-color-surface); color: var(--pst-color-primary); font-weight: 600; }
+.edc-nav-group { font-size: 0.85rem; font-weight: 700; color: var(--pst-color-text-muted); margin: 1.2rem 0 0.35rem; }
+.edc-search input[type="search"] { width: 100%; padding: 0.6rem; color: var(--pst-color-text-base); background: var(--pst-color-background); border: 1px solid var(--pst-color-border); border-radius: 0.4rem; }
+.edc-header-links { flex-wrap: nowrap; }
+.edc-header-links .nav-link { font-size: 0.9rem; white-space: nowrap; }
+@media (max-width: 575px) {
+  .edc-language { gap: 0.45rem; font-size: 0.8rem; }
+}

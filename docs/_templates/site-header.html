@@ -1,0 +1,10 @@
+<nav aria-label="Guides / 使用指南">
+  {% set labels = {'zh-CN': ['快速开始', '数据配置', '算法指南', '开发指南'], 'en': ['Quick start', 'Configuration', 'Algorithms', 'Development']} %}
+  {% for locale, groups in edc_navigation.items() %}
+  <ul class="navbar-nav edc-header-links edc-locale edc-locale-{{ locale }}" lang="{{ locale }}">
+    {% for item in groups[0]['items'][:3] + groups[1]['items'][:1] %}
+    <li class="nav-item"><a class="nav-link" href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ labels[locale][loop.index0] }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</nav>

@@ -1,0 +1,15 @@
+{% extends "!layout.html" %}
+{% block extrahead %}
+{{ super() }}
+<script>
+  // Paired guides set their own language; shared pages use an explicit URL choice.
+  document.documentElement.dataset.edcShared = {{ ('true' if edc_shared_page else 'false') | tojson }};
+  document.documentElement.dataset.edcLanguage = {{ edc_locale | tojson }};
+  {% if edc_shared_page %}
+  if (new URLSearchParams(location.search).get('lang') === 'en') {
+    document.documentElement.dataset.edcLanguage = 'en';
+    document.documentElement.lang = 'en';
+  }
+  {% endif %}
+</script>
+{% endblock %}

@@ -23,9 +23,15 @@ venv/
 *.mp4
 *.avi
 *.png
+!docs/assets/framework-overview.png
+!docs/assets/framework-overview.zh-CN.png
 *.jpg
 *.jpeg
 *.pdf
 results/
 _runs/
 _workflows/
+
+# Local Sphinx environment and generated documentation
+.venv-docs/
+/docs/_build/

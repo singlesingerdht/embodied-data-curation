@@ -1,0 +1,10 @@
+{% extends "!search.html" %}
+{% block docs_body %}
+<div class="bd-search-container">
+  <h1 class="edc-locale edc-locale-zh-CN">搜索</h1>
+  <h1 class="edc-locale edc-locale-en">Search</h1>
+  <noscript><p>请启用 JavaScript 以搜索。 / Enable JavaScript to search.</p></noscript>
+  {% include "components/search-field.html" %}
+  <div id="search-results"></div>
+</div>
+{% endblock %}

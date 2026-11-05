@@ -1,0 +1,6 @@
+<nav class="edc-language" aria-label="Language / 语言">
+  {% for locale, title in [('zh-CN', '简体中文'), ('en', 'English')] %}
+  <a href="{{ edc_language_links[locale] }}" lang="{{ locale }}" hreflang="{{ locale }}"
+     data-edc-language="{{ locale }}" data-edc-page="{{ edc_page_names[locale] }}"{% if locale == edc_locale %} aria-current="true"{% endif %}>{{ title }}</a>
+  {% endfor %}
+</nav>

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+<title id="title">EDC：让需求决定数据如何进化</title>
+<desc id="desc">用户需求指导当前质量检查及待接入的任务与策略评估。自动化与有理有据共同支撑整理过程；完整自主反馈是长期目标。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6,3 L0,6" fill="none" stroke="#68899b" stroke-width="1.4"/></marker></defs>
+<rect width="1600" height="900" rx="22" fill="#ffffff"/>
+<text x="48" y="44.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#087f78">EDC / 以用户需求驱动数据进化</text>
+<text x="48" y="112.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="52" font-weight="700" fill="#19394e">让需求决定数据如何进化</text>
+<text x="48" y="164.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="400" fill="#536e80">你定义目标，让数据从「可用」走向「值得学」，再走向「适合你的模型」。</text>
+<rect x="48" y="214" width="220" height="416" rx="18" fill="#f5f8fa" stroke="#d5e2e9" stroke-width="2"/>
+<rect x="300" y="214" width="460" height="416" rx="18" fill="#ffffff" stroke="#d5e2e9" stroke-width="2"/>
+<rect x="792" y="214" width="332" height="416" rx="18" fill="#fff7e9" stroke="#e8cf9c" stroke-width="2"/>
+<rect x="1156" y="214" width="396" height="416" rx="18" fill="#f0f8f5" stroke="#b6d8c8" stroke-width="2"/>
+<text x="70" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="27" font-weight="700" fill="#19394e">你需要什么</text>
+<text x="70" y="319.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">目标任务</text>
+<text x="70" y="354.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">希望完成什么</text>
+<path d="M70,381 L246,381" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="70" y="418.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">目标模型</text>
+<text x="70" y="453.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">希望谁来学习</text>
+<path d="M70,480 L246,480" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="70" y="517.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">质量与预算</text>
+<text x="70" y="552.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">必须满足哪些条件</text>
+<text x="70" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="17" font-weight="400" fill="#087f78">以需求确定整理方向</text>
+<text x="320" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#19394e">三层价值，逐层发现</text>
+<rect x="320" y="282" width="420" height="102" rx="12" fill="#eff4fc" stroke="none" stroke-width="2"/>
+<text x="336" y="307.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#3267c5">01  数据质量</text>
+<text x="336" y="338.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">让记录可信、输入可用</text>
+<text x="336" y="367.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">多种机器人，复用一套质检</text>
+<rect x="320" y="392" width="420" height="102" rx="12" fill="#eaf7f4" stroke="none" stroke-width="2"/>
+<text x="336" y="417.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#087f78">02  任务价值</text>
+<text x="336" y="448.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">把人的经验变成学习信号</text>
+<text x="336" y="477.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">发现任务进展与纠错经验</text>
+<rect x="320" y="502" width="420" height="102" rx="12" fill="#edf3fa" stroke="none" stroke-width="2"/>
+<text x="336" y="527.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#3267c5">03  策略价值</text>
+<text x="336" y="558.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#19394e">让人的目标与机器学习对齐</text>
+<text x="336" y="587.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="20" font-weight="400" fill="#536e80">用模型反馈，选择有益经验</text>
+<text x="814" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#19394e">让整理自主推进</text>
+<text x="814" y="288.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#9a671a">自动化</text>
+<text x="814" y="337.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">标注与评估</text>
+<text x="814" y="369" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">从示教中学习判断</text>
+<text x="814" y="423.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">选择算法与规则</text>
+<text x="814" y="455" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">让信号支持取舍</text>
+<text x="814" y="509.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">编辑增强与复检</text>
+<text x="814" y="541" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">用反馈改进方案</text>
+<text x="814" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#9a671a">从逐条判断，到持续改进</text>
+<text x="1178" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#19394e">更适合目标的数据</text>
+<text x="1178" y="325.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">可靠的记录</text>
+<text x="1178" y="359" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">满足任务的输入要求</text>
+<text x="1178" y="410.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">值得学的经验</text>
+<text x="1178" y="444" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">保留关键操作与恢复过程</text>
+<text x="1178" y="495.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">适合模型的数据</text>
+<text x="1178" y="529" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="400" fill="#536e80">用学习效果检验选择</text>
+<path d="M1178,566 L1530,566" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="1178" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#087f78">交付数据，也交代选择理由</text>
+<path d="M274,430 L292,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M766,430 L784,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1130,430 L1148,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1354,639 L1354,691 L530,691 L530,639" fill="none" stroke="#087f78" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="562" y="667" width="752" height="48" rx="0" fill="#ffffff" stroke="none" stroke-width="2"/>
+<text x="582" y="698.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#087f78">任务表现与训练反馈，推动下一轮数据进化</text>
+<rect x="48" y="750" width="480" height="130" rx="18" fill="#eff4fc" stroke="#c4d3ec" stroke-width="2"/>
+<text x="70" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#3267c5">跨机器人复用</text>
+<text x="70" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">多种机器人，一套质检方法。</text>
+<text x="70" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="19" font-weight="400" fill="#536e80">统一输入与检查，减少重复适配。</text>
+<rect x="560" y="750" width="480" height="130" rx="18" fill="#fff7e9" stroke="#e8cf9c" stroke-width="2"/>
+<text x="582" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#9a671a">自动化</text>
+<text x="582" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">让经验形成判断，让反馈改进选择。</text>
+<text x="582" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="19" font-weight="400" fill="#536e80">逐步减少人工评估与规则调整。</text>
+<rect x="1072" y="750" width="480" height="130" rx="18" fill="#eaf7f4" stroke="#b6dcd1" stroke-width="2"/>
+<text x="1094" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="28" font-weight="700" fill="#087f78">有理有据</text>
+<text x="1094" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">每次取舍，都能追溯与核验。</text>
+<text x="1094" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="19" font-weight="400" fill="#536e80">从判断信号到来源证据与效果验证。</text>
+</svg>

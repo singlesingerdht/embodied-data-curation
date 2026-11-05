@@ -13,4 +13,11 @@ prune examples/plugins/reader/build
 global-exclude *.egg-info
 
 recursive-include docs *.md *.svg *.json
+include requirements-docs.txt docs/conf.py docs/search-dictionary.txt
+recursive-include docs/_ext *.py
+recursive-include docs/_templates *.html
+recursive-include docs/_static *.css *.js *.svg
+recursive-include docs/_tools *.py
+recursive-include docs/presentations *.pptx
+prune docs/_build
 prune examples/plugins/quality_base/build

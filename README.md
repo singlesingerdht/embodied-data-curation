@@ -1,23 +1,31 @@
 # Embodied Data Curation Framework
 
-**EDC = Embodied Data Curation**. Read robot data, choose suitable algorithms, and inspect the results. Developers can also add their own algorithms.
+**EDC = Embodied Data Curation**. A data curation framework for robot data users and algorithm developers.
 
 [简体中文](README.zh-CN.md) · [Quick start](docs/QUICKSTART.md) · [Data integration](docs/DATA_AND_CONFIGURATION.md) · [Algorithms](docs/ALGORITHMS.md) · [Development](docs/DEVELOPMENT.md)
 
 ## Overview
 
-Provide a data path and robot configuration. EDC lists available algorithms and produces a web report and JSON results after execution. The current focus is **reading robot data in different formats and providing nine CPU quality checks**.
+**Take robot data from “usable” to “worth learning from.”** EDC aims to discover the potential of embodied data and curate reliable, valuable datasets for target tasks and policy models.
 
-| Capability | Current support |
-|---|---|
-| Data reading | Read joint, camera, and other data from each robot operation, and locate detected problems in the corresponding records and original files |
-| Robot configuration | Specify which arm or camera each recording belongs to, its units, and whether it is a command or measured feedback |
-| Algorithm selection | List what can run, what can only be checked in part, and which data or settings are missing |
-| Quality checks | Check missing data, unusual numbers and timing, vibration while holding still, reset positions, and images/videos |
-| Results | Inspect conclusions and problem locations in a web report; save measurements and references to original records in JSON |
-| Selected data export | Copy or symlink data marked for retention in a batch report, with a manifest mapping original data to exported data |
+![EDC vision: let user goals drive how data evolves, through cross-robot reuse, automation, and verifiable choices](docs/assets/framework-overview.png)
 
-Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, and more**. See [supported formats](docs/DATA_AND_CONFIGURATION.md#formats) for backends and message types.
+**User needs** include the task and success criteria, target policy, quality requirements, and data/computing budget, with expert demonstrations or reliable references where applicable. Today, users receive quality reports, issue evidence, selected data copies or symlinks, and source manifests. Planned outputs add task annotations and data subsets or improved versions suited to the target policy. [Needs and deliverables](docs/QUALITY_VALIDATION.md#needs)
+
+- **Data quality | Different robots. One approach to quality checks.** Make data from different robots readable and interpretable by machines, with reusable quality checks.
+- **Task value | Turn human understanding into machine learning signals.** Draw on expert demonstrations and task requirements to identify key actions and corrective experience worth learning.
+- **Policy value | Connect human goals and machine learning through feedback.** Use goals, reference experience, and model training feedback to identify helpful data, reducing repeated real-robot evaluations during selection.
+
+Across these three levels, the framework pursues two further advantages:
+
+- **Automation | Learn to assess from experience; improve choices through feedback.** Learn assessment criteria from expert demonstrations and use data and training feedback to guide selection, progressively reducing manual assessment, rule adjustment, and method selection. [Mechanisms and research evidence](docs/QUALITY_VALIDATION.md#automation)
+- **Evidence | Trace the basis of each choice and test its effects.** Connect selection to quality evidence, task progress, and model learning signals; record processing steps and validate choices with independent feedback. [Verifying choices](docs/QUALITY_VALIDATION.md#evidence)
+
+> Data quality checks are available today. Task-value and policy-value methods have research foundations and will be integrated progressively.
+
+> **Long-term goal: you set the objective; the framework keeps exploring autonomously—which data to keep, which experience to learn from, and what to improve next.**
+
+See [From Quality Checks to Autonomous Data Curation](docs/QUALITY_VALIDATION.md) for the three levels, research foundations, and validation plans, or the [presentation (Chinese)](docs/presentations/edc-framework.zh-CN.pptx). Readers cover LeRobot, HDF5, Parquet, ROS bags, MCAP, and more; see [supported formats](docs/DATA_AND_CONFIGURATION.md#formats) for conditions.
 
 ## What's New
 
@@ -27,18 +35,14 @@ Readers cover **LeRobot, HDF5, Parquet, ROS bags, MCAP, and more**. See [support
 
 ![EDC architecture](docs/assets/architecture.svg)
 
-The framework serves two groups:
+- **Data users**: provide data and robot configuration → review recommendations and select algorithms → run, inspect reports, and export data.
+- **Algorithm developers**: write algorithms and declare inputs/outputs → register and validate → join the same recommendation and execution flow.
 
-| Audience | How to use the framework | Get started |
-|---|---|---|
-| **Data users** | Provide data and configuration → Review available algorithms and missing requirements → Choose algorithms and parameters → Run and inspect reports | [Quick start](docs/QUICKSTART.md) · [Data configuration](docs/DATA_AND_CONFIGURATION.md) |
-| **Algorithm developers** | Write an algorithm → Declare required data, parameters, and outputs → Register and validate it → Make it available for recommendation and execution | [Algorithm development guide](docs/DEVELOPMENT.md) |
-
-Both paths share algorithm recommendation, execution, and result recording. [Modules and extensions](docs/DEVELOPMENT.md#interfaces)
+Both paths share input checks, execution, and result recording. [Modules and extensions](docs/DEVELOPMENT.md#interfaces)
 
 ## Installation and Quick Start
 
-Python 3.10 or later is required. Run these commands from a local repository checkout; replace `/path/to/...` with your own paths.
+Python 3.10 or later is required. Run from a repository checkout and replace `/path/to/...` with local paths.
 
 **1. Install**
 
@@ -51,7 +55,7 @@ pip install '.[formats]'
 
 **2. Prepare data**
 
-This example uses an MCAP recording collected from an X1 Pro dual-arm robot with [`x1pro_mcap.yaml`](configs/robots/x1pro_mcap.yaml). Place the recording at `/path/to/dataset/episode.mcap`; data names in the configuration must match the file. [Sample details and availability](docs/QUICKSTART.md#data)
+Place a real X1 Pro dual-arm MCAP recording matching [`x1pro_mcap.yaml`](configs/robots/x1pro_mcap.yaml) at `/path/to/dataset/episode.mcap`. [Sample details and availability](docs/QUICKSTART.md#data)
 
 **3. Run and view results**
 
@@ -61,11 +65,11 @@ edc batch /path/to/dataset/episode.mcap \
   --output /path/to/results/report.html --jobs 1
 ```
 
-Open `report.html` in a browser. The accompanying `report.json` provides machine-readable results. Successful execution does not mean all data passed. [Full quick start and reference results](docs/QUICKSTART.md)
+Open `/path/to/results/report.html` in a browser; `report.json` is saved alongside it. Successful execution does not mean all data passed. [Full quick start](docs/QUICKSTART.md)
 
 **4. Export selected data (optional)**
 
-Use the batch `report.json` to export only data marked for retention (`keep`) by default. Choose one mode:
+Export from the batch `report.json`; only records marked for retention (`keep`) are selected by default. Choose one mode:
 
 ```bash
 # Copy data
@@ -75,27 +79,27 @@ edc regenerate /path/to/results/report.json --output /path/to/selected --mode co
 edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
 ```
 
-The output directory contains copies or links and a `manifest.json` recording sources and selection criteria. Original data stays unchanged; symbolic links require the sources to remain available. See [selection and export](docs/SELECTION.md) for limits when selecting episodes from shared files.
+Output includes copies or links and a source manifest, `manifest.json`. Originals stay unchanged; links require the sources to remain available. [Export and limitations](docs/SELECTION.md)
 
 ## Data and Configuration
 
-Configuration describes where the data is stored, which task was recorded, and where each operation starts and ends; which records contain joints, cameras, or other sensors and what units they use; and which algorithms, robot parts, and parameters to use for this run.
+Dataset information describes file locations, tasks, and operation boundaries; robot configuration defines field meanings; algorithm parameters set the scope and criteria for this run.
 
-**Robot configuration declares which arms exist; algorithm configuration selects which arms to inspect.** `arms: all` selects all declared arms. Use `[left]` or `[right]` for one side of a dual-arm robot, or declare `main` for an independent single arm. The same robot configuration can be reused across task datasets.
+**Robot configuration declares which arms exist; algorithm configuration selects which arms to inspect.** `arms: all` checks all declared arms, `[left]`/`[right]` selects one side, and `main` can represent an independent single arm. Reuse one robot configuration across tasks.
 
 | Task | Documentation |
 |---|---|
-| Inspect available data and specify where each operation starts and ends | [Dataset integration](docs/DATA_AND_CONFIGURATION.md#dataset) |
-| Configure one or two arms and their joint, camera, and other recordings | [Robot configuration](docs/DATA_AND_CONFIGURATION.md#robot) |
-| Specify units, how time was recorded, and whether device clocks can be compared | [Units and time](docs/DATA_AND_CONFIGURATION.md#units-time) |
-| Obtain joint information from URDF and validate mappings | [URDF usage and limits](docs/DATA_AND_CONFIGURATION.md#urdf) |
-| Configure algorithm inputs, scope, and parameters | [Algorithm configuration](docs/ALGORITHMS.md#selection) |
+| Inspect fields, formats, and operation boundaries | [Dataset integration](docs/DATA_AND_CONFIGURATION.md#dataset) |
+| Map source fields and configure one or two arms | [Robot configuration](docs/DATA_AND_CONFIGURATION.md#robot) |
+| Confirm units, time sources, and clocks | [Units and time](docs/DATA_AND_CONFIGURATION.md#units-time) |
+| Inspect URDF joints and validate configuration | [URDF usage and limits](docs/DATA_AND_CONFIGURATION.md#urdf) |
+| Set algorithm inputs, scope, and parameters | [Algorithm configuration](docs/ALGORITHMS.md#selection) |
 
-Numbers with unknown units can be retained as described in the guide. For example, they can be checked for NaN or infinity, but joint speed cannot be compared against a physical limit until its units are known.
+Values with unknown units can be retained and checked for NaN/Inf, but cannot support physical calculations requiring known units.
 
 ## Algorithm Recommendation and Execution
 
-Recommendations tell you which checks your data can support. **Available** means the required data and settings are present; **partial** explains what can and cannot be checked; **unavailable** lists missing data, settings, or software. Whether the data passes is determined by the execution results.
+Recommendations list **fully available, partly available, and unavailable** algorithms, with the scope they can check and missing requirements. Execution determines whether data passes.
 
 ```bash
 # Data-specific recommendations: this script calls edc.recommend()
@@ -109,51 +113,52 @@ edc run /path/to/dataset/episode.mcap \
   --output /path/to/results/selected
 ```
 
-Without an explicit selection, execution runs quality algorithms that are fully or partly available and explains what cannot be checked. Use `batch` for batch quality checks, or `run` and the Python API to select individual algorithms. `edc algorithms` only lists installed algorithms. [Selection, Python API, and batch execution](docs/ALGORITHMS.md#selection)
+`run` preserves the specified order; without a selection, it attempts fully and partly available quality methods and records missing requirements. `batch` runs the quality collection on one recording, several recordings, or a directory. `edc algorithms` only lists registered algorithms. [Selection and Python API](docs/ALGORITHMS.md#selection)
 
-`run` writes `report.html` in its output directory by default, using the same four report sections as `batch` and showing only the selected algorithms. For the example above, open `/path/to/results/selected/report.html`. Full JSON records and evidence are stored under `_runs/<run_id>/` and located through `catalog.json`; each run also retains its own report there. Add `--no-html` to skip HTML generation while keeping JSON and evidence, or use `edc.run(..., html_report=False)` in Python.
-
-`batch` accepts a single recording, multiple recordings, or a directory. It disables HTML generation in its internal `run` calls and produces one combined report. Even with `--keep`, per-episode output retains JSON and evidence without extra HTML reports. Its `report.json` can be used for the export commands above.
+The example writes `/path/to/results/selected/report.html`, using the same four sections as batch. `--no-html` disables single-run HTML while preserving JSON and evidence. Batch produces one combined HTML report and a `report.json` for export; `--keep` retains full per-recording results. [Reports and evidence](docs/ALGORITHMS.md#results)
 
 | Algorithm | Checks | Minimum input | Details |
 |---|---|---|---|
-| `Structure_Check` | Missing required data and insufficient duration | Available data list and configured requirements | [Structure](docs/ALGORITHMS.md#structure-check) |
-| `Numeric_Check` | NaN, infinity, and values outside configured limits | Numeric data; limit checks also need units and bounds | [Numeric validity](docs/ALGORITHMS.md#numeric-check) |
-| `Action_Smoothness` | End-effector vibration while holding still and stuck position readings | XYZ feedback, or positions calculated from joints as configured, with timestamps | [Smoothness](docs/ALGORITHMS.md#action-smoothness) |
-| `Check_Timestamp` | Unusual recording intervals and gaps | Timestamps and their units | [Timestamps](docs/ALGORITHMS.md#check-timestamp) |
-| `Sync_Check` | Differences between device acquisition times | Each stream's acquisition times and a confirmed relationship between device clocks | [Synchronization](docs/ALGORITHMS.md#sync-check) |
-| `Root_Cause` | Which recordings have timing problems at the same time | Comparable timestamps and device groups | [Timing attribution](docs/ALGORITHMS.md#root-cause) |
-| `Dedup_Check` | Repeated timestamps or record numbers | Original timestamps or sequence numbers | [Duplicates](docs/ALGORITHMS.md#dedup-check) |
-| `Reset_Detection` | Whether the robot starts and ends at the specified position | Actual positions, reference positions, and allowed error | [Reset](docs/ALGORITHMS.md#reset-detection) |
-| `Video_Integrity` | Black frames, blur, suspected frozen images, and damaged video files | Readable images or video | [Images and video](docs/ALGORITHMS.md#video-integrity) |
+| `Structure_Check` | Channels, cameras, and duration | Channel list and structural requirements | [Structure](docs/ALGORITHMS.md#structure-check) |
+| `Numeric_Check` | Finite values and configured physical limits | Numeric fields; physical checks also need units and limits | [Numeric validity](docs/ALGORITHMS.md#numeric-check) |
+| `Action_Smoothness` | End-effector vibration while holding still and stuck readings | XYZ feedback and a usable timeline | [Smoothness](docs/ALGORITHMS.md#action-smoothness) |
+| `Check_Timestamp` | Intervals, pairing, and gaps | Valid timestamps with known units | [Timestamps](docs/ALGORITHMS.md#check-timestamp) |
+| `Sync_Check` | Recording spans and record–acquisition time differences | Independent acquisition times and comparable clocks; differences also need record times | [Synchronization](docs/ALGORITHMS.md#sync-check) |
+| `Root_Cause` | Timing anomalies across streams | Comparable timelines and source groups | [Timing attribution](docs/ALGORITHMS.md#root-cause) |
+| `Dedup_Check` | Repeated timestamps or sequence numbers | Original times or sequence information | [Duplicates](docs/ALGORITHMS.md#dedup-check) |
+| `Reset_Detection` | Distance from Home at the start and end | Position feedback, Home, and tolerances | [Reset](docs/ALGORITHMS.md#reset-detection) |
+| `Video_Integrity` | Image content and video integrity | Decodable frames or video | [Images and video](docs/ALGORITHMS.md#video-integrity) |
 
-Each algorithm reports its own results and supporting evidence. Results are not combined into one overall score. [Reading reports](docs/ALGORITHMS.md#results) · [Check rationale and selection validation](docs/QUALITY_VALIDATION.md)
+Each algorithm retains its own metrics and evidence, without a combined score. [Check rationale and research directions](docs/QUALITY_VALIDATION.md)
 
 ## Developers and Project Structure
 
-Follow the examples to write an algorithm, declare its required data and parameters, and return conclusions, reasons, and problem locations. Quality algorithms can use the existing output base classes. After registration, the framework runs the algorithm and generates reports. Other algorithm categories use the [general plugin interface](docs/DEVELOPMENT.md#interfaces).
+Quality algorithms can inherit `QualityAlgorithm`, return a list of `Item` objects, and use `AlgorithmResult` to aggregate them. General plugins use `AlgorithmSpec + run(context, params)`; registration connects them to the same input checks and execution flow.
 
 [Output classes and adding a new algorithm](docs/DEVELOPMENT.md#quality-example) · [Reader plugins](docs/DEVELOPMENT.md#readers) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
 src/edc/
-├── data/          # Read data formats and handle units and time
-├── robots/        # Read robot configuration and associate parts with data
-├── algorithms/    # Register algorithms, check inputs, quality methods and output classes
+├── data/          # Data interfaces, readers, and transforms
+├── robots/        # Configuration, parts, and channel meanings
+├── algorithms/    # Registration, preflight, nine quality methods, and output classes
 ├── execution/     # CLI, single-run, and batch execution
-├── workflows/     # Run algorithms in stages and repeat quality checks
+├── workflows/     # Optional stages and quality recheck interfaces
 └── reporting/     # Reports and evidence
 configs/
 ├── robots/        # Robot YAML and associated URDF
 └── templates/     # Single-arm, dual-arm, and other templates
 examples/          # Usage and plugin examples
 docs/              # Topic guides
-tests/             # Functionality and interface tests
+tests/             # Contract and implementation tests
 ```
 
 ### Roadmap
 
-- Add value assessment algorithms and select operation recordings that meet each algorithm's requirements.
-- Add editing and augmentation algorithms, then recheck the quality of modified or generated data copies.
-- Extend examples that run algorithms in sequence; [workflow interfaces and synthetic examples (Chinese)](docs/WORKFLOWS.md) already exist, with the algorithms above and full-flow validation to follow.
-- Add research and GPU algorithms as needed, documenting required software, hardware, and licenses.
+These are planned integrations or research directions. See the [quality guide](docs/QUALITY_VALIDATION.md#layers) for methods and foundations:
+
+1. Task segmentation, progress assessment, and useful segment discovery: STEAM and MGT-QV.
+2. Automatic annotation against task criteria and multimodal review: drawing on external work such as FLORA.
+3. Data editing, demonstration resampling, and quality rechecks: directions such as DemoTempo.
+4. Selection for target policies: RoboDrop and VLA as a judge.
+5. Feedback-driven rules and algorithm combinations, then new algorithm generation, validation, and integration toward [autonomous curation](docs/QUALITY_VALIDATION.md#autonomous).

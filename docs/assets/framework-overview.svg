@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+<title id="title">EDC: let user goals drive how data evolves</title>
+<desc id="desc">User needs guide quality checks today and planned task and policy assessment. Automation and verifiable choices support the whole process. Autonomous feedback is a long-term goal.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L6,3 L0,6" fill="none" stroke="#68899b" stroke-width="1.4"/></marker></defs>
+<rect width="1600" height="900" rx="22" fill="#ffffff"/>
+<text x="48" y="44.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#087f78">EDC / FRAMEWORK VISION</text>
+<text x="48" y="112.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="52" font-weight="700" fill="#19394e">Let user goals drive how data evolves</text>
+<text x="48" y="164.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="400" fill="#536e80">You define the goal. Data becomes reliable, worth learning from, and suited to your model.</text>
+<rect x="48" y="214" width="220" height="416" rx="18" fill="#f5f8fa" stroke="#d5e2e9" stroke-width="2"/>
+<rect x="300" y="214" width="460" height="416" rx="18" fill="#ffffff" stroke="#d5e2e9" stroke-width="2"/>
+<rect x="792" y="214" width="332" height="416" rx="18" fill="#fff7e9" stroke="#e8cf9c" stroke-width="2"/>
+<rect x="1156" y="214" width="396" height="416" rx="18" fill="#f0f8f5" stroke="#b6d8c8" stroke-width="2"/>
+<text x="70" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="27" font-weight="700" fill="#19394e">Your goals</text>
+<text x="70" y="319.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Task</text>
+<text x="70" y="354.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">What to achieve?</text>
+<path d="M70,381 L246,381" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="70" y="418.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Target model</text>
+<text x="70" y="453.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Who will learn?</text>
+<path d="M70,480 L246,480" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="70" y="517.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Quality + budget</text>
+<text x="70" y="552.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">What must be met?</text>
+<text x="70" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="17" font-weight="400" fill="#087f78">Goals guide curation</text>
+<text x="320" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">Discover value at three levels</text>
+<rect x="320" y="282" width="420" height="102" rx="12" fill="#eff4fc" stroke="none" stroke-width="2"/>
+<text x="336" y="307.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#3267c5">01  DATA QUALITY</text>
+<text x="336" y="338.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#19394e">Trustworthy, usable records</text>
+<text x="336" y="367.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Different robots. One approach to quality.</text>
+<rect x="320" y="392" width="420" height="102" rx="12" fill="#eaf7f4" stroke="none" stroke-width="2"/>
+<text x="336" y="417.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#087f78">02  TASK VALUE</text>
+<text x="336" y="448.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#19394e">Turn human experience into signals</text>
+<text x="336" y="477.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Find task progress and recovery experience.</text>
+<rect x="320" y="502" width="420" height="102" rx="12" fill="#edf3fa" stroke="none" stroke-width="2"/>
+<text x="336" y="527.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#3267c5">03  POLICY VALUE</text>
+<text x="336" y="558.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="21" font-weight="700" fill="#19394e">Connect human goals and learning</text>
+<text x="336" y="587.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Use model feedback to guide selection.</text>
+<text x="814" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="25" font-weight="700" fill="#19394e">Curation that adapts</text>
+<text x="814" y="288.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#9a671a">AUTOMATION</text>
+<text x="814" y="337.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Annotate + assess</text>
+<text x="814" y="369" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Learn to judge from demonstrations</text>
+<text x="814" y="423.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Choose methods + rules</text>
+<text x="814" y="455" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Use data signals to guide choices</text>
+<text x="814" y="509.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Edit, augment + recheck</text>
+<text x="814" y="541" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Improve plans through feedback</text>
+<text x="814" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="700" fill="#9a671a">From judgment to improvement</text>
+<text x="1178" y="257.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="26" font-weight="700" fill="#19394e">Data that fits your goals</text>
+<text x="1178" y="325.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">Reliable records</text>
+<text x="1178" y="359" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Meet the task’s input requirements</text>
+<text x="1178" y="410.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">Experience worth learning</text>
+<text x="1178" y="444" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Preserve key actions and recovery</text>
+<text x="1178" y="495.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="23" font-weight="700" fill="#19394e">Data suited to the model</text>
+<text x="1178" y="529" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Test choices through learning outcomes</text>
+<path d="M1178,566 L1530,566" fill="none" stroke="#68899b" stroke-width="2"/>
+<text x="1178" y="604.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="19" font-weight="700" fill="#087f78">Deliver data—and reasons to select it</text>
+<path d="M274,430 L292,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M766,430 L784,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1130,430 L1148,430" fill="none" stroke="#68899b" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M1354,639 L1354,691 L530,691 L530,639" fill="none" stroke="#087f78" stroke-width="2.5" marker-end="url(#arrow)"/>
+<rect x="562" y="667" width="752" height="48" rx="0" fill="#ffffff" stroke="none" stroke-width="2"/>
+<text x="582" y="698.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#087f78">Task and training feedback drive the next iteration</text>
+<rect x="48" y="750" width="480" height="130" rx="18" fill="#eff4fc" stroke="#c4d3ec" stroke-width="2"/>
+<text x="70" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#3267c5">CROSS-ROBOT REUSE</text>
+<text x="70" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">One approach. Different robots.</text>
+<text x="70" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Shared inputs and checks reduce repeated work.</text>
+<rect x="560" y="750" width="480" height="130" rx="18" fill="#fff7e9" stroke="#e8cf9c" stroke-width="2"/>
+<text x="582" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#9a671a">AUTOMATION</text>
+<text x="582" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Experience informs better choices.</text>
+<text x="582" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Learn from demonstrations and feedback.</text>
+<rect x="1072" y="750" width="480" height="130" rx="18" fill="#eaf7f4" stroke="#b6dcd1" stroke-width="2"/>
+<text x="1094" y="787.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="24" font-weight="700" fill="#087f78">EVIDENCE</text>
+<text x="1094" y="823.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="22" font-weight="700" fill="#19394e">Explain each choice. Test its effects.</text>
+<text x="1094" y="856.0" font-family="WenQuanYi Zen Hei, sans-serif" font-size="18" font-weight="400" fill="#536e80">Trace signals, decisions, and outcomes.</text>
+</svg>
