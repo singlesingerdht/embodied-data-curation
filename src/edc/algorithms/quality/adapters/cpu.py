@@ -15,19 +15,6 @@ TIMING_MISSING = ('时间条件不足：需要有效且单位明确的时间轴�
                 '只有公共行时间、未知单位或合成时间时，不能评估原始采集同步；现有时间仍保留。')
 
 
-def topic_metadata(episode):
-    """Read-only recorded topic metadata (modality, msg_type, count, recorded timestamps).
-
-    Unit/orientation wrappers deep-copy the whole legacy info on every describe_legacy() call,
-    timelines included; preflight gating only reads fields those wrappers never change, so it
-    uses the innermost episode's info directly. Callers must not mutate the result."""
-    source = episode
-    while getattr(source, '_source', None) is not None or getattr(source, '_episode', None) is not None:
-        source = getattr(source, '_source', None) or source._episode
-    describe = getattr(source, 'describe_legacy', None)
-    return describe() if callable(describe) else None
-
-
 def capabilities(episode):
     channels = list(episode.channels.values())
     caps = set()

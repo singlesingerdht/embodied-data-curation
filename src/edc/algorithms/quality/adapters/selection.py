@@ -1,6 +1,5 @@
 """Execution-local topic selection shared by recommendation and CPU execution."""
 import copy
-from edc.data.ir.bridge import EpisodeAccess
 from edc.algorithms.channel_names import resolve_channel_parameters
 
 
@@ -28,11 +27,6 @@ class ChannelSelection:
         self._episode.open()
         return self
 
-    def describe_legacy(self):
-        info = copy.copy(self._episode.describe_legacy())
-        info.topics = {n: info.topics[n] for n in self.channels}
-        return info
-
     def read_signal(self, channel, field):
         if channel not in self.channels:
             raise ValueError(f'Channel is outside the selected input scope: {channel}')
@@ -42,9 +36,6 @@ class ChannelSelection:
         if channel not in self.channels:
             raise ValueError(f'Channel is outside the selected input scope: {channel}')
         return self._episode.inspect_recorded_signal(channel, field)
-
-    def algorithm_view(self):
-        return self.describe_legacy(), EpisodeAccess(self)
 
 
 def select_episode(episode, params):

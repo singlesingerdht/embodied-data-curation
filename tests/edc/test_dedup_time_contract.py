@@ -65,8 +65,7 @@ def test_exact_ros_nanoseconds_prevent_false_float_duplicates():
     from edc.data.ir.dataset import Channel
     ns=[1776694770000000000,1776694770000000001,1776694770000000002]
     c=Channel('a','other',[],3,'',time_source='acquisition',timestamps=[x*1e-9 for x in ns])
-    ep=SimpleNamespace(channels={'a':c},profile={},describe_legacy=lambda:SimpleNamespace(topics={
-        'a':SimpleNamespace(acquisition_timestamps_ns=ns,seqs=None)}))
+    ep=SimpleNamespace(channels={'a':c},profile={},raw={'a':SimpleNamespace(acquisition_timestamps_ns=ns,seqs=None)}.get)
     assert len(set(c.timestamps))==1
     r=plugin('Dedup_Check').run(SimpleNamespace(episode=ep),{})[0]
     assert r['dedup']['timestamp_dedup']['extra_duplicate_count']==0 and r['timestamp_unit']=='ns'
@@ -92,14 +91,13 @@ def test_invalid_right_header_remains_unavailable_not_repeated_zeroes():
     left=Channel('left','pose',['position'],4,'source',time_source='acquisition',timestamps=[1,2,3,4])
     right=Channel('right','pose',['position'],4,'source',time_source='unknown',
                   time_evidence={'unavailable_reason':'All four original header values are zero'})
-    ep=SimpleNamespace(channels={'left':left,'right':right},profile={})
+    ep=SimpleNamespace(channels={'left':left,'right':right},profile={},
+                       raw={'left':SimpleNamespace(seqs=None),'right':SimpleNamespace(seqs=None)}.get)
     missing=unavailable_dedup_inputs(ep)
     assert len(missing)==1 and missing[0]['channel']=='right'
     assert 'zero' in missing[0]['reason']
     assert plugin('Dedup_Check').availability(ep,{})['availability']=='partial'
     assert plugin('Dedup_Check').availability(ep,{'channel':'left'})['availability']=='available'
-    ep.describe_legacy=lambda:SimpleNamespace(topics={
-        'left':SimpleNamespace(seqs=None),'right':SimpleNamespace(seqs=None)})
     result=plugin('Dedup_Check').run(SimpleNamespace(episode=ep),{})
     assert len(result)==1 and result[0]['verdict']=='OBSERVATION'
     assert not result[0]['assessment_complete']
@@ -109,8 +107,7 @@ def test_selecting_one_dedup_channel_does_not_mark_other_valid_channel_missing()
     from edc.data.ir.dataset import Channel
     channels={name:Channel(name,'other',[],3,'source',time_source='acquisition',timestamps=[1,2,3])
               for name in ('left','right')}
-    info=SimpleNamespace(topics={name:SimpleNamespace(seqs=None) for name in channels})
-    ep=SimpleNamespace(channels=channels,profile={},describe_legacy=lambda:info)
+    ep=SimpleNamespace(channels=channels,profile={},raw={name:SimpleNamespace(seqs=None) for name in channels}.get)
     result=plugin('Dedup_Check').run(SimpleNamespace(episode=ep),{'channel':'left'})
     assert len(result)==1 and result[0]['input_channel']=='left'
     assert result[0]['unavailable_inputs']==[]

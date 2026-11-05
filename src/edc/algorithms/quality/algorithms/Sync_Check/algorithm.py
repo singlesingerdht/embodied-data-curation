@@ -35,8 +35,7 @@ class Algorithm(BuiltinAlgorithm):
             return make_ir_report("同步", "sync_check", IRNotProvided("独立采集时间轴", ep.format))
         ts = {name: ts[name] for name in unique.values()}
         diagnosis = clock_diagnosis(ep, list(ts))
-        topics = ep.describe_legacy().topics
-        record = {n: [v * 1e-9 for v in getattr(topics.get(n), 'container_timestamps_ns', None) or []] for n in ts}
+        record = {n: [v * 1e-9 for v in getattr(ep.raw(n), 'container_timestamps_ns', None) or []] for n in ts}
         record = record if all(record.values()) else None  # 有一路没有录包时间就都按采集时间比起止
         result = module.assess(ts, clock=diagnosis, record=record, **params)
         result['clock_diagnosis'] = diagnosis

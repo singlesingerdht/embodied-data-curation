@@ -126,11 +126,10 @@ def test_mcap_retains_both_axes_and_zero_clock_does_not_block_other_channels(tmp
         assert ep.channels['/head'].count==3 and ep.channels['/fast'].count==12
         zero=ep.channels['/zero'];assert zero.timestamps is None and zero.time_source=='unknown'
         assert zero.time_evidence['zero_header_count']==12
-        info=ep.describe_legacy()
-        assert info.topics['/zero'].acquisition_timestamps_ns==[0]*12
-        assert info.topics['/fast'].container_timestamps_ns[0]==20_000_000_000
-        assert info.topics['/fast'].acquisition_timestamps_ns==axes['/fast']
-        assert info.topics['/backward'].acquisition_timestamps_ns==axes['/backward']
+        assert ep.raw('/zero').acquisition_timestamps_ns==[0]*12
+        assert ep.raw('/fast').container_timestamps_ns[0]==20_000_000_000
+        assert ep.raw('/fast').acquisition_timestamps_ns==axes['/fast']
+        assert ep.raw('/backward').acquisition_timestamps_ns==axes['/backward']
         assert preflight(plugin('Check_Timestamp'),ep)[0]=='runnable'
         assert preflight(plugin('Sync_Check'),ep)[0]=='missing_input'
         assert preflight(plugin('Root_Cause'),ep)[0]=='missing_input'
@@ -189,7 +188,7 @@ def test_ros_reader_zero_header_is_unavailable_with_exact_raw_evidence(tmp_path,
             raw=store.serialize_ros1(msg,typ) if backend=='ros1' else store.serialize_cdr(msg,typ)
             writer.write(c,20_000_000_000+i*100_000_000,raw)
     with next(open_dataset(source,profile=native_profile()).iter_episodes()).opened() as ep:
-        c=ep.channels['/joint_states'];t=ep.describe_legacy().topics[c.name]
+        c=ep.channels['/joint_states'];t=ep.raw(c.name)
         assert c.timestamps is None and c.time_source=='unknown'
         assert t.acquisition_timestamps_ns==[0,10_000_000_001,10_000_000_002]
         assert t.container_timestamps_ns==[20_000_000_000,20_100_000_000,20_200_000_000]
@@ -201,7 +200,7 @@ def test_static_text_excluded_from_native_cadence():
     from edc.data.ir.dataset import Channel
     t=TopicInfo('/instruction_data',msg_type='std_msgs/msg/String',count=1)
     c=Channel(t.name,'other',[],1,'')
-    ep=SimpleNamespace(channels={t.name:c},describe_legacy=lambda:SimpleNamespace(topics={t.name:t}))
+    ep=SimpleNamespace(channels={t.name:c},raw={t.name:t}.get)
     r=cadence_report(ep)
     assert not r['channels'] and r['excluded']==[{'channel':t.name,'reason':'non_sampled_text'}]
 
@@ -224,7 +223,7 @@ def test_mcap_record_order_is_not_silently_sorted_by_log_time(tmp_path):
         writer.finish()
     for config in [None,native_profile()]:
         with next(open_dataset(source,profile=config).iter_episodes()).opened() as ep:
-            t=ep.describe_legacy().topics['/joint_states']
+            t=ep.raw('/joint_states')
             assert t.container_timestamps_ns==[20_000_000_000,22_000_000_000,21_000_000_000]
             assert t.acquisition_timestamps_ns==[10_000_000_000,10_004_000_000,10_008_000_000]
             np.testing.assert_array_equal(ep.read_signal('/joint_states','position')[:,0],[0,1,2])

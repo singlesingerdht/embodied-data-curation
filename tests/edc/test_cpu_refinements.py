@@ -5,9 +5,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from edc.data.ir.metadata import DataInfo, TopicInfo
-from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-from edc.algorithms.quality.algorithms.Check_Timestamp.method import assess_from_ir
+from edc.data.ir.metadata import TopicInfo
+from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
+from edc.algorithms.quality.algorithms.Check_Timestamp import method as timestamp_method
+from edc.algorithms.quality.algorithms.Check_Timestamp.algorithm import alignment
 from edc.algorithms.quality.algorithms.Root_Cause.root_cause import analyze_root_cause, _detect_real_stall
 from edc.algorithms.quality.algorithms.Root_Cause.method import assess as root_assess
 
@@ -18,17 +19,18 @@ def timing_info(extra=None):
     topics = {name: TopicInfo(name, count=len(ts), modality='rgb' if 'rgb' in name else 'joint_space',
                               timestamps=ts, time_source='container') for name, ts in axes.items()}
     topics.update(extra or {})
-    info = DataInfo('/synthetic', format='mcap', topics=topics)
-    reader = SimpleNamespace(require_timestamps=lambda info, **kw: {
-        name: topic.timestamps for name, topic in info.topics.items() if topic.timestamps is not None})
-    return info, reader
+    return SimpleNamespace(channels=topics, raw=topics.get, format='mcap')
+
+
+def assess_from_ir(ep):
+    return alignment(ep, timestamp_method)
 
 
 def test_metadata_does_not_reduce_timestamp_score_and_remains_auditable():
-    baseline = assess_from_ir(*timing_info())
+    baseline = assess_from_ir(timing_info())
     metadata = TopicInfo('/instruction_data', msg_type='std_msgs/msg/String', count=1,
                          timestamps=[0.], time_source='container')
-    result = assess_from_ir(*timing_info({metadata.name: metadata}))
+    result = assess_from_ir(timing_info({metadata.name: metadata}))
     assert result['score'] == baseline['score']
     assert result['sub_indicators'] == baseline['sub_indicators']
     assert result['excluded_topics'] == [{'topic': '/instruction_data', 'reason': 'non_sampled_text',
@@ -41,41 +43,40 @@ def test_metadata_does_not_reduce_timestamp_score_and_remains_auditable():
     ('other', 'sensor_msgs/msg/CameraInfo', '/calibration'), ('other', '', '/tf_static')])
 def test_explicit_metadata_scope(modality, msg_type, name):
     topic = TopicInfo(name, modality=modality, msg_type=msg_type, count=10)
-    selected, excluded = partition_timing_topics(DataInfo('/synthetic', topics={name: topic}), {name: [1.] * 10})
-    assert not selected and excluded[0]['topic'] == name
+    assert timing_exclusion_reason(name, topic)
 
 
 def test_reference_camera_scores_own_cadence_and_bad_time_excludes():
     # 头部相机自己断 1 秒：单独一行只看节奏、只扣分（低于其他路平均才计入）；时间重复 → 不能当基准，整项 0 分排除
-    info, reader = timing_info()
-    head = info.topics['/head/rgb']
-    good = assess_from_ir(info, reader)
+    ep = timing_info()
+    head = ep.channels['/head/rgb']
+    good = assess_from_ir(ep)
     others = [s['score'] for s in good['sub_indicators'] if s['name'] != '/head/rgb']
     assert good['score'] == pytest.approx(sum(others) / len(others))  # 头部节奏好不加分
     head.timestamps = (np.arange(100) / 30 + (np.arange(100) >= 50) * 1.0).tolist()
-    bad = assess_from_ir(info, reader)
+    bad = assess_from_ir(ep)
     row = next(s for s in bad['sub_indicators'] if s['name'] == '/head/rgb')
     assert row['score'] < 100 and [d['name'] for d in row['details']] == ['采样稳定性']
     assert bad['score'] < good['score']
     head.timestamps = head.timestamps[:10] + head.timestamps[9:99]
-    result = assess_from_ir(info, reader)
+    result = assess_from_ir(ep)
     assert result['score'] == 0 and result['verdict'] == 'DO_NOT_USE'
     assert any('时间重复 1 次' in r for r in result['reasons'])
 
 
 def test_short_sensor_is_not_silently_filtered_as_metadata():
     single = TopicInfo('/wrist/rgb', modality='rgb', count=1, timestamps=[0.])
-    info, reader = timing_info({single.name: single})
-    result = assess_from_ir(info, reader)
+    ep = timing_info({single.name: single})
+    result = assess_from_ir(ep)
     assert single.name in result['timestamp_scope']['included_topics']
     assert single.name in {sub['name'] for sub in result['sub_indicators']}
     assert not result['excluded_topics']
 
 
 def test_metadata_cannot_supply_missing_second_sampled_stream():
-    info, reader = timing_info({'/metadata': TopicInfo('/metadata', count=1, timestamps=[0.])})
-    del info.topics['/arm/joint_states']
-    result = assess_from_ir(info, reader)
+    ep = timing_info({'/metadata': TopicInfo('/metadata', count=1, timestamps=[0.])})
+    del ep.channels['/arm/joint_states']
+    result = assess_from_ir(ep)
     assert result['score'] is None and result['verdict'] == 'NOT_APPLICABLE'
     assert result['excluded_topics'][0]['topic'] == '/metadata'
 

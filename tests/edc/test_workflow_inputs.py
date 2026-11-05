@@ -29,10 +29,10 @@ def test_clock_mapping_consumed_by_real_cpu_method(tmp_path,monkeypatch,ident):
     params={'channels':['rgb/head','/fast'],'target_clock':'head_clock'}
     seen=[]
     module=importlib.import_module(f'edc.algorithms.quality.algorithms.{ident}.method')
-    method='assess' if ident=='Sync_Check' else 'assess_from_ir'
+    method='assess'
     original=getattr(module,method)
     def capture(*args,**kwargs):
-        axes=args[0] if ident=='Sync_Check' else {n:t.timestamps for n,t in args[0].topics.items()}
+        axes=args[0]
         seen.append(axes)
         return original(*args,**kwargs)
     monkeypatch.setattr(module,method,capture)
@@ -47,8 +47,9 @@ def test_clock_mapping_consumed_by_real_cpu_method(tmp_path,monkeypatch,ident):
     row=json.loads(next((tmp_path/'results/_runs').glob(f'*/{ident}/records.jsonl')).read_text())
     assert row['status']=='completed',row['reason']
     assert len(seen)==1
-    np.testing.assert_allclose(seen[0]['/fast'],(np.arange(12)*.004+10)*1.1+.25)
-    np.testing.assert_allclose(seen[0]['/head'],np.arange(3)*.032+10)
+    shift=row['result']['reports'][0].get('clock_shift_s') or {}  # 归因会再平移时钟，方法收到的是平移后的时间
+    np.testing.assert_allclose(np.asarray(seen[0]['/fast'])-shift.get('/fast',0),(np.arange(12)*.004+10)*1.1+.25)
+    np.testing.assert_allclose(np.asarray(seen[0]['/head'])-shift.get('/head',0),np.arange(3)*.032+10)
     assert len(seen[0]['/fast'])==12 and len(seen[0]['/head'])==3
     assert row['clock_normalization']
     fast=next(r for r in row['clock_normalization'] if r['channel']=='/fast')

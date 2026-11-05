@@ -1,4 +1,4 @@
-"""模块: 根因分析，框架通过 assess_from_ir / assess 调用（algorithm.py）。"""
+"""模块: 根因分析，框架通过 assess 调用（algorithm.py）。"""
 from edc.algorithms.quality.shared.attribution import format_report
 from edc.algorithms.quality.shared.quality_reporter import to_grade, normalize_weights
 from edc.algorithms.quality.algorithms.Root_Cause.root_cause import analyze_root_cause
@@ -82,29 +82,4 @@ def assess(ts_map: dict, weights: dict = None, families: dict = None) -> dict:
     report['warnings'].extend(
         f"{name}: 检测到长间隔，最大{row['max_gap_s']*1000:.3f}ms；时间证据不能确定物理根因"
         for name, row in result['channel_gap_evidence'].items() if row['long_gap'])
-    return report
-
-
-def assess_from_ir(info, reader, weights: dict = None, families: dict = None) -> dict:
-    """从 IR 评估根因分析。"""
-    try:
-        ts_map = reader.require_timestamps(info, min_channels=2)
-    except Exception as exc:
-        from edc.data.readers.base import make_ir_report
-        return make_ir_report("根因分析", "root_cause", exc)
-    from edc.data.readers.base import filter_real_timestamps, make_synthetic_report
-    ts_map, has_synthetic = filter_real_timestamps(info, ts_map)
-    if ts_map is None:
-        return make_synthetic_report("根因分析", "root_cause", info)
-    from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-    ts_map, excluded = partition_timing_topics(info, ts_map)
-    if len(ts_map) < 2:
-        from edc.data.ir.metadata import IRNotProvided
-        from edc.data.readers.base import make_ir_report
-        report = make_ir_report('根因分析', 'root_cause', IRNotProvided('至少两路非 metadata 时间轴', info.format))
-    else:
-        report = assess(ts_map, weights=weights, families=families)
-    report['excluded_topics'] = excluded
-    report['timestamp_scope'] = {'included_topics': sorted(ts_map),
-        'time_sources': {name: getattr(info.topics.get(name), 'time_source', 'unknown') for name in ts_map}}
     return report

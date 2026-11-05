@@ -17,7 +17,7 @@ def test_modality_vocabulary_separates_anatomy_and_commands(tmp_path):
                  'representation':{'layout':'taxel_grid','shape':[2,2]}}}}
     with next(open_dataset(root,profile=profile).iter_episodes()).opened() as ep:
         assert ep.channels['q'].modality=='joint_space'
-        assert ep.describe_legacy().topics['q'].modality=='cmd'
+        assert ep.raw('q').modality=='cmd'
         assert ep.channels['touch'].representation['layout']=='taxel_grid'
         assert ep.read_signal('touch','pressure').shape==(1,2,2)
     for name in MODALITIES:

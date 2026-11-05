@@ -4,12 +4,11 @@ from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
 
 
 def cadence_report(episode):
-    info = episode.describe_legacy()
     rows, excluded = [], []
     for name, channel in episode.channels.items():
         if channel.selection:
             continue  # Selected columns inherit the same rows, not a new stream.
-        topic = info.topics[name]
+        topic = episode.raw(name)
         reason = timing_exclusion_reason(name, topic)
         if reason:
             excluded.append({'channel': name, 'reason': reason})

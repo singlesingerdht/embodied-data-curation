@@ -72,7 +72,7 @@ def _assess_channel(episode, channel, params, context, index, started, role):
                 episode.iter_frames(channel.name), channel.count)
         measured_failure = fq.get('verdict') == 'DO_NOT_USE'
         try:  # 只为读消息类型；没有话题信息的数据（如测试用的假数据）按普通图片写
-            topic = episode.describe_legacy().topics.get(channel.name)
+            topic = episode.raw(channel.name)
         except AttributeError:
             topic = None
         video_stream = (getattr(topic, 'msg_type', None) or '').endswith('/CompressedVideo')

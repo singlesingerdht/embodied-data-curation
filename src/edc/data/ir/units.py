@@ -59,7 +59,7 @@ class SIEpisode:
         self._read_counts = {}
 
     def __getattr__(self, name):
-        if name in {"id", "path", "format", "profile", "selector", "metadata",
+        if name in {"id", "path", "format", "profile", "selector", "metadata", "raw",
                     "iter_frames", "image_storage", "video_source", "materialize_video", "video_evidence"}:
             return getattr(self._source, name)
         raise AttributeError(name)
@@ -173,19 +173,6 @@ class SIEpisode:
         self.open()
         return {**description, "channels": [c.describe() for c in self.channels.values()],
                 "unit_normalization": self.unit_evidence()}
-
-    def describe_legacy(self):
-        self.open()
-        info = copy.deepcopy(self._source.describe_legacy())
-        for name, channel in self.channels.items():
-            info.topics[name].unit = channel.unit
-            info.topics[name].field_metadata = copy.deepcopy(channel.field_metadata)
-        info.extra["unit_normalization"] = self.unit_evidence()
-        return info
-
-    def algorithm_view(self):
-        from edc.data.ir.bridge import EpisodeAccess
-        return self.describe_legacy(), EpisodeAccess(self)
 
     def transform_signal(self, channel, field, **kwargs):
         from edc.data.transforms.episode import signal

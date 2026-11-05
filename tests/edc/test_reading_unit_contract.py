@@ -50,7 +50,7 @@ def test_unconfirmed_timestamp_units_preserve_raw_evidence_and_disable_physics(t
     if declaration != 'omitted': p['timestamp_unit'] = declaration
     with open_dataset(path, profile=p) as dataset:
         with next(dataset.iter_episodes()).opened() as ep:
-            c = ep.channels['joint_pos']; topic = ep.describe_legacy().topics[c.name]
+            c = ep.channels['joint_pos']; topic = ep.raw(c.name)
             assert c.timestamps is None and c.time_source == 'unknown' and c.clock is None
             assert topic.recorded_timestamp_values == raw and topic.recorded_timestamp_unit == 'unknown'
             assert c.time_evidence['timestamp_unit_source'] == 'unconfirmed'

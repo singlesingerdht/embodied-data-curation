@@ -248,15 +248,12 @@ class Episode:
                 "end_time": self._info.end_time,
                 "channels": [c.describe() for c in self.channels.values()]}
 
-    def describe_legacy(self):
-        """Metadata view for legacy adapters; payload access remains through public methods."""
+    def raw(self, channel):
+        """这一路的原始记录（读取器给的）：消息类型、行数、原始整数时间（采集／录包，纳秒）、序列号、
+        是否生成的时间等；没有这一路返回 None。不随单位、姿态、时钟视图改变，所以包装视图直接转给这里。
+        时间轴、单位、时钟请用 channels。只读，不要修改。"""
         self.open()
-        return self._info
-
-    def algorithm_view(self):
-        from edc.data.ir.bridge import EpisodeAccess
-        self.open()
-        return self._info, EpisodeAccess(self)
+        return self._info.topics.get(channel)
 
     def read_values(self, channel, indices=None):
         self.open()

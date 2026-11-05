@@ -5,7 +5,8 @@ import numpy as np
 from edc import open_dataset, run
 from edc.algorithms.quality.adapters.cpu import too_short
 from edc.algorithms.quality.algorithms.Check_Timestamp.algorithm import timestamp_scoring
-from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, shift_note, ShiftedReader, derived_copies
+from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, shift_note, derived_copies
+from edc.algorithms.quality.shared.timing_scope import recorded_timelines
 
 T0 = 1773741605.0  # 2026-03-17
 
@@ -15,7 +16,7 @@ def episode(streams):
     channels = {n: SimpleNamespace(timestamps=list(h), clock='one', selection=sel) for n, (h, _, sel) in streams.items()}
     topics = {n: SimpleNamespace(container_timestamps_ns=None if r is None else [int(x * 1e9) for x in r])
               for n, (_, r, _) in streams.items()}
-    return SimpleNamespace(channels=channels, describe_legacy=lambda: SimpleNamespace(topics=topics))
+    return SimpleNamespace(channels=channels, raw=topics.get, format='mcap')
 
 
 def stream(rate, delay_s, start=T0, seconds=2.0, header=None):
@@ -60,8 +61,8 @@ def test_clock_shift_moves_smaller_groups_onto_the_largest_and_derived_channels_
     shift = clock_shift(ep, clock_diagnosis(ep, list(ep.channels)))
     assert set(shift) == {'/cam', '/cam_crop', '/cam_fk'} and abs(shift['/cam'] + 32.098) < 1e-9
     assert shift['/cam_crop'] == shift['/cam_fk'] == shift['/cam']  # Same timeline, same clock.
-    reader = SimpleNamespace(require_timestamps=lambda info, min_channels=2: {'/cam': [1.0], '/robot': [1.0]})
-    assert ShiftedReader(reader, shift).require_timestamps(None) == {'/cam': [1.0 + shift['/cam']], '/robot': [1.0]}
+    two = episode({'/cam': ([1.0], None, None), '/robot': ([1.0], None, None)})
+    assert recorded_timelines(two, shift)[0] == {'/cam': [1.0 + shift['/cam']], '/robot': [1.0]}
     assert shift_note({'/a': 32.04, '/b': 32.0, '/w': 2.5e9}) == '已把 /a、/b 的时间平移 +32.0 秒；已把 /w 的设备计数时间换算到统一时钟'
     same = episode({'/robot': stream(500, 0.002), '/cam': stream(30, 0.015)})
     assert clock_shift(same, clock_diagnosis(same, ['/robot', '/cam'])) == {}
@@ -142,9 +143,9 @@ def test_derived_copies_are_not_scored_twice_and_scoring_options_are_restored():
     robot, cam = stream(500, 0.002), stream(30, 0.015)
     ep = episode({'/robot': robot, '/cam': cam, '/arm': (robot[0], None, {'channel': '/robot'}),
                   '/fk': (robot[0], None, None), '/lonely': (stream(50, 0.0)[0], None, None)})
-    assert derived_copies(ep, ep.describe_legacy()) == ['/arm', '/fk']
-    reader = SimpleNamespace(require_timestamps=lambda info, min_channels=2: {'/robot': [1.0], '/arm': [1.0]})
-    assert ShiftedReader(reader, {}, ['/arm']).require_timestamps(None) == {'/robot': [1.0]}
+    assert derived_copies(ep) == ['/arm', '/fk']
+    two = episode({'/robot': ([1.0], None, None), '/arm': ([1.0], None, None)})
+    assert recorded_timelines(two, {}, ['/arm'])[0] == {'/robot': [1.0]}
     module = SimpleNamespace(DEFAULT_IOU_THRESHOLD=0.95)
     with timestamp_scoring(module, {'iou_threshold': 0.8}):
         assert module.DEFAULT_IOU_THRESHOLD == 0.8

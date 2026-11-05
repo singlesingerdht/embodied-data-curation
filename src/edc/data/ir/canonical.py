@@ -21,7 +21,7 @@ class CanonicalEpisode:
         self._orientation_reads = {}
 
     def __getattr__(self, name):
-        if name in {'id', 'path', 'format', 'profile', 'selector', 'metadata', 'backend',
+        if name in {'id', 'path', 'format', 'profile', 'selector', 'metadata', 'backend', 'raw',
                     'iter_frames', 'image_storage', 'video_source', 'materialize_video', 'video_evidence'}:
             return getattr(self._source, name)
         raise AttributeError(name)
@@ -148,19 +148,6 @@ class CanonicalEpisode:
         self.open()
         return {**self._source.describe(), 'channels': [c.describe() for c in self.channels.values()],
                 'orientation_normalization': self.orientation_evidence()}
-
-    def describe_legacy(self):
-        self.open()
-        info = copy.deepcopy(self._source.describe_legacy())
-        for name, c in self.channels.items():
-            for key in ('field_metadata', 'representation', 'unit', 'dimensions'):
-                setattr(info.topics[name], key, copy.deepcopy(getattr(c, key)))
-        info.extra['orientation_normalization'] = self.orientation_evidence()
-        return info
-
-    def algorithm_view(self):
-        from edc.data.ir.bridge import EpisodeAccess
-        return self.describe_legacy(), EpisodeAccess(self)
 
     def transform_orientation(self, channel, *, target, field='orientation', tolerance=1e-6):
         return self._source.transform_orientation(channel, target=target, field=field, tolerance=tolerance)

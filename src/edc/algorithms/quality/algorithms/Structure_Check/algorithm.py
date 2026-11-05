@@ -20,13 +20,13 @@ class Algorithm(BuiltinAlgorithm):
 
     def assess(self, ep, params, context):
         module, short = self.method(), too_short(ep)
-        info, reader = ep.algorithm_view()
+        topics = {n: ep.raw(n) for n in ep.channels}
         check = module.check_structure
         if ep.profile.get('declared_only'):  # 机器人 yaml：相机内参按 yaml 写的 info 配对，不按名字猜
             module.check_structure = lambda *a, **k: {**check(*a, **k),
-                                                      'camera_pairs': yaml_camera_pairs(ep.profile, info.topics)}
+                                                      'camera_pairs': yaml_camera_pairs(ep.profile, topics)}
         try:
-            result = module.assess(str(ep.path), info.topics, required_topics=ep.profile.get("required_channels"),
+            result = module.assess(str(ep.path), topics, required_topics=ep.profile.get("required_channels"),
                 camera_requirements=ep.profile.get("camera_requirements"),
                 channel_config=ep.profile.get("channels", {}), **params)
         finally:

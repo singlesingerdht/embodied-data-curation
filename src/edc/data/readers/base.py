@@ -1,13 +1,13 @@
-"""DataReader 基类: 统一入口 + 工厂 + require 取数层。
+"""DataReader 基类: 统一入口 + 工厂 + 按字段取数。
 
 统一数据读取接口的内部实现。
 """
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from edc.data.ir.metadata import (
-    DataInfo, TopicInfo, IRNotProvided,
+    DataInfo, IRNotProvided,
     detect_format, FORMAT_MP4, FORMAT_EPISODE, FORMAT_DATASET, FORMAT_ROS1_BAG, FORMAT_ROS2_BAG,
     FORMAT_MCAP, FORMAT_PARQUET, FORMAT_HDF5, FORMAT_LEROBOT, MODALITY_POSE,
 )
@@ -129,48 +129,7 @@ class DataReader(ABC):
             raise ValueError("Reader must be opened before reading frames")
         yield from video_frames(self.materialize_image_channel(info, name))
 
-    # ── require 层: 算法声明式取数 ──
-
-    def require_pose(self, info: DataInfo, side: str = "right",
-                     field: str = "position") -> Tuple[str, TopicInfo]:
-        """返回 (channel_name, TopicInfo) 指定侧的 pose 通道, 含指定物理量。
-
-        side: "left" / "right" / "any"
-        field: "position" (笛卡尔 XYZ) / "orientation" (显式声明的姿态表示)
-        """
-        candidates = [(n, ti) for n, ti in info.topics.items()
-                       if ti.modality == MODALITY_POSE and ti.value_available
-                       and (ti.fields is None or field in ti.fields)]
-        if not candidates:
-            all_fields = sorted(set(f for ti in info.topics.values()
-                                   for f in (ti.fields or []) if ti.modality == MODALITY_POSE))
-            raise IRNotProvided(
-                f"pose 通道 (side={side}, field={field})", info.format,
-                f"可用 fields={all_fields}" if all_fields else info.capability_summary()
-            )
-        if side != "any":
-            if side not in {"left", "right"}:
-                raise ValueError(f"Invalid side: {side}")
-            for n, ti in candidates:
-                declared = getattr(ti, "side", "unknown")
-                if declared == side or (declared == "unknown" and not getattr(ti, 'strict_side', False) and side in n.lower()):
-                    return n, ti
-            raise IRNotProvided(f"pose 通道 (side={side}, field={field})", info.format,
-                                "No channel with the requested side; opposite-side fallback is forbidden")
-        return candidates[0]
-
-    def require_timestamps(self, info: DataInfo, min_channels: int = 2) -> Dict[str, List[float]]:
-        """返回 {topic: [timestamps]} 多通道时间戳。
-
-        Raises IRNotProvided: 不足 min_channels 个通道有时间戳。
-        """
-        ts_map = extract_timestamps(info)
-        if len(ts_map) < min_channels:
-            raise IRNotProvided(
-                f">={min_channels} 通道时间戳", info.format,
-                info.capability_summary()
-            )
-        return ts_map
+    # ── 按字段取数（Episode.read_signal 用） ──
 
     def read_field(self, info: DataInfo, name: str, field: str) -> Optional[np.ndarray]:
         """统一提取: 从通道 name 取物理量 field → N×D numpy 数组。
@@ -262,42 +221,6 @@ class DataReader(ABC):
 
 
 # ── 模块级 API ──
-
-
-def extract_timestamps(info: DataInfo) -> Dict[str, List[float]]:
-    """从 DataInfo.topics 提取 {topic: [timestamps]}, 过滤 NaN/±inf。"""
-    import numpy as np
-    ts_map = {}
-    for name, ti in info.topics.items():
-        if ti.timestamps is None:
-            continue
-        ts = [float(t) for t in ti.timestamps if np.isfinite(t)]
-        if ts:
-            ts_map[name] = ts
-    return ts_map
-
-
-def make_synthetic_report(module_name: str, module_key: str, info: DataInfo) -> dict:
-    """合成时间戳 → 降级报告 (时间类检测不适用)。"""
-    exc = IRNotProvided(
-        f"合成时间戳 (i/fps, 全通道同轴)",
-        info.format, "时间类检测 (Sync/Dedup/Check_Timestamp) 仅在真实采集时间戳上有意义"
-    )
-    return make_ir_report(module_name, module_key, exc)
-
-
-def filter_real_timestamps(info: DataInfo, ts_map: dict) -> tuple:
-    """剔除合成时间戳通道, 返回 (filtered_ts_map, has_synthetic)。
-    如果 filtered_ts_map 为空 → 全合成, 返回 (None, True)。
-    """
-    real = {}
-    for name, ts in ts_map.items():
-        ti = info.topics.get(name)
-        if ti and ti.timestamps_synthetic:
-            continue
-        real[name] = ts
-    return (real if real else None, len(real) < len(ts_map))
-
 
 def make_ir_report(module_name: str, module_key: str, exc: Exception) -> dict:
     """IRNotProvided / DependencyMissing → 标准降级报告 (统一输出契约格式)。

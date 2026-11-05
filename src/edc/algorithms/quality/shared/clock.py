@@ -25,7 +25,6 @@ def clock_diagnosis(episode, names):
     import datetime
     import time
     import numpy as np
-    info = episode.describe_legacy()
     latest = time.time() + 365 * 86400
     rows, offsets, notes = {}, {}, []
     for name in names:
@@ -33,7 +32,7 @@ def clock_diagnosis(episode, names):
         if c.selection:
             continue  # Derived channels share their source's timeline.
         t = np.asarray(c.timestamps, dtype=float)
-        record = getattr(info.topics.get(name), 'container_timestamps_ns', None)
+        record = getattr(episode.raw(name), 'container_timestamps_ns', None)
         row = {'clock': c.clock, 'calendar_time': bool(CALENDAR_MIN_S <= t.min() and t.max() <= latest)}
         if record is not None and len(record) == len(t):
             lag = (np.asarray(record, dtype=float) * 1e-9 - t) * 1000
@@ -136,21 +135,7 @@ def shift_note(shift):
     return '；'.join(parts)
 
 
-class ShiftedReader:
-    """The same reader, with timestamps moved by clock_shift (and derived copies left out) before an algorithm sees them."""
-    def __init__(self, reader, shift, drop=()):
-        self._reader, self._shift, self._drop = reader, shift, set(drop)
-
-    def __getattr__(self, name):
-        return getattr(self._reader, name)
-
-    def require_timestamps(self, info, min_channels=2):
-        ts = self._reader.require_timestamps(info, min_channels=min_channels)
-        return {n: [t + self._shift[n] for t in v] if n in self._shift else v
-                for n, v in ts.items() if n not in self._drop}
-
-
-def derived_copies(episode, info):
+def derived_copies(episode):
     """Channels that only repeat another channel's timeline: split from one message (selection) or
     computed from it (e.g. FK poses, no record time of their own). Scoring each copy again would
     count one stream's timing several times."""
@@ -158,7 +143,7 @@ def derived_copies(episode, info):
         t = c.timestamps
         return (float(t[0]), float(t[-1]), len(t)) if t is not None and len(t) else None
     own = {n for n, c in episode.channels.items() if not c.selection
-           and getattr(info.topics.get(n), 'container_timestamps_ns', None) is not None}
+           and getattr(episode.raw(n), 'container_timestamps_ns', None) is not None}
     timelines = {key(episode.channels[n]) for n in own}
     return sorted(n for n, c in episode.channels.items() if n not in own and (
         (c.selection or {}).get('channel') in own or key(c) in timelines))

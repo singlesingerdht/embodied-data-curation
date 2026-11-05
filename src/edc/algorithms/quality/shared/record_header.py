@@ -6,13 +6,12 @@ def paired_time_evidence(episode, threshold_ms=None):
     if threshold_ms is not None and (isinstance(threshold_ms, bool) or
             not isinstance(threshold_ms, (int, float)) or not math.isfinite(threshold_ms) or threshold_ms < 0):
         raise ValueError('record_header_deviation_threshold_ms must be null or a finite nonnegative number')
-    info = episode.describe_legacy()
     rows = []
     for name, channel in episode.channels.items():
         # Derived views carry the same recorded evidence; count the source messages only once.
         if channel.selection:
             continue
-        topic = info.topics.get(name)
+        topic = episode.raw(name)
         record = getattr(topic, 'container_timestamps_ns', None)
         header = getattr(topic, 'acquisition_timestamps_ns', None)
         row = {'channel': name, 'threshold_ms': threshold_ms,

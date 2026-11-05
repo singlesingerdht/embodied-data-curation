@@ -37,8 +37,7 @@ def test_dedup_checks_later_channel_and_single_sample(tmp_path):
     assert assess([1])['dedup']['timestamp_dedup']['total_count'] == 1
     channels = {name: Channel(name, 'other', [], len(values), '', time_source='container', timestamps=values)
                 for name, values in [('good', list(range(10))), ('bad', [1]*10)]}
-    ep = SimpleNamespace(channels=channels, profile={}, describe_legacy=lambda: SimpleNamespace(
-        topics={name: SimpleNamespace(seqs=None) for name in channels}))
+    ep = SimpleNamespace(channels=channels, profile={}, raw={name: SimpleNamespace(seqs=None) for name in channels}.get)
     result = plugin('Dedup_Check').run(SimpleNamespace(episode=ep), {})
     assert [r['input_channel'] for r in result] == ['good', 'bad']
     assert result[1]['verdict'] == 'DO_NOT_USE'

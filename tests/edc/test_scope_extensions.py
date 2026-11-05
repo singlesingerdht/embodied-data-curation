@@ -88,8 +88,7 @@ def test_split_noncontiguous_indices_and_legacy_algorithms(tmp_path):
         with next(ds.iter_episodes()).opened() as ep:
             np.testing.assert_array_equal(ep.read_signal('left_arm_position', 'position')[0], [12, 10, 8, 6, 4, 2, 0])
             np.testing.assert_array_equal(ep.read_values('state')[0]['position'], list(range(14)))
-            info, access = ep.algorithm_view()
-            assert access.read_field(info, 'left_arm_position', 'position').shape == (3, 7)
+            assert ep.read_signal('left_arm_position', 'position').shape == (3, 7)
             result = ep.transform_signal('left_arm_position', 'position', target_unit='deg')
             assert result.source_mapping['selection']['indices'] == [12, 10, 8, 6, 4, 2, 0]
         assert run(ds, output=tmp_path/'results', algorithm_ids=['Numeric_Check'])['status_counts'] == {'completed': 1}
@@ -178,7 +177,7 @@ def test_selection_inherits_command_for_legacy_view(tmp_path):
     for name in ['left_arm_position','right_arm_position']:p['channels'][name].pop('source_kind')
     with next(open_dataset(root,profile=p).iter_episodes()).opened() as ep:
         assert ep.channels['left_arm_position'].source_kind == 'command'
-        assert ep.describe_legacy().topics['left_arm_position'].modality == 'cmd'
+        assert ep.raw('left_arm_position').modality == 'cmd'
 
 
 def test_read_values_cannot_bypass_dof_validation(tmp_path):

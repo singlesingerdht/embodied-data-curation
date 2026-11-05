@@ -10,9 +10,30 @@ def selected_pose(episode, params=None):
         episode = ChannelSelection(episode, [params['channel']])
     if getattr(episode, '_explicit_pose_channel', None):
         return episode.channels[episode._explicit_pose_channel]
-    info, reader = episode.algorithm_view()
-    name, _ = reader.require_pose(info, side=(params or {}).get('side', 'right'))
-    return episode.channels[name]
+    return episode.channels[pose_channel(episode, params.get('side', 'right'))]
+
+
+def pose_channel(episode, side, field='position'):
+    """这一侧的末端位姿通道：有 position 的 pose；先认 yaml 写的 side，没写 side 时看名字里有没有 left/right（不借用另一侧）。"""
+    from edc.data.ir.metadata import IRNotProvided
+    from edc.algorithms.quality.shared.timing_scope import available_summary
+    topics = {n: episode.raw(n) for n in episode.channels}
+    poses = [(n, t) for n, t in topics.items()
+             if t.modality == 'pose' and t.value_available and (t.fields is None or field in t.fields)]
+    if not poses:
+        fields = sorted({f for t in topics.values() if t.modality == 'pose' for f in (t.fields or [])})
+        raise IRNotProvided(f"pose 通道 (side={side}, field={field})", episode.format,
+                            f"可用 fields={fields}" if fields else available_summary(episode))
+    if side == 'any':
+        return poses[0][0]
+    if side not in {'left', 'right'}:
+        raise ValueError(f"Invalid side: {side}")
+    for n, t in poses:
+        declared = getattr(t, 'side', 'unknown')
+        if declared == side or (declared == 'unknown' and not getattr(t, 'strict_side', False) and side in n.lower()):
+            return n
+    raise IRNotProvided(f"pose 通道 (side={side}, field={field})", episode.format,
+                        "No channel with the requested side; opposite-side fallback is forbidden")
 
 
 def number(key, text):

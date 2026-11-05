@@ -1,6 +1,5 @@
 """Execution-only affine clock mapping; never resamples or changes source evidence."""
 import copy
-from edc.data.ir.bridge import EpisodeAccess
 from edc.data.transforms import RobotTransforms
 
 
@@ -35,14 +34,3 @@ class ClockMappedEpisode:
     def __getattr__(self, key):
         return getattr(self._episode, key)
 
-    def describe_legacy(self):
-        info = copy.deepcopy(self._episode.describe_legacy())
-        for name, c in self.channels.items():
-            info.topics[name].timestamps = c.timestamps
-            info.topics[name].clock = c.clock
-            info.topics[name].time_evidence = copy.deepcopy(c.time_evidence)
-        info.extra['clock_normalization'] = copy.deepcopy(self.evidence)
-        return info
-
-    def algorithm_view(self):
-        return self.describe_legacy(), EpisodeAccess(self)

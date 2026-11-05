@@ -158,7 +158,7 @@ def test_ros_clocks_values_and_images(tmp_path,backend):
         np.testing.assert_allclose(ep.read_signal('/joint_states','position')[1],[.01,.02])
         assert len(list(ep.iter_frames('/head_rgb')))==40
         if backend != 'ros1':
-            assert ep.describe_legacy().topics['/joint_states'].seqs is None
+            assert ep.raw('/joint_states').seqs is None
     mapping=profile({'*':{'time_source':'acquisition','clock':'robot'}})
     ep=next(open_dataset(source,profile=mapping).iter_episodes())
     with ep.opened():

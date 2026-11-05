@@ -1,6 +1,7 @@
 """时间戳对齐：框架怎么调用这项检查（时钟平移、评分标准在这里，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm, capabilities
-from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, derived_copies, shift_note, ShiftedReader
+from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, derived_copies, shift_note
+from edc.algorithms.quality.shared.timing_scope import available_summary, recorded_timelines
 
 
 def shared_row_timeline(episode):
@@ -59,7 +60,7 @@ def timestamp_standard(episode):
 class timestamp_scoring:
     """Run Check_Timestamp with per-robot values for its own CLI options; restored afterwards.
 
-    assess_from_ir builds its options from these module defaults at call time; the method file is unchanged.
+    method.assess builds its options from these module defaults at call time; the method file is unchanged.
     """
     def __init__(self, module, values):
         unknown = set(values or {}) - set(TIMESTAMP_SCORING)
@@ -76,6 +77,24 @@ class timestamp_scoring:
     def __exit__(self, *exc):
         for name, value in self.saved.items():
             setattr(self.module, name, value)
+
+
+def alignment(ep, module, shift=None, drop=(), **params):
+    """跨路对齐：取各路时间轴（先平移时钟、去掉派生副本）交给 method.assess，再记下哪些通道参与、哪些没参与。"""
+    ts_map, excluded, unavailable = recorded_timelines(ep, shift, drop)
+    if unavailable:
+        from edc.data.readers.base import make_ir_report
+        return make_ir_report('时间戳对齐质量', 'check_timestamp', unavailable)
+    cameras = {n for n in ts_map if getattr(ep.raw(n), 'modality', None) in {'image', 'rgb'}}
+    result = module.assess(ts_map, cameras, ep.format, available_summary(ep), **params)
+    result['excluded_topics'] = excluded
+    if excluded:
+        result.setdefault('reasons', []).append(
+            f"{len(excluded)} 个非采样 metadata/文本通道未参与评分，详见 excluded_topics。")
+    result['timestamp_scope'] = {'included_topics': sorted(ts_map), 'metadata_in_score': False,
+        'time_sources': {n: getattr(ep.raw(n), 'time_source', 'unknown') for n in ts_map}}
+    result['method_version'] = 'timestamp_sampled_stream_scope_v2'
+    return result
 
 
 class Algorithm(BuiltinAlgorithm):
@@ -98,8 +117,6 @@ class Algorithm(BuiltinAlgorithm):
 
     def assess(self, ep, params, context):
         module = self.method()
-        fn = module.assess_from_ir
-        info, reader = ep.algorithm_view()
         from edc.algorithms.quality.algorithms.Check_Timestamp.cadence import cadence_report
         cadence = cadence_report(ep)
         params = dict(params)
@@ -130,9 +147,9 @@ class Algorithm(BuiltinAlgorithm):
         shift = clock_shift(ep, diagnosis) if (diagnosis['salvage'] or {}).get('status') == 'fixed_offset' else {}
         params = dict(params)
         scoring = timestamp_standard(ep)  # 所有机型统一的评分标准，yaml 里不写
-        drop = derived_copies(ep, info)
+        drop = derived_copies(ep)
         with timestamp_scoring(module, scoring):
-            result = fn(info, ShiftedReader(reader, shift, drop) if shift or drop else reader, **params)
+            result = alignment(ep, module, shift, drop, **params)
         result['cadence'] = cadence
         result['clock_diagnosis'] = diagnosis
         if scoring:

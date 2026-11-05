@@ -39,10 +39,9 @@ def test_public_and_config_reads_are_canonical_but_source_audit_is_lossless(tmp_
             np.testing.assert_allclose(ep.read_signal('pose/tracker/main', 'orientation'), expected)
             rows = ep.read_values('attitude', indices=[1, 0, 1])
             np.testing.assert_allclose([r['orientation'] for r in rows], expected[[1, 0, 1]])
-            info, reader = ep.algorithm_view()
-            assert info.topics['attitude'].field_metadata['orientation']['representation'] == Q
-            np.testing.assert_allclose(reader.read_field(info, 'attitude', 'orientation'), expected)
-            np.testing.assert_allclose(reader.channel_values('attitude')[0]['orientation'], expected[0])
+            assert ep.channels['attitude'].field_metadata['orientation']['representation'] == Q
+            np.testing.assert_allclose(ep.read_signal('attitude', 'orientation'), expected)
+            np.testing.assert_allclose(ep.read_values('attitude')[0]['orientation'], expected[0])
             assert ep.channels['attitude'].timestamps == [10, 10.07]
             assert ep.channels['attitude'].clock == 'fixture_clock'
             assert ep.channels['attitude'].calibration_status == 'unknown'

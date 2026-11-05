@@ -47,7 +47,7 @@ def test_fk_selection_derives_pose_on_source_timeline(tmp_path):
             ('m', 'base', 'feedback', 'confirmed')
         assert (tip.clock, tip.count, list(tip.timestamps)) == ('robot', 3, list(ep.channels['q'].timestamps))
         assert ep.read_values('tip')[1]['position'] == pytest.approx([0, 1, 0], abs=1e-12)
-        assert ep.describe_legacy().topics['tip'].value_available
+        assert ep.raw('tip').value_available
 
 
 def test_fk_pose_calibration_is_only_as_strong_as_inputs(tmp_path):

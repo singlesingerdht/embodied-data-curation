@@ -1,4 +1,4 @@
-"""时间戳对齐：头部相机当参考，其他每一路和它逐帧配对打分；头部自己只看节奏。框架通过 assess_from_ir 调用。"""
+"""时间戳对齐：头部相机当参考，其他每一路和它逐帧配对打分；头部自己只看节奏。框架通过 assess 调用。"""
 from __future__ import annotations
 
 import argparse
@@ -586,35 +586,9 @@ def _emit_module(score: float, passed: bool, sub_indicators: list,
     return report
 
 
-def assess_from_ir(info, reader, weights: dict = None) -> dict:
-    """从 IR DataInfo 评估时间戳对齐 (使用 IR 提取的时间戳)。"""
-    try:
-        ts_map = reader.require_timestamps(info, min_channels=2)
-    except Exception as exc:
-        from edc.data.readers.base import make_ir_report
-        return make_ir_report("时间戳对齐质量", "check_timestamp", exc)
-
-    from edc.data.readers.base import filter_real_timestamps, make_synthetic_report
-    ts_map, has_synthetic = filter_real_timestamps(info, ts_map)
-    if ts_map is None:
-        return make_synthetic_report("时间戳对齐质量", "check_timestamp", info)
-
-    from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-    ts_map, excluded = partition_timing_topics(info, ts_map)
-
-    def scoped(report):
-        report['excluded_topics'] = excluded
-        if excluded:
-            report.setdefault('reasons', []).append(
-                f"{len(excluded)} 个非采样 metadata/文本通道未参与评分，详见 excluded_topics。")
-        report['timestamp_scope'] = {
-            'included_topics': sorted(ts_map),
-            'time_sources': {name: getattr(info.topics.get(name), 'time_source', 'unknown') for name in ts_map},
-            'metadata_in_score': False,
-        }
-        report['method_version'] = 'timestamp_sampled_stream_scope_v2'
-        return report
-
+def assess(ts_map: dict, cameras, fmt: str = '', available: str = '', weights: dict = None) -> dict:
+    """各路时间轴 {topic: [秒]}（已去掉生成的时间和 metadata 通道）→ 时间戳对齐报告。
+    cameras：哪些 topic 是相机（参考从相机里选）；fmt、available：不能评估时写进说明的数据格式和可用内容。"""
     args = argparse.Namespace(
         iou_threshold=DEFAULT_IOU_THRESHOLD,
         match_window_factor=DEFAULT_MATCH_WINDOW_FACTOR,
@@ -634,27 +608,26 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
 
     streams = []
     for topic_name, ts_list in sorted(ts_map.items()):
-        ti = info.topics.get(topic_name)
-        kind = "camera" if (ti and ti.modality in {"image", "rgb"}) else "action"
+        kind = "camera" if topic_name in cameras else "action"
         streams.append(RawStream(topic_name, kind, list(ts_list)))
 
     if len(streams) < 2:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
-        exc = IRNotProvided(">=2 通道时间戳", info.format, info.capability_summary())
-        return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
+        exc = IRNotProvided(">=2 通道时间戳", fmt, available)
+        return make_ir_report("时间戳对齐质量", "check_timestamp", exc)
 
     try:
         reference = choose_reference(streams)
     except ValueError:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
-        exc = IRNotProvided("可用参考 topic (camera)", info.format, info.capability_summary())
-        return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
+        exc = IRNotProvided("可用参考 topic (camera)", fmt, available)
+        return make_ir_report("时间戳对齐质量", "check_timestamp", exc)
 
     reference_row, broken = score_reference(reference, args)
     if broken:
-        return scoped(_reference_failed(reference, broken))
+        return _reference_failed(reference, broken)
     topic_reports = [reference_row]
     for stream in streams:
         if stream.topic == reference.topic:
@@ -666,8 +639,8 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
     if len(topic_reports) < 2:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
-        exc = IRNotProvided("非参考 topic", info.format, info.capability_summary())
-        return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
+        exc = IRNotProvided("非参考 topic", fmt, available)
+        return make_ir_report("时间戳对齐质量", "check_timestamp", exc)
 
     # 头部只扣分：节奏分低于其他路的平均时才计入平均（拉低），否则不计入
     others = [float(r.get("score", 0.0) or 0.0) for r in topic_reports[1:]]
@@ -685,10 +658,10 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         if float(r.get("score", 0.0) or 0.0) <= 80.0:
             attr = "；".join(r.get("attribution", [])) or "未归因"
             reasons.append(f"topic {r['topic']}：score={float(r.get('score', 0.0) or 0.0):.3f}，{attr}")
-    return scoped(_emit_module(
+    return _emit_module(
         score=bag_score, passed=passed, sub_indicators=topic_subs, reasons=reasons,
         threshold_profile={"reference_topic": reference.topic, "aggregate": "mean(topic_scores), reference only when below the others' mean"},
         threshold=90.0,
-    ))
+    )
 
 

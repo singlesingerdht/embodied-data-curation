@@ -1,7 +1,6 @@
 """时间异常归因：框架怎么调用这项检查（先平移时钟、去掉派生通道，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
-from edc.algorithms.quality.shared.clock import (clock_diagnosis, clock_shift, derived_copies, invalid_timelines,
-                                                 shift_note, ShiftedReader)
+from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, derived_copies, invalid_timelines, shift_note
 
 
 class Algorithm(BuiltinAlgorithm):
@@ -17,10 +16,9 @@ class Algorithm(BuiltinAlgorithm):
         invalid = invalid_timelines(ep, scoped=True)
         if invalid:
             return invalid
-        info, reader = ep.algorithm_view()
-        return self._root_cause_on_one_clock(ep, self.method(), info, reader, params)
+        return self._root_cause_on_one_clock(ep, self.method(), params)
 
-    def _root_cause_on_one_clock(self, ep, module, info, reader, params):
+    def _root_cause_on_one_clock(self, ep, module, params):
         """Root_Cause after shifting any clock offset out, so gaps on different device clocks line up.
 
         Fixed or moving, the per-group median offset is removed; the clocks themselves are judged by Sync_Check.
@@ -28,8 +26,7 @@ class Algorithm(BuiltinAlgorithm):
         diagnosis = clock_diagnosis(ep, [c.name for c in ep.channels.values()
             if c.time_source == 'acquisition' and c.clock and c.timestamps])
         shift = clock_shift(ep, diagnosis) if diagnosis['salvage'] else {}
-        result = self._root_cause(module, info, ShiftedReader(reader, shift) if shift else reader, params,
-                                  derived_copies(ep, info))
+        result = self._root_cause(ep, module, shift, params, derived_copies(ep))
         if not isinstance(result, dict):
             return result
         result['clock_diagnosis'] = diagnosis
@@ -41,26 +38,30 @@ class Algorithm(BuiltinAlgorithm):
         return result
 
     @staticmethod
-    def _root_cause(module, info, reader, params, drop=()):
+    def _root_cause(ep, module, shift, params, drop=()):
         """Root_Cause on the source timelines only, with configured source groups.
 
-        The original entry runs first and keeps every shortage/synthetic-time outcome. When it
-        evaluated real timelines, they are re-assessed without derived copies, and configured source
-        groups are limited to the topics this episode has, since the method rejects names it was not given.
+        Shortage and generated-time outcomes are reported as not assessable. Real timelines are assessed
+        without derived copies, and configured source groups are limited to the topics this episode has,
+        since the method rejects names it was not given.
         """
-        families = params.get('families')
-        result = module.assess_from_ir(info, reader, **{**params, 'families': None})
-        if not (result.get('timestamp_scope') or {}).get('included_topics'):
-            return result
-        from edc.data.readers.base import filter_real_timestamps
-        from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-        ts_map, _ = filter_real_timestamps(info, reader.require_timestamps(info, min_channels=2))
-        ts_map, _ = partition_timing_topics(info, ts_map)
+        from edc.data.ir.metadata import IRNotProvided
+        from edc.data.readers.base import make_ir_report
+        from edc.algorithms.quality.shared.timing_scope import recorded_timelines
+        ts_map, excluded, unavailable = recorded_timelines(ep, shift)
+        if unavailable:
+            return make_ir_report('根因分析', 'root_cause', unavailable)
+        scope = {'included_topics': sorted(ts_map),
+                 'time_sources': {n: getattr(ep.raw(n), 'time_source', 'unknown') for n in ts_map}}
+        if not ts_map:
+            report = make_ir_report('根因分析', 'root_cause', IRNotProvided('至少两路非 metadata 时间轴', ep.format))
+            report.update(excluded_topics=excluded, timestamp_scope=scope)
+            return report
         # 拆出或推算的通道和源话题是同一条时间轴，只算源话题，免得一次断档被数成几个来源
         kept = {n: t for n, t in ts_map.items() if n not in drop}
         ts_map = kept if len(kept) >= 2 else ts_map
-        families = {n: g for n, g in (families or {}).items() if n in ts_map} or None
+        families = {n: g for n, g in (params.get('families') or {}).items() if n in ts_map} or None
         full = module.assess(ts_map, weights=params.get('weights'), families=families)
-        full.update(excluded_topics=result.get('excluded_topics'), timestamp_scope=result['timestamp_scope'],
+        full.update(excluded_topics=excluded, timestamp_scope=scope,
                     source_groups_input='configured' if families else 'method default (topic namespace)')
         return full

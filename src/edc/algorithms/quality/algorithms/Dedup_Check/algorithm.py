@@ -1,12 +1,10 @@
 """时间／序列重复检查：框架怎么调用这项检查（挑原始时间输入在这里，检查方法在 method.py）。"""
-from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm, topic_metadata
+from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
 
 
-def dedup_inputs(episode, selected=None, info=None):
+def dedup_inputs(episode, selected=None):
     """Recorded timelines or an explicitly mapped raw timestamp field; no inferred clock."""
     from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
-    if info is None:
-        info = topic_metadata(episode)
     inputs = []
     seen_shared = set()
     for c in episode.channels.values():
@@ -14,7 +12,7 @@ def dedup_inputs(episode, selected=None, info=None):
             continue
         if c.time_source in {'synthetic', 'playback'}:
             continue
-        topic = info.topics[c.name] if info else c
+        topic = episode.raw(c.name)
         if c.selection or timing_exclusion_reason(c.name, topic):
             continue
         evidence = getattr(c, 'time_evidence', {})
@@ -35,14 +33,12 @@ def dedup_inputs(episode, selected=None, info=None):
     return inputs
 
 
-def unavailable_dedup_inputs(episode, inputs=None, info=None):
+def unavailable_dedup_inputs(episode, inputs=None):
     from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
-    if info is None:
-        info = topic_metadata(episode)
-    available = {name for name, _ in (inputs if inputs is not None else dedup_inputs(episode, info=info))}
+    available = {name for name, _ in (inputs if inputs is not None else dedup_inputs(episode))}
     rows = []
     for c in episode.channels.values():
-        topic = info.topics.get(c.name, c) if info else c
+        topic = episode.raw(c.name) or c
         if c.selection or timing_exclusion_reason(c.name, topic) or c.name in available:
             continue
         evidence = c.time_evidence
@@ -112,10 +108,9 @@ class Algorithm(BuiltinAlgorithm):
         if not inputs:
             raise ValueError(f"No recorded timestamp input for channel: {selected}")
         reports = []
-        info = ep.describe_legacy()
         for name, field in inputs:
             c = ep.channels[name]
-            topic = info.topics[name]
+            topic = ep.raw(name)
             timestamp_unit = ep.profile.get('timestamp_unit', 'unknown') if field else 's'
             if field:
                 raw_reader = getattr(ep, "inspect_recorded_signal", None) or ep.read_signal
@@ -181,7 +176,7 @@ class Algorithm(BuiltinAlgorithm):
                     '仅比较文件中已有时间原值是否相同；单位或时间来源未确认，不能检查真实采集间隔、速度或跨通道同步。']
             reports.append(result)
         if reports:
-            reports[0]['unavailable_inputs'] = unavailable_dedup_inputs(ep, info=info)
+            reports[0]['unavailable_inputs'] = unavailable_dedup_inputs(ep)
             if reports[0]['unavailable_inputs'] and not selected:
                 reports[0]['assessment_complete'] = False
                 if reports[0].get('verdict') == 'ACCEPTABLE':

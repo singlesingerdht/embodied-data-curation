@@ -81,7 +81,8 @@ class QualityAlgorithm:
 
     Subclass it, set `spec` (an edc.algorithms.registry.AlgorithmSpec; external ids are team__name) and implement
     `check(episode, params) -> list[Item]`. `episode` gives the robot yaml's data by channel name, e.g.
-    `episode.read_signal('joint/arm/left/feedback', 'position')` (SI units) or `episode.channels`.
+    `episode.read_signal('joint/arm/left/feedback', 'position')` (SI units), `episode.channels`,
+    or `episode.raw(name)` for the source record (raw integer times, sequence numbers).
     Register it under the `edc.algorithms` entry point; `edc batch` then runs it next to the built-in ones.
     """
     spec = None

@@ -97,10 +97,8 @@ def test_mixed_fields_selection_legacy_bridge_and_plugin_dataset_use_si(tmp_path
         np.testing.assert_allclose(ep.read_signal('joint_pos', 'position'), [[np.pi / 2, np.pi]])
         np.testing.assert_allclose(ep.read_signal('joint_pos', 'current'), [[1., 2.]])
         np.testing.assert_allclose(ep.read_signal('right', 'position'), [[np.pi]])
-        info, reader = ep.algorithm_view()
-        assert info.topics['joint_pos'].field_metadata['current']['unit'] == 'A'
-        np.testing.assert_allclose(reader.channel_values('joint_pos')[0]['position'], [np.pi / 2, np.pi])
-        np.testing.assert_allclose(reader.read_field(info, 'right', 'position'), [[np.pi]])
+        assert ep.channels['joint_pos'].field_metadata['current']['unit'] == 'A'
+        np.testing.assert_allclose(ep.read_values('joint_pos')[0]['position'], [np.pi / 2, np.pi])
         reopened = next(context.dataset.iter_episodes())
         with reopened.opened():
             np.testing.assert_allclose(reopened.read_signal('joint_pos', 'current'), [[1., 2.]])

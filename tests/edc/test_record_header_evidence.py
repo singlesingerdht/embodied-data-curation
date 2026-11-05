@@ -11,7 +11,7 @@ def episode(deltas):
     r = [t + int(d*1e6) for t,d in zip(h,deltas)]
     c = Channel('/arm', 'joint_space', ['position'], len(h), 'source.mcap')
     topic = SimpleNamespace(container_timestamps_ns=r, acquisition_timestamps_ns=h)
-    return SimpleNamespace(channels={'/arm': c}, describe_legacy=lambda: SimpleNamespace(topics={'/arm': topic}))
+    return SimpleNamespace(channels={'/arm': c}, raw={'/arm': topic}.get)
 
 
 @pytest.mark.parametrize('delta', [20, 2000, -20])
@@ -48,7 +48,7 @@ def test_sustained_change_bounded_details_and_even_median():
 
 def test_missing_header_and_zero_rows_are_not_container_fallback():
     ep = episode([20]*3)
-    ep.describe_legacy().topics['/arm'].acquisition_timestamps_ns = [None, 0, None]
+    ep.raw('/arm').acquisition_timestamps_ns = [None, 0, None]
     row = paired_time_evidence(ep)['channels'][0]
     assert row['status'] == 'unavailable'
     assert '无法计算' in evidence_sentences({'channels': [row]})[0]

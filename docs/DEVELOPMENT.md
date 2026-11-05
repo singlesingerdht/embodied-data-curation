@@ -13,6 +13,8 @@
 
 Public types are exported by `edc`. Readers, robot semantics, SI execution views, and preflight prepare inputs together. There is no need for an all-purpose InputBase; algorithms must not guess units or semantics.
 
+The `episode` an algorithm receives is addressed by robot-yaml channel names: `channels` (type, fields, timeline, clock per channel), `read_signal(channel, field)` (SI arrays), `read_values` and `iter_frames` (rows, frames), `profile` (the yaml), and `raw(channel)` (read-only source record: raw integer times, sequence numbers, message type).
+
 Each of the nine built-in methods owns one folder, `src/edc/algorithms/quality/algorithms/<method>/`, holding all code specific to it in three fixed files: `algorithm.py` with `Algorithm`, a `BuiltinAlgorithm` (itself a `QualityAlgorithm`) declaring name, inputs, parameters, and pre-run checks, whose `assess()` extracts the method inputs; `method.py`, the method itself (computation only; other helper files are imported from it); and `result.py`, which turns the method report into Items (optional hooks are listed at the top of `shared/verdicts.py`). Built-in and plugin Items are both stored with `package`. Shared code names no method; report order is defined only by `ORDER` in `adapters/cpu.py`.
 
 <a id="outputs"></a>
