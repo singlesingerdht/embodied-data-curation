@@ -32,23 +32,32 @@ class Algorithm(QualityAlgorithm):
 plugin = Algorithm()                               # 框架按 plugin 这个名字找算法
 ```
 
-**输入**：`check(episode, params)` 拿到两样。
-- `params`：参数。默认值写在 `spec` 的 `parameter_schema`，用户在机器人 yaml 的 `checks.<id>` 下改。
-- `episode`：一条数据。
-  - `episode.channels`：所有通道 `{名字: 通道}`。按类型挑，不写死名字：`c.modality`（`joint_space` 关节、`pose` 位姿、`rgb` 图像等）、`c.source_kind`（如 `feedback` 反馈）、`c.fields`（如 `position`）。
-  - `episode.read_signal(名字, 字段)`：数值数组（帧数 × 维度），已换成国际单位（rad、m、s）。
-  - `episode.iter_frames(名字)`：逐帧读图像。
-  - `episode.raw(名字)`：原始记录，如帧数 `count`、时间戳 `acquisition_timestamps_ns`。
-  - `episode.profile`：机型信息（来自机器人 yaml），`profile['labels']` 是通道的中文名。
+**输入**：框架调用 `check(episode, params)`，能用的有：
 
-**输出**：返回 `Item` 列表，每个被查的对象（一条手臂、一个相机）一个。
-- `target`：查的对象，报告里显示，如“左臂关节”；
-- `verdict`：`PASS` 通过 / `REVIEW` 复核 / `SALVAGE` 可救 / `EXCLUDE` 排除；
-- `reason`：一句话原因，不是 PASS 时必须写；
-- 可选：`metrics` 判断用的数字，`evidence` 出问题的位置（如 `[{'time_s': 12.4}]`），`remedy` 可救时怎么修；
-- 没法查（如没有这类数据）：`Item('本条', status=NOT_APPLICABLE, reason='原因')`，不写 verdict。
+| 写法 | 是什么 | 样板 `joint_jump/algorithm.py` |
+|---|---|---|
+| `params` | 参数（阈值等）。默认值写在 `spec` 的 `parameter_schema`，用户在机器人 yaml 的 `checks.<id>` 下改 | 第 18–20、24 行 |
+| `episode.channels` | 所有通道 `{名字: 通道}`。按类型挑，不写死名字：`c.modality`（`joint_space` 关节、`pose` 位姿、`rgb` 图像等）、`c.source_kind`（如 `feedback` 反馈）、`c.fields`（如 `position`） | 第 26–27 行 |
+| `episode.read_signal(名字, 字段)` | 数值数组（帧数 × 维度），已换成国际单位（rad、m、s） | 第 33 行 |
+| `episode.iter_frames(名字)` | 逐帧读图像 | 未用 |
+| `episode.raw(名字)` | 原始记录，如帧数 `count`、时间戳 `acquisition_timestamps_ns` | 未用 |
+| `episode.profile` | 机型信息（来自机器人 yaml），`profile['labels']` 是通道的中文名 | 第 30 行 |
 
-想在报告格子里写一句总结，改为返回 `AlgorithmResult(self.spec.id, items, '一句话')`。整条数据的结论由框架按各项结论统一汇总，算法不用管。
+**输出**：返回 `Item` 列表，每个被查的对象（一条手臂、一个相机）一个（样板第 29、37–39 行）。想在报告格子里写一句总结，改为返回 `AlgorithmResult(self.spec.id, items, '一句话')`（第 41 行）。整条数据的结论由框架按各项结论统一汇总，算法不用管。
+
+`Item` 全部字段（定义在 `src/edc/algorithms/base.py`）：
+
+| 字段 | 类型 | 默认 | 含义 | 规则 |
+|---|---|---|---|---|
+| `target` | 文字 | 必填 | 查的对象，报告里显示，如“左臂关节” | 第一个参数 |
+| `status` | 文字 | `checked` | `checked` 已检查 / `not_applicable` 不适用 / `failed` 没跑完 | 没法查（如没有这类数据）写 `NOT_APPLICABLE`；`failed` 由框架填 |
+| `verdict` | 文字 | 无 | `PASS` 通过 / `REVIEW` 复核 / `SALVAGE` 可救 / `EXCLUDE` 排除 | `checked` 时必须写；其他 status 不能写 |
+| `reason` | 文字 | 空 | 一句话：查到什么，或为什么没查 | 除 PASS 外都必须写 |
+| `remedy` | 文字 | 空 | 怎么修 | `SALVAGE` 时必须写 |
+| `evidence` | 列表 | 空 | 出问题的位置，如 `[{'time_s': 12.4, 'duration_s': 0.7}]` | 可选 |
+| `metrics` | 字典 | 空 | 判断用的数字，如 `{'max_step_rad': 0.8}` | 可选 |
+
+违反规则时 `Item(...)` 当场报错。
 
 ## 需要新的安装包
 
