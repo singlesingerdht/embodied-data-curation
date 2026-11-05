@@ -88,13 +88,15 @@ class QualityAlgorithm:
     spec = None
 
     def check(self, episode, params):
+        """返回 Item 列表；想在报告格子里写一句总结时，返回 AlgorithmResult(spec.id, items, note)。"""
         raise NotImplementedError
 
     def run(self, context, params):
-        items = self.check(context.episode, params)
+        result = self.check(context.episode, params)
+        items, note = (result.items, result.note) if isinstance(result, AlgorithmResult) else (result, '')
         if not items or not all(isinstance(i, Item) for i in items):
             raise ValueError(f'{self.spec.id}: check() must return a nonempty list of Item')
-        return package(items)
+        return package(items, note)
 
 
 def package(items, note='', reports=None):

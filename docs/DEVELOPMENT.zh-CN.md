@@ -31,7 +31,7 @@ from edc import Item, AlgorithmResult
 
 items = [Item('left arm', verdict='REVIEW', reason='Joint step exceeds the declared threshold.',
               metrics={'max_step_rad': 0.3}, evidence=[{'row': 12}])]
-payload = AlgorithmResult('team_example__joint_step', items).to_dict()
+payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 ```
 
 - `status='checked'` 必须给出 `PASS`／`REVIEW`／`SALVAGE`／`EXCLUDE` 之一。
@@ -40,74 +40,43 @@ payload = AlgorithmResult('team_example__joint_step', items).to_dict()
 - 不手工生成跨算法总分。统一运行记录继续使用现有 `dqs_record_v1` schema 标识；这不是另一个面向用户的入口。
 
 <a id="quality-example"></a>
-## 完整质量算法示例
+## 接入新算法
 
-本例固定读取左臂关节反馈，示范 **SI 输入 → 检查项 → 注册 → 执行**。相邻位置差不是速度；`0.2 rad` 仅是教学参数，不是通用安全阈值。本插件独立安装，不属于九项内置方法。
+新算法有两种接法，文件夹样子相同（`algorithm.py` 接框架，`method.py` 只做计算），区别只在输出：
 
-源码：[`joint_step.py`](../examples/plugins/quality_base/joint_step.py)。下列代码与该文件一致：
+| 情况 | 文件 | 输出 |
+|---|---|---|
+| 新写的算法（推荐） | `algorithm.py` + `method.py` + `README.md` | `check()` 直接返回 `Item` |
+| 别人给的旧格式现成方法 | 再加 `result.py` | `method.py` 出原报告，`result.py` 翻成 `Item`（同九个内置算法） |
 
-```python
-"""Runnable output-contract example; not a calibrated robot safety method."""
-import numpy as np
-from edc import AlgorithmSpec, Item, QualityAlgorithm
+先做成插件（单独的包，装上即用，不改本项目）；认可后再转正为内置算法。样板：[`examples/plugins/algorithm`](../examples/plugins/algorithm/)（关节跳变，阈值只作演示）。
 
+### 写
 
-class JointStep(QualityAlgorithm):
-    spec = AlgorithmSpec(
-        id='team_example__joint_step', version='0.1.0',
-        name='Joint step example', author='Example team',
-        description='Adjacent left-arm feedback changes; demonstrates the quality API.',
-        presets=('quality_cpu',), example=True,
-        input_requirements=({'channel': 'joint/arm/left/feedback',
-                             'field': 'position', 'unit': 'rad'},),
-        parameter_schema={'type': 'object', 'additionalProperties': False,
-                          'properties': {'review_rad': {'type': 'number',
-                                         'exclusiveMinimum': 0, 'default': 0.2}}})
+- `spec`（`AlgorithmSpec`）：id 用 `团队__算法`，第三项是报告表头的中文名；`presets=('quality_cpu',)` 让 `edc batch` 一起跑；参数写在 `parameter_schema`（默认值），用户在机器人 yaml 的 `checks.<id>` 下改。
+- `check(episode, params)`：按类型找通道（如关节反馈的 position），不写死通道名；读数据用 `read_signal`（已是国际单位）；判断交给 `method.py`；返回 `Item` 列表。想在报告格子写一句总结，返回 `AlgorithmResult(spec.id, items, note)`。缺数据时返回 `not_applicable` 项并写原因。
+- `method.py`：纯计算，输入数组、输出数字和结论，可单独测试。
 
-    def check(self, episode, params):
-        name = 'joint/arm/left/feedback'
-        # The executor provides the SI view and resolves the declared logical name.
-        angles = np.asarray(episode.read_signal(name, 'position'), dtype=float)
-        if len(angles) < 2:
-            return [Item(name, status='not_applicable', reason='At least two rows are required.')]
-        if not np.isfinite(angles).all():
-            return [Item(name, verdict='EXCLUDE', reason='Nonfinite joint positions.')]
-        step = np.abs(np.diff(angles, axis=0)).reshape(len(angles) - 1, -1).max(axis=1)
-        threshold = params.get('review_rad', 0.2)
-        rows = np.flatnonzero(step > threshold) + 1
-        return [Item(name, verdict='REVIEW' if rows.size else 'PASS',
-                     reason=f'{len(rows)} adjacent steps exceed {threshold:g} rad.',
-                     metrics={'max_step_rad': float(step.max()), 'threshold_rad': threshold},
-                     evidence=[{'row': int(row)} for row in rows[:20]])]
+### 登记、运行
 
-
-plugin = JointStep()
-```
-
-`input_requirements` 使用已确认的逻辑名、字段与目标 SI 单位。执行器将同一绑定用于预检和读取；缺输入／单位时不进入物理计算。此例明确检查左臂；需要支持可选臂的生产插件，应声明并实现自己的范围参数，不能依靠模糊名称自动猜测。
-
-### 注册与运行
-
-完整包定义见 [`pyproject.toml`](../examples/plugins/quality_base/pyproject.toml)，关键注册项：
+插件的 `pyproject.toml` 登记一行，`edc` 启动时按它找到算法：
 
 ```toml
 [project.entry-points."edc.algorithms"]
-team_example__joint_step = "joint_step:plugin"
+team_example__joint_jump = "joint_jump.algorithm:plugin"
 ```
-
-在已安装 EDC 的独立环境中，从仓库目录执行：
 
 ```bash
-pip install ./examples/plugins/quality_base
-edc run /path/to/dataset/episode.mcap \
-  --robot configs/robots/x1pro_mcap.yaml \
-  --algorithm team_example__joint_step \
-  --output /path/to/results/plugin
+pip install -e examples/plugins/algorithm      # 装上
+edc batch 数据目录 --robot 机型                  # 报告多一列“关节跳变”，参与整条结论
+pip uninstall edc-example-algorithm            # 卸掉
 ```
 
-从输出目录的 `catalog.json` 找到运行记录和 `quality.json`，检查本插件的 `items`、指标与源行。用 `edc batch` 时，注册到 `quality_cpu` 的插件也会参与，并增加一个算法列。示例插件检查完可单独卸载：`pip uninstall edc-quality-base-example`。
+共用环境里装上的插件会进每个人的 `edc batch`；试用请装在单独环境。
 
-已有[多关节遍历示例](../examples/plugins/algorithm/joint_jump.py)也保留，适用于其声明的关节输入；新插件应逐项声明最低输入、语义、单位、参数 schema 与依赖，避免仅靠描述文字替代预检。
+### 转正
+
+文件夹改名搬进 `src/edc/algorithms/quality/algorithms/`（如 `Joint_Jump/`），`spec` 的 id 改成同名，在 `quality/adapters/cpu.py` 的 `ORDER` 里加上，删掉插件登记。类名用 `Algorithm`、导入 method 用相对路径，代码不用改。
 
 ## 通用插件与运行上下文
 

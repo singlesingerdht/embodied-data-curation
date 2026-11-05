@@ -133,7 +133,7 @@ Each algorithm reports its own results and supporting evidence. Results are not 
 
 Follow the examples to write an algorithm, declare its required data and parameters, and return conclusions, reasons, and problem locations. Quality algorithms can use the existing output base classes. After registration, the framework runs the algorithm and generates reports. Other algorithm categories use the [general plugin interface](docs/DEVELOPMENT.md#interfaces).
 
-[Output classes and a complete algorithm example](docs/DEVELOPMENT.md#quality-example) · [Reader plugins](docs/DEVELOPMENT.md#readers) · [Contributing (Chinese)](CONTRIBUTING.md)
+[Output classes and adding a new algorithm](docs/DEVELOPMENT.md#quality-example) · [Reader plugins](docs/DEVELOPMENT.md#readers) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
 src/edc/

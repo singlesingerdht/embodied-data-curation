@@ -31,7 +31,7 @@ from edc import Item, AlgorithmResult
 
 items = [Item('left arm', verdict='REVIEW', reason='Joint step exceeds the declared threshold.',
               metrics={'max_step_rad': 0.3}, evidence=[{'row': 12}])]
-payload = AlgorithmResult('team_example__joint_step', items).to_dict()
+payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 ```
 
 - `status='checked'` requires `PASS`, `REVIEW`, `SALVAGE`, or `EXCLUDE`.
@@ -40,74 +40,43 @@ payload = AlgorithmResult('team_example__joint_step', items).to_dict()
 - Do not create cross-algorithm scores. Run records retain the existing `dqs_record_v1` schema identifier; it is not another public command namespace.
 
 <a id="quality-example"></a>
-## Complete quality example
+## Adding a new algorithm
 
-This example demonstrates **SI input → quality items → registration → execution**, reading left-arm joint feedback. Adjacent position change is not velocity; `0.2 rad` is an educational parameter, not a universal safety threshold. This separately installed plugin is not one of the nine built-ins.
+There are two ways in; the folder looks the same (`algorithm.py` connects to the framework, `method.py` only computes), and only the output differs:
 
-Source: [`joint_step.py`](../examples/plugins/quality_base/joint_step.py). The code below matches the file:
+| Case | Files | Output |
+|---|---|---|
+| A newly written method (preferred) | `algorithm.py` + `method.py` + `README.md` | `check()` returns `Item`s directly |
+| An existing method with its own report format | plus `result.py` | `method.py` returns its report, `result.py` turns it into `Item`s (as the nine built-ins do) |
 
-```python
-"""Runnable output-contract example; not a calibrated robot safety method."""
-import numpy as np
-from edc import AlgorithmSpec, Item, QualityAlgorithm
+Start as a plugin (a separate package; installing it is enough, this repository is unchanged) and promote it to a built-in once accepted. Template: [`examples/plugins/algorithm`](../examples/plugins/algorithm/) (joint jump; demonstration thresholds only).
 
+### Write
 
-class JointStep(QualityAlgorithm):
-    spec = AlgorithmSpec(
-        id='team_example__joint_step', version='0.1.0',
-        name='Joint step example', author='Example team',
-        description='Adjacent left-arm feedback changes; demonstrates the quality API.',
-        presets=('quality_cpu',), example=True,
-        input_requirements=({'channel': 'joint/arm/left/feedback',
-                             'field': 'position', 'unit': 'rad'},),
-        parameter_schema={'type': 'object', 'additionalProperties': False,
-                          'properties': {'review_rad': {'type': 'number',
-                                         'exclusiveMinimum': 0, 'default': 0.2}}})
-
-    def check(self, episode, params):
-        name = 'joint/arm/left/feedback'
-        # The executor provides the SI view and resolves the declared logical name.
-        angles = np.asarray(episode.read_signal(name, 'position'), dtype=float)
-        if len(angles) < 2:
-            return [Item(name, status='not_applicable', reason='At least two rows are required.')]
-        if not np.isfinite(angles).all():
-            return [Item(name, verdict='EXCLUDE', reason='Nonfinite joint positions.')]
-        step = np.abs(np.diff(angles, axis=0)).reshape(len(angles) - 1, -1).max(axis=1)
-        threshold = params.get('review_rad', 0.2)
-        rows = np.flatnonzero(step > threshold) + 1
-        return [Item(name, verdict='REVIEW' if rows.size else 'PASS',
-                     reason=f'{len(rows)} adjacent steps exceed {threshold:g} rad.',
-                     metrics={'max_step_rad': float(step.max()), 'threshold_rad': threshold},
-                     evidence=[{'row': int(row)} for row in rows[:20]])]
-
-
-plugin = JointStep()
-```
-
-`input_requirements` declares the logical channel, field, and target SI unit. Preflight and execution use the same binding; missing input/units block physical computation. This example intentionally checks the left arm. A production plugin with configurable arms must declare and implement its own scope parameters.
+- `spec` (`AlgorithmSpec`): id `team__algorithm`; the third field is the report column name; `presets=('quality_cpu',)` runs it in `edc batch`; parameters and defaults in `parameter_schema`, overridden under `checks.<id>` in the robot yaml.
+- `check(episode, params)`: find channels by type (for example joint feedback position) rather than fixed names; read with `read_signal` (SI units); leave the judgment to `method.py`; return a list of `Item`. To give the report cell a one-line summary, return `AlgorithmResult(spec.id, items, note)`. Missing data gives a `not_applicable` item with a reason.
+- `method.py`: computation only, arrays in and numbers/verdicts out, testable on its own.
 
 ### Register and run
 
-See the complete [`pyproject.toml`](../examples/plugins/quality_base/pyproject.toml). Its entry point is:
+One entry point in the plugin's `pyproject.toml` lets `edc` find it:
 
 ```toml
 [project.entry-points."edc.algorithms"]
-team_example__joint_step = "joint_step:plugin"
+team_example__joint_jump = "joint_jump.algorithm:plugin"
 ```
-
-From the repository directory, in an isolated environment with EDC installed:
 
 ```bash
-pip install ./examples/plugins/quality_base
-edc run /path/to/dataset/episode.mcap \
-  --robot configs/robots/x1pro_mcap.yaml \
-  --algorithm team_example__joint_step \
-  --output /path/to/results/plugin
+pip install -e examples/plugins/algorithm      # install
+edc batch DATA --robot ROBOT                   # one more report column, part of the episode decision
+pip uninstall edc-example-algorithm            # remove
 ```
 
-Use `catalog.json` to locate run records and `quality.json`, including the plugin's items, metrics, and source rows. `edc batch` also includes plugins registered in `quality_cpu`, adding an algorithm column. Remove this example independently with `pip uninstall edc-quality-base-example`.
+A plugin installed in a shared environment runs in everyone's `edc batch`; try plugins in a separate environment.
 
-The existing [multi-joint iteration example](../examples/plugins/algorithm/joint_jump.py) remains available for its stated joint inputs. Production plugins should declare minimum inputs, semantics, units, parameter schemas, and dependencies; prose alone is not executable preflight.
+### Promote
+
+Rename the folder into `src/edc/algorithms/quality/algorithms/` (for example `Joint_Jump/`), change the `spec` id to the same name, add it to `ORDER` in `quality/adapters/cpu.py`, and drop the plugin entry point. With the class named `Algorithm` and a relative import of method, the code is unchanged.
 
 ## General plugins and context
 

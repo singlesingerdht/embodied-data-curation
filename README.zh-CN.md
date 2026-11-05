@@ -126,7 +126,7 @@ edc run /path/to/dataset/episode.mcap \
 
 质量算法可继承 `QualityAlgorithm`，返回 `Item` 列表，由 `AlgorithmResult` 统一汇总；通用插件使用 `AlgorithmSpec + run(context, params)`。安装插件后进入同一套预检和执行流程。
 
-[输出基类与完整算法示例](docs/DEVELOPMENT.zh-CN.md#quality-example) · [读取器插件](docs/DEVELOPMENT.zh-CN.md#readers) · [贡献指南](CONTRIBUTING.md)
+[输出基类与接入新算法](docs/DEVELOPMENT.zh-CN.md#quality-example) · [读取器插件](docs/DEVELOPMENT.zh-CN.md#readers) · [贡献指南](CONTRIBUTING.md)
 
 ```text
 src/edc/
