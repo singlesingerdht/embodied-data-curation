@@ -1,6 +1,6 @@
 """Joint IMU evidence from explicitly co-recorded fields, without resampling."""
 import numpy as np
-from edc.robots.numeric_review import numeric_field_status
+from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_field_status
 
 
 def paired_bias(episode, channel, accel, review):

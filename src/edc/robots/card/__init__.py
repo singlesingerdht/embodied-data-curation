@@ -62,9 +62,10 @@ def compile_card(card, base=None):
     add_data(profile, data)
     params = copy.deepcopy(card.get('checks') or {})
     skip = params.pop('skip', []) if isinstance(params, dict) else []
-    from edc.algorithms.quality.adapters.results import ALGOS
-    if not isinstance(skip, list) or set(skip) - set(ALGOS):
-        raise CardError(f'checks.skip 写不查的算法名列表，如 [Reset_Detection]（可用：{", ".join(ALGOS)}）')
+    from edc.algorithms.registry import algorithms
+    known = list(algorithms().plugins)  # 内置九项和已安装的新算法
+    if not isinstance(skip, list) or set(skip) - set(known):
+        raise CardError(f'checks.skip 写不查的算法名列表，如 [Reset_Detection]（可用：{", ".join(known)}）')
     if not isinstance(params, dict) or any(not isinstance(v, dict) for v in params.values()):
         raise CardError('checks 写成 {算法名: {参数: 值}}')
 
@@ -99,7 +100,7 @@ def compile_card(card, base=None):
     if build.unchecked:
         profile['unchecked'] = {'Numeric_Check': '未查：' + '；'.join(build.unchecked)}
     profile['labels'] = build.names  # Readable names, used by the algorithms' reasons and the report.
-    from edc.robots.numeric_review import numeric_settings
+    from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_settings
     numeric_settings(profile, params['Numeric_Check'])  # 阈值写错时在这里就报错
     profile['numeric_review'] = {'confirmed_by': confirmed_by}
     return profile, params, build.names

@@ -669,14 +669,17 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         exc = IRNotProvided("非参考 topic", info.format, info.capability_summary())
         return scoped(make_ir_report("时间戳对齐质量", "check_timestamp", exc))
 
-    bag_score = sum(float(r.get("score", 0.0) or 0.0) for r in topic_reports) / len(topic_reports)
+    # 头部只扣分：节奏分低于其他路的平均时才计入平均（拉低），否则不计入
+    others = [float(r.get("score", 0.0) or 0.0) for r in topic_reports[1:]]
+    counted = others + ([reference_row["score"]] if reference_row["score"] < sum(others) / len(others) else [])
+    bag_score = sum(counted) / len(counted)
     passed = grade_from_score(bag_score)[1]
     n_topics = len(topic_reports) or 1
     topic_weight = round(1.0 / n_topics, 4)
     topic_subs = [_topic_to_sub_indicator(r, topic_weight) for r in topic_reports]
     reasons = [
         f"reference topic 为 {reference.topic}。",
-        f"共评价 {len(topic_reports)} 个 topic，算术平均分为 {bag_score:.3f}。",
+        f"共评价 {len(counted)} 个 topic，算术平均分为 {bag_score:.3f}。",
     ]
     for r in sorted(topic_reports, key=lambda x: float(x.get("score", 0.0) or 0.0)):
         if float(r.get("score", 0.0) or 0.0) <= 80.0:
@@ -684,7 +687,7 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
             reasons.append(f"topic {r['topic']}：score={float(r.get('score', 0.0) or 0.0):.3f}，{attr}")
     return scoped(_emit_module(
         score=bag_score, passed=passed, sub_indicators=topic_subs, reasons=reasons,
-        threshold_profile={"reference_topic": reference.topic, "aggregate": "mean(topic_scores)"},
+        threshold_profile={"reference_topic": reference.topic, "aggregate": "mean(topic_scores), reference only when below the others' mean"},
         threshold=90.0,
     ))
 

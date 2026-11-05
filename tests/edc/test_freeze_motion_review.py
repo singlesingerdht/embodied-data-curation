@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import copy
 import numpy as np
 import pytest
-from edc.algorithms.quality.adapters.video import assess
+from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess
 from edc.algorithms.channel_names import resolve_channel_parameters, channel_parameter_bindings
 from edc.data.ir.dataset import Channel
 from edc.execution.runner import Context

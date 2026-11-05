@@ -90,7 +90,7 @@ def test_joint_and_velocity_limits_follow_the_yaml_order():
 
 def test_each_arm_has_its_own_velocity_table(tmp_path):
     from types import SimpleNamespace
-    from edc.robots.numeric_review import channel_settings, numeric_settings
+    from edc.algorithms.quality.algorithms.Numeric_Check.review import channel_settings, numeric_settings
     card = yaml.safe_load(robot_yaml(tmp_path).read_text(encoding='utf-8'))
     card['arms']['left']['joint_velocity'] = {'source': 'v', 'index': '0-5', 'unit': 'rad/s'}
     card['arms']['right'] = {'joints': {'source': 'q2', 'index': '0-6', 'unit': 'rad'},
@@ -269,7 +269,7 @@ def test_scale_maps_raw_joint_readings(tmp_path):
 
 def test_out_of_range_raw_values_exclude():
     from types import SimpleNamespace
-    from edc.algorithms.quality.adapters.numeric_supplements import declared_range
+    from edc.algorithms.quality.algorithms.Numeric_Check.supplements import declared_range
     from edc.algorithms.quality.algorithms.Numeric_Check.result import explain
     channel = SimpleNamespace(selection={'indices': [6]}, source='x', name='gripper/main', source_mapping={},
                               field_spec=lambda field: {'joint_names': None})

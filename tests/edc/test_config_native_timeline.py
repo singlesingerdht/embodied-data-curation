@@ -197,7 +197,7 @@ def test_ros_reader_zero_header_is_unavailable_with_exact_raw_evidence(tmp_path,
 
 
 def test_static_text_excluded_from_native_cadence():
-    from edc.algorithms.quality.shared.cadence import cadence_report
+    from edc.algorithms.quality.algorithms.Check_Timestamp.cadence import cadence_report
     from edc.data.ir.dataset import Channel
     t=TopicInfo('/instruction_data',msg_type='std_msgs/msg/String',count=1)
     c=Channel(t.name,'other',[],1,'')

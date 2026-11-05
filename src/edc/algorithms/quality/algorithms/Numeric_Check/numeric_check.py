@@ -7,7 +7,7 @@
   - 姿态冻结: 连续帧位姿不变 (跨模态)
 """
 import numpy as np
-from typing import List, Dict, Optional, Any
+from typing import List, Optional
 
 FREEZE_EPS = 1e-6
 

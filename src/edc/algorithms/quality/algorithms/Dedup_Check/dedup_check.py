@@ -1,5 +1,5 @@
 """去重检查: 时间戳/序列号重复 (DF 方案)"""
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 
 def check_timestamp_dedup(timestamps: List[float],

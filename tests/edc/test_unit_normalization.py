@@ -12,7 +12,7 @@ from edc.execution.runner import run
 from edc.data.ir.dataset import open_dataset
 from edc.data.ir.units import SIDataset, UnitInputError
 from edc.algorithms.registry import AlgorithmSpec
-from edc.robots.numeric_review import numeric_review
+from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_review
 from edc.data.transforms.core import UNITS
 
 

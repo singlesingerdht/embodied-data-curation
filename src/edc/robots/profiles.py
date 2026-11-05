@@ -30,7 +30,7 @@ def load_profile(value=None, *, base=None):
                 or not modalities or any(m not in {"rgb", "depth", "infrared"} for m in modalities)
                 or len(modalities) != len(set(modalities))):
             raise ValueError(f"Invalid camera_requirements: {sensor}")
-    from edc.robots.numeric_review import numeric_review
+    from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_review
     numeric_review(profile)  # Validate editable thresholds and confirmation structure.
     for name, channel in profile.get("channels", {}).items():
         if not isinstance(channel, dict):
@@ -98,7 +98,3 @@ def load_profile(value=None, *, base=None):
     if "transforms" in profile:
         profile["transforms"] = transforms.config
     return profile
-
-
-# Public compatibility exports through edc.robots.profiles; implementation remains internal.
-from edc.robots.numeric_review import numeric_review

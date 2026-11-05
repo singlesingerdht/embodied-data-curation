@@ -25,14 +25,6 @@ def _reader(path):
     return AnyReader(_paths(path))
 
 
-def _header_time(message):
-    header = getattr(message, 'header', None)
-    stamp = getattr(header, 'stamp', None)
-    if stamp is None:
-        return None
-    return float(stamp.sec) + float(stamp.nanosec) * 1e-9
-
-
 def decode_ros_image(message, msgtype, decoders=None):
     """Shared pixel decoding only; clock selection and row order belong to the reader."""
     from edc.data.readers.video import decode_image
@@ -149,7 +141,6 @@ class RosBagReader(DataReader):
         return 'frames' if self._topics_cache[name].image_available else 'unknown'
 
     def iter_frames(self, name):
-        from edc.data.readers.video import decode_image
         topic = self._topics_cache[name]
         if not topic.image_available:
             raise ValueError(f'{name}: image decoding unavailable')

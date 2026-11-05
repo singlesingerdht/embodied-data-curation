@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 from types import MappingProxyType
-from edc.data.ir.dataset import Dataset, open_dataset
+from edc.data.ir.dataset import Dataset
 
 
 def freeze(value):

@@ -78,7 +78,7 @@ def test_explicit_action_rejects_command_instead_of_feedback(tmp_path):
 
 
 def test_source_frame_mode_never_encodes_or_applies_container_metrics(tmp_path,monkeypatch):
-    from edc.algorithms.quality.adapters.video import assess
+    from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess
     c=Channel('/chest/rgb','rgb',[],4,'source.mcap',image_available=True,
         representation={'camera_role':'chest','camera_role_status':'confirmed'})
     def forbidden(*args,**kwargs):raise AssertionError('Source-frame path must not materialize video')
@@ -95,7 +95,7 @@ def test_source_frame_mode_never_encodes_or_applies_container_metrics(tmp_path,m
 
 
 def test_video_path_uses_robot_camera_role_and_single_evidence_input(tmp_path,monkeypatch):
-    from edc.algorithms.quality.adapters.video import assess
+    from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess
     from edc.algorithms.quality.algorithms.Video_Integrity import run_check
     c=Channel('/misleading/wrist/head','rgb',[],4,'source.mcap',image_available=True,
         representation={'camera_role':'chest','camera_role_status':'confirmed'})
@@ -192,7 +192,7 @@ def test_materialized_original_video_keeps_evidence_and_frame_boundaries(tmp_pat
 
 
 def test_frame_decode_failure_is_neutral_and_isolated_per_channel(tmp_path):
-    from edc.algorithms.quality.adapters.video import assess
+    from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess
     channels={n:Channel(n,'rgb',[],2,'source.mcap',image_available=True) for n in ('broken','good')}
     def frames(name):
         if name=='broken':raise ValueError('corrupt source image')

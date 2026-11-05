@@ -1,22 +1,7 @@
-"""模块: 去重检查 — 可直接运行的评估入口。
-
-用法:
-    python -m algorithms.Dedup_Check.run_check <ts.json>
-    ts.json 格式: {"timestamps": [0.0, 0.033, ...], "seqs": [1, 2, 3, ...]}
-"""
-from pathlib import Path
-import sys
-import os
-import json
-import argparse
-
-_QA_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if __name__ == "__main__" and str(Path(_QA_ROOT).parent) not in sys.path:
-    sys.path.insert(0, str(Path(_QA_ROOT).parent))
-
+"""模块: 去重检查，框架通过 assess 调用（algorithm.py）。"""
 from edc.algorithms.quality.shared.attribution import format_report
-from edc.algorithms.quality.shared.quality_reporter import compute_quality, to_grade, normalize_weights
-from edc.algorithms.quality.algorithms.Dedup_Check.dedup_check import check_timestamp_dedup, check_seq_dedup, check_dedup
+from edc.algorithms.quality.shared.quality_reporter import to_grade, normalize_weights
+from edc.algorithms.quality.algorithms.Dedup_Check.dedup_check import check_dedup
 
 DEDUP_DEFAULTS = {"时间戳去重": 0.60, "序列号去重": 0.40}
 
@@ -92,48 +77,3 @@ def assess(timestamps: list, seqs: list = None, weights: dict = None,
     if len(timestamps) < 2 and not seqs:
         report.update(score=None, verdict='NOT_APPLICABLE', passed=None, assessment_complete=False)
     return report
-
-
-def assess_from_ir(info, reader, channel: str = None, weights: dict = None) -> dict:
-    """从 IR 评估去重。取第一个有时间戳的通道。"""
-    try:
-        ts_map = reader.require_timestamps(info, min_channels=1)
-    except Exception as exc:
-        from edc.data.readers.base import make_ir_report
-        return make_ir_report("去重检查", "dedup_check", exc)
-    from edc.data.readers.base import filter_real_timestamps, make_synthetic_report
-    ts_map, has_synthetic = filter_real_timestamps(info, ts_map)
-    if ts_map is None:
-        return make_synthetic_report("去重检查", "dedup_check", info)
-    topic = channel or list(ts_map.keys())[0]
-    timestamps = ts_map[topic]
-    seqs = info.topics[topic].seqs if topic in info.topics else None
-    return assess(timestamps, seqs, weights)
-
-
-def main():
-    ap = argparse.ArgumentParser(description="模块 去重检查")
-    ap.add_argument("input", help="时间戳 JSON 或数据目录路径 (IR: episode/dataset)")
-    ap.add_argument("--channel", default=None, help="指定通道名 (IR 模式)")
-    ap.add_argument("--weights", default=None, help="权重 JSON 字符串")
-    args = ap.parse_args()
-
-    from edc.data.ir.metadata import detect_format, FORMAT_JSON, FORMAT_UNKNOWN
-    fmt = detect_format(args.input)
-    weights = json.loads(args.weights) if args.weights else None
-
-    if fmt != FORMAT_JSON and fmt != FORMAT_UNKNOWN:
-        from edc.algorithms.quality.config import open_info
-        info, reader = open_info(args.input)
-        report = assess_from_ir(info, reader, args.channel, weights)
-    else:
-        with open(args.input) as f:
-            data = json.load(f)
-        timestamps = data.get("timestamps", data if isinstance(data, list) else [])
-        seqs = data.get("seqs", None)
-        report = assess(timestamps, seqs, weights)
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()

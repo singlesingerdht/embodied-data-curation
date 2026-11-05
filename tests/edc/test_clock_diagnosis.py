@@ -3,8 +3,9 @@ import json
 from types import SimpleNamespace
 import numpy as np
 from edc import open_dataset, run
-from edc.algorithms.quality.adapters.cpu import (clock_diagnosis, clock_shift, shift_note, ShiftedReader,
-                                                 derived_copies, timestamp_scoring, too_short)
+from edc.algorithms.quality.adapters.cpu import too_short
+from edc.algorithms.quality.algorithms.Check_Timestamp.algorithm import timestamp_scoring
+from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, shift_note, ShiftedReader, derived_copies
 
 T0 = 1773741605.0  # 2026-03-17
 

@@ -1,9 +1,0 @@
-robot: lerobot_default
-formats: [lerobot]
-note: LeRobot v2.1 默认 schema (state/actions + observation.images.*)
-topics:
-  "state":                {modality: joint_state, fields: [position]}
-  "actions":              {modality: cmd, fields: [joint_q]}
-  "observation.images.*":  {modality: image}
-  "observation.state":    {modality: joint_state, fields: [position]}
-  "observation.action":   {modality: cmd, fields: [joint_q]}

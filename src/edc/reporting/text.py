@@ -3,13 +3,10 @@ an algorithm's reports and the findings it wrote. Judges nothing."""
 import html
 import re
 
-NAMES = {
-    'Structure_Check': '结构完整性', 'Numeric_Check': '数值检查',
-    'Action_Smoothness': '动作平滑度', 'Check_Timestamp': '时间戳对齐',
-    'Sync_Check': '采集同步', 'Root_Cause': '时间异常归因',
-    'Dedup_Check': '时间／序列重复检查', 'Reset_Detection': '复位检测',
-    'Video_Integrity': '视频完整性',
-}
+def algorithm_names():
+    """算法 id → 报告里显示的名字：各算法 spec 里写的 name（内置九项是中文名，新算法用它自己写的）。"""
+    from edc.algorithms.registry import algorithms
+    return {ident: plugin.spec.name or ident for ident, plugin in algorithms().plugins.items()}
 
 
 def esc(value):

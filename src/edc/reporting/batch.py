@@ -4,8 +4,9 @@ from collections import Counter
 from pathlib import Path
 
 from edc.algorithms.base import AlgorithmResult, decide
-from edc.algorithms.quality.adapters.results import ALGOS, guide
-from edc.reporting.text import NAMES, clean_reason, esc
+from edc.algorithms.quality.adapters.cpu import ORDER
+from edc.algorithms.quality.adapters.results import guide
+from edc.reporting.text import algorithm_names, clean_reason, esc
 
 # Worst first: (word, colour, meaning).
 LEVEL = {'EXCLUDE': ('排除', 'bad', '算法认为这一项的数据不能用'),
@@ -104,8 +105,9 @@ def page(bags, info, *, algorithm_ids=None, title='批量质检报告'):
     legend = ''.join(f'<li>{chip(v)} {esc(LEVEL[v][2])}</li>'
                      for v in LEVEL if (v in ('PASS', 'REVIEW', 'SALVAGE', 'EXCLUDE') or v in levels))
     algos = (list(algorithm_ids) if algorithm_ids is not None else
-             list(ALGOS) + sorted({a for b in bags for a in b['algos']} - set(ALGOS)))
-    head = ''.join(f'<th>{esc(NAMES.get(a, a))}</th>' for a in algos)
+             list(ORDER) + sorted({a for b in bags for a in b['algos']} - set(ORDER)))
+    names = algorithm_names()
+    head = ''.join(f'<th>{esc(names.get(a, a))}</th>' for a in algos)
     rows, details, issues = [], [], {a: [] for a in algos}
     for i, b in enumerate(bags):
         word, tone, _ = DECISION.get(b['decision'], (b['decision'], 'na', ''))
@@ -122,7 +124,7 @@ def page(bags, info, *, algorithm_ids=None, title='批量质检报告'):
             if c['level'] in PROBLEM:
                 issues[algo].append((i, b, c))
             reasons = ''.join(f'<li>{chip(v)} <b>{esc(w)}</b> {esc(r)}</li>' for w, v, r in found)
-            lines.append(f'<tr><td>{esc(NAMES.get(algo, algo))}</td><td>{chip(c["level"])} '
+            lines.append(f'<tr><td>{esc(names.get(algo, algo))}</td><td>{chip(c["level"])} '
                          f'<span class="muted">{esc(short_note(c))}</span>' + (f'<ul>{reasons}</ul>' if reasons else '')
                          + '</td></tr>')
         rows.append(f'<tr><th>{name}</th>' + ''.join(tds) + '</tr>')
@@ -148,7 +150,7 @@ def page(bags, info, *, algorithm_ids=None, title='批量质检报告'):
         text = guide(algo) if any(item['verdict'] in ('REVIEW', 'SALVAGE', 'EXCLUDE')
                                   for _, _, result in found for item in result['items']) else ''
         how = f'<p class="guide">怎么复核：{esc(text)}</p>' if text else ''
-        sections.append(f'<details><summary>{esc(NAMES.get(algo, algo))} <span class="muted">{summary}</span></summary>'
+        sections.append(f'<details><summary>{esc(names.get(algo, algo))} <span class="muted">{summary}</span></summary>'
                         f'{how}<ul>{body}</ul></details>')
     return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)} · {esc(info['robot'])}</title><style>

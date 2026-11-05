@@ -11,11 +11,8 @@
   - 欠曝: mean in (5,70) AND std>15
   - 偏色: RGB 通道均值差 > 100
 
-全帧扫描 (非采样), 可独立运行, 也作为 video_integrity.run_check 的画面质量守门。
+全帧扫描 (非采样), 作为 run_check 的画面质量守门。
 """
-import os
-import json
-import argparse
 import cv2
 import numpy as np
 import xxhash
@@ -491,17 +488,3 @@ class _FrameCapture:
         close = getattr(self.iterator, 'close', None)
         if close:
             close()
-
-
-def main():
-    ap = argparse.ArgumentParser(description="CPU 画面质量检测: 黑屏/白屏/花屏/冻结 (DF)")
-    ap.add_argument("video", help="视频文件路径")
-    ap.add_argument("--freeze-min-frames", type=int, default=30)
-    args = ap.parse_args()
-    det = FrameQualityDetector(freeze_min_frames=args.freeze_min_frames)
-    result = det.detect(args.video)
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()

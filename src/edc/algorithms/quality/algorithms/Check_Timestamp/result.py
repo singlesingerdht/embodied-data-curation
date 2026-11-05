@@ -4,7 +4,7 @@ import re
 from edc.algorithms.quality.shared.verdicts import clock_time, texts
 
 
-GUIDE = '每一路单独打分，整条结论看所有路的平均分：高于 90 通过，80–90 复核，80 及以下排除。对每帧画面找时间上最近的那条动作消息，两者的时间差叫拼接误差；P99 是最差 1% 的拼接误差，小于相机半帧时配对影响很小。所有数据和画面共用一条时间的格式，只查有没有跳帧：跳到所列时刻看画面是否突然跳一下、是否正好落在关键动作上。'  # Shown above this algorithm's problems in the report.
+GUIDE = '每一路单独打分，整条结论看各路的平均分（头部相机只看自身节奏，比其他路差时才计入）：高于 90 通过，80–90 复核，80 及以下排除。对每帧画面找时间上最近的那条动作消息，两者的时间差叫拼接误差；P99 是最差 1% 的拼接误差，小于相机半帧时配对影响很小。所有数据和画面共用一条时间的格式，只查有没有跳帧：跳到所列时刻看画面是否突然跳一下、是否正好落在关键动作上。'  # Shown above this algorithm's problems in the report.
 
 
 def explain(report, labels):
@@ -30,7 +30,7 @@ def explain(report, labels):
     # The verdict comes from the mean over all topics, not from the worst one.
     reference = next((m.group(1) for t in lines if (m := re.search(r'reference topic 为 ([^\s。，]+)', t))), None)
     ref = labels.get(reference, reference) if reference else '对照相机'
-    head = (f'其他每一路都拿来和{ref}对比打分，{ref}自己只看节奏，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分（高于 90 通过，80–90 复核，80 及以下排除）。'
+    head = (f'其他每一路都拿来和{ref}对比打分，{ref}自己只看节奏、比其他路差时才计入平均，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分（高于 90 通过，80–90 复核，80 及以下排除）。'
             if mean else '')
     if topics:
         return head + '分数最低的：' + ''.join(sentence(report, name, score, reference or '对照相机', why, labels)
@@ -95,6 +95,14 @@ def sentence(report, name, score, reference, labels_text, labels):
     if name == reference:  # 对照相机不和自己比，只看自身节奏
         return f'{called}是对照相机，只看自身节奏，{score:.0f} 分：' + '；'.join(parts) + '。'
     return f'{called}和{ref}对比 {score:.0f} 分：' + '；'.join(parts) + '。'
+
+
+def unshiftable(text, report):
+    """时钟差中途还在变、没法挪齐：画面和动作配不上，点出有几路和头部完全不重合。"""
+    apart = [s for s in report.get('sub_indicators') or []
+             if (m := re.search(r'IoU=([\d.]+)', str(s.get('raw_value', '')))) and float(m.group(1)) == 0]
+    return (f'画面和动作配不上：{text}，而且这个差在数据中途还在变，没法挪齐（详见采集同步）'
+            + (f'；结果有 {len(apart)} 路和头部相机在时间上完全不重合，记 0 分' if apart else ''))
 
 
 def note(reports, items, labels, common):

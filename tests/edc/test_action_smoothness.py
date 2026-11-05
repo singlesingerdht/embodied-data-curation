@@ -129,8 +129,8 @@ def test_low_rate_narrows_the_band_and_very_low_rate_is_not_applicable():
     report = assess_arrays(*trajectory(8))
     assert report['verdict'] == 'NOT_APPLICABLE' and report['not_applicable'] == 'low_rate'
     from edc.algorithms.quality.shared.verdicts import to_item
-    from edc.algorithms.quality.algorithms.Action_Smoothness.result import explain
-    item = to_item('Action_Smoothness', report, explain, {})
+    from edc.algorithms.quality.algorithms.Action_Smoothness import result
+    item = to_item('Action_Smoothness', report, result, {})
     assert item.status == 'not_applicable' and '8.0 Hz' in item.reason
 
 
@@ -160,8 +160,9 @@ def test_timestamp_jitter_is_not_a_gap_but_a_real_hole_is():
 
 
 def test_nonfinite_rows_are_dropped_not_imputed(tmp_path, monkeypatch):
-    from edc.algorithms.quality.adapters import action
-    from edc.algorithms.quality.adapters.cpu import selected_inputs, selected_pose
+    from edc.algorithms.quality.algorithms.Action_Smoothness import inputs as action
+    from edc.algorithms.quality.adapters.cpu import selected_inputs
+    from edc.algorithms.quality.algorithms.Action_Smoothness.algorithm import selected_pose
     from edc.data.ir.units import SIDataset
     from edc.execution.runner import Context
     source, profile, params, *_ = fixture(tmp_path)

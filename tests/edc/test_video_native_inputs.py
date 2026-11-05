@@ -5,7 +5,7 @@ import pytest
 from edc.execution.runner import Context
 from edc.data.ir.dataset import Channel
 from edc.algorithms.quality.adapters.cpu import builtins, preflight
-from edc.algorithms.quality.adapters.video import assess, input_mode
+from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess, input_mode
 
 
 def video_plugin():

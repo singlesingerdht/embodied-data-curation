@@ -3,7 +3,8 @@ import json
 import numpy as np
 
 from edc import open_dataset, run
-from edc.algorithms.quality.adapters.cpu import builtins, preflight, reset_calibration
+from edc.algorithms.quality.adapters.cpu import builtins, preflight
+from edc.algorithms.quality.algorithms.Reset_Detection.algorithm import reset_calibration
 
 
 def _profile(calibration):

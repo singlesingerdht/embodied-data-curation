@@ -8,7 +8,7 @@ import yaml
 from edc.execution.runner import run
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.robots.profiles import load_profile
-from edc.robots.numeric_review import numeric_review
+from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_review
 from edc.algorithms.quality.adapters.cpu import builtins
 
 
@@ -139,7 +139,7 @@ def test_per_channel_joint_limits_apply_only_to_their_own_channel():
 
 
 def test_per_channel_command_limits_resolve_like_joint_limits():
-    from edc.robots.numeric_review import _thresholds, channel_settings
+    from edc.algorithms.quality.algorithms.Numeric_Check.review import _thresholds, channel_settings
     settings = {'thresholds': _thresholds({'command_limits': {'limits': {'cmd': [[-1e9, 1e9]] * 2}}})}
     resolve = lambda name: channel_settings(settings, SimpleNamespace(name=name))['thresholds']['command_limits']['limits']
     assert resolve('cmd') == [[-1e9, 1e9]] * 2 and resolve('other') is None

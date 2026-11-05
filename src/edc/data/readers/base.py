@@ -3,16 +3,13 @@
 统一数据读取接口的内部实现。
 """
 import os
-import sys
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 
 from edc.data.ir.metadata import (
     DataInfo, TopicInfo, IRNotProvided,
-    detect_format, FORMAT_MP4, FORMAT_EPISODE, FORMAT_DATASET,
-    FORMAT_JSON, FORMAT_UNKNOWN, FORMAT_ROS1_BAG, FORMAT_ROS2_BAG,
-    FORMAT_MCAP, FORMAT_PARQUET, FORMAT_HDF5, FORMAT_LEROBOT,
-    MODALITY_IMAGE, MODALITY_POSE, MODALITY_JOINT_STATE, MODALITY_IMU,
+    detect_format, FORMAT_MP4, FORMAT_EPISODE, FORMAT_DATASET, FORMAT_ROS1_BAG, FORMAT_ROS2_BAG,
+    FORMAT_MCAP, FORMAT_PARQUET, FORMAT_HDF5, FORMAT_LEROBOT, MODALITY_POSE,
 )
 import numpy as np
 
@@ -95,10 +92,6 @@ class DataReader(ABC):
         """按索引批量取规范值字典。默认 None = 不支持。"""
         return None
 
-    def iter_values(self, name: str):
-        """流式逐条取规范值字典。默认 None = 不支持。"""
-        return None
-
     def materialize_image_channel(self, info: DataInfo, name: str,
                                   output_path: Optional[str] = None) -> str:
         """Return a file-backed video for an image channel.
@@ -138,22 +131,6 @@ class DataReader(ABC):
 
     # ── require 层: 算法声明式取数 ──
 
-    def require_image_channels(self, info: DataInfo) -> List[Tuple[str, str]]:
-        """返回 [(channel_name, file_path), ...] 所有 image 通道。
-
-        Raises IRNotProvided: 无 image 通道。
-        """
-        result = []
-        for name, ti in info.topics.items():
-            if ti.modality == MODALITY_IMAGE and ti.image_available:
-                result.append((name, ti.source))
-        if not result:
-            raise IRNotProvided(
-                "image 通道", info.format,
-                info.capability_summary()
-            )
-        return result
-
     def require_pose(self, info: DataInfo, side: str = "right",
                      field: str = "position") -> Tuple[str, TopicInfo]:
         """返回 (channel_name, TopicInfo) 指定侧的 pose 通道, 含指定物理量。
@@ -180,27 +157,6 @@ class DataReader(ABC):
                     return n, ti
             raise IRNotProvided(f"pose 通道 (side={side}, field={field})", info.format,
                                 "No channel with the requested side; opposite-side fallback is forbidden")
-        return candidates[0]
-
-    def require_joint(self, info: DataInfo, field: str = "position") -> Tuple[str, TopicInfo]:
-        """返回 (channel_name, TopicInfo) 关节通道, 含指定物理量。
-
-        field: "position" (关节角) / "velocity" / "effort" (力矩/电流) / "deviation"
-        """
-        candidates = [(n, ti) for n, ti in info.topics.items()
-                       if ti.modality == MODALITY_JOINT_STATE and ti.value_available
-                       and (ti.fields is None or field in ti.fields)]
-        if not candidates:
-            all_fields = sorted(set(f for ti in info.topics.values()
-                                   for f in (ti.fields or []) if ti.modality == MODALITY_JOINT_STATE))
-            raise IRNotProvided(
-                f"joint_state 通道 (field={field})", info.format,
-                f"可用 fields={all_fields}" if all_fields else info.capability_summary()
-            )
-        # 偏好: fields 非空 (精确匹配) 优先于 fields=None (未知)
-        precise = [(n, ti) for n, ti in candidates if ti.fields is not None]
-        if precise:
-            return precise[0]
         return candidates[0]
 
     def require_timestamps(self, info: DataInfo, min_channels: int = 2) -> Dict[str, List[float]]:
@@ -307,11 +263,6 @@ class DataReader(ABC):
 
 # ── 模块级 API ──
 
-def read_data(path: str, hints: Optional[Dict] = None) -> DataInfo:
-    """一步打开: create + open + close → DataInfo (只读元数据)。"""
-    reader = DataReader.create(path, hints=hints)
-    return reader.open(path)
-
 
 def extract_timestamps(info: DataInfo) -> Dict[str, List[float]]:
     """从 DataInfo.topics 提取 {topic: [timestamps]}, 过滤 NaN/±inf。"""
@@ -335,11 +286,6 @@ def make_synthetic_report(module_name: str, module_key: str, info: DataInfo) -> 
     return make_ir_report(module_name, module_key, exc)
 
 
-def check_synthetic_timestamps(info: DataInfo, ts_map: dict) -> Optional[bool]:
-    """DEPRECATED: 使用 filter_real_timestamps 替代。"""
-    return filter_real_timestamps(info, ts_map)[0] is None
-
-
 def filter_real_timestamps(info: DataInfo, ts_map: dict) -> tuple:
     """剔除合成时间戳通道, 返回 (filtered_ts_map, has_synthetic)。
     如果 filtered_ts_map 为空 → 全合成, 返回 (None, True)。
@@ -353,18 +299,6 @@ def filter_real_timestamps(info: DataInfo, ts_map: dict) -> tuple:
     return (real if real else None, len(real) < len(ts_map))
 
 
-def _all_same_axis(ts_map: dict) -> bool:
-    """所有通道共享同一时间戳数组 (同轴采样, 跨通道同步检测无意义)。"""
-    if len(ts_map) <= 1:
-        return True
-    values = list(ts_map.values())
-    first = values[0]
-    for v in values[1:]:
-        if len(v) != len(first) or v != first:
-            return False
-    return True
-
-
 def make_ir_report(module_name: str, module_key: str, exc: Exception) -> dict:
     """IRNotProvided / DependencyMissing → 标准降级报告 (统一输出契约格式)。
 
@@ -373,7 +307,6 @@ def make_ir_report(module_name: str, module_key: str, exc: Exception) -> dict:
     两者均 score=None, passed=True, 不计入数据不合格。
     """
     from edc.algorithms.quality.shared.attribution import format_report
-    from edc.algorithms.quality.shared.quality_reporter import to_grade
 
     reason = str(exc)
     ir_info = {}

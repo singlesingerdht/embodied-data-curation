@@ -4,6 +4,9 @@ import math
 from edc.algorithms.quality.shared.verdicts import SIDE, clock_time
 
 GUESS = {'start': '疑似不是从初始位置开始录包', 'end': '疑似录包结束时没有回到初始位置'}
+NA_REASON = '从长录制剪出来的切片，两端本来就不在初始位置，不查复位'
+NOT_RUN = ((('No channels in the declared arm scope', 'Home reference', 'calibration'),
+            '机器人 yaml 里没写复位位置（home），不检查复位'),)
 
 
 GUIDE = '开头或结尾的手臂和初始位置（yaml 的 home）差得多，超过 tolerance。跳到所列时刻，和一条复位检测“通过”的数据对比：手臂明显不在初始姿态而任务要求从初始姿态开始和结束，是录早了或录晚了；手臂其实已在初始姿态，就是 home 或 tolerance 要改；任务本来就不要求复位，放过。'  # Shown above this algorithm's problems in the report.

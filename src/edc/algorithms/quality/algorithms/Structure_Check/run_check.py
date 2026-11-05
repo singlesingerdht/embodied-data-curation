@@ -1,26 +1,8 @@
-"""模块: 结构完整性 — 可直接运行的评估入口。
-
-用法:
-    python -m algorithms.Structure_Check.run_check <path> [--required topic1 topic2 ...]
-    python algorithms/Structure_Check/run_check.py <path>
-"""
-import sys
-import os
+"""模块: 结构完整性，框架通过 assess 调用（algorithm.py）。"""
 import json
-import argparse
-from pathlib import Path
-
-_QA_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if __name__ == "__main__" and str(Path(_QA_ROOT).parent) not in sys.path:
-    sys.path.insert(0, str(Path(_QA_ROOT).parent))
-
 from edc.algorithms.quality.shared.attribution import format_report
-from edc.algorithms.quality.shared.quality_reporter import compute_quality, to_grade, normalize_weights
-from edc.algorithms.quality.algorithms.Structure_Check.structure_check import (
-    check_file_integrity, check_topics, check_camera_pairs,
-    check_camera_symmetry, check_structure,
-)
-from edc.algorithms.quality.shared.topic_info import TopicInfo, extract_modality_groups
+from edc.algorithms.quality.shared.quality_reporter import to_grade, normalize_weights
+from edc.algorithms.quality.algorithms.Structure_Check.structure_check import check_structure
 
 S_DEFAULTS = {"文件存在": 0.20, "文件可读": 0.20, "格式支持": 0.15,
               "通道完整性": 0.20, "相机配对": 0.15, "相机对称": 0.10}
@@ -117,40 +99,3 @@ def assess(path: str, topics: dict = None, required_topics: list = None,
         if report.get("verdict") != "DO_NOT_USE":
             report.update(verdict="OBSERVATION", passed=None)
     return report
-
-
-def assess_from_ir(info, weights: dict = None) -> dict:
-    """从 IR DataInfo 评估结构完整性。"""
-    topics = {name: ti for name, ti in info.topics.items()}
-    return assess(info.path, topics, weights=weights)
-
-
-def main():
-    ap = argparse.ArgumentParser(description="模块 结构完整性评估")
-    ap.add_argument("path", help="数据目录路径 (支持 IR: episode/dataset/mp4)")
-    ap.add_argument("--required", nargs="*", default=None, help="必需 topic 名称列表")
-    ap.add_argument("--weights", default=None, help="权重 JSON 字符串")
-    ap.add_argument("--topics-json", default=None, help="TopicInfo JSON 文件路径 (旧格式兼容)")
-    args = ap.parse_args()
-
-    from edc.data.ir.metadata import detect_format, FORMAT_UNKNOWN
-    fmt = detect_format(args.path)
-
-    weights = json.loads(args.weights) if args.weights else None
-
-    if fmt != FORMAT_UNKNOWN and not args.topics_json:
-        from edc.algorithms.quality.config import open_info
-        info, reader = open_info(args.path)
-        report = assess_from_ir(info, weights)
-    else:
-        topics = None
-        if args.topics_json:
-            with open(args.topics_json) as f:
-                raw = json.load(f)
-            topics = {k: TopicInfo(name=k, **v) for k, v in raw.items()} if isinstance(raw, dict) else None
-        report = assess(args.path, topics, args.required, weights)
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()

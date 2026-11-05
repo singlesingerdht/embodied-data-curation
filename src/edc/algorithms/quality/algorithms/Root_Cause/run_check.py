@@ -1,22 +1,6 @@
-"""模块: 根因分析 — 可直接运行的评估入口。
-
-用法:
-    python -m algorithms.Root_Cause.run_check <ts.json>
-    ts.json 格式: {"topic_a": [0.0, 0.033, ...], "topic_b": [0.0, 0.033, ...]}
-"""
-from pathlib import Path
-import sys
-import os
-import json
-import argparse
-import numpy as np
-
-_QA_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if __name__ == "__main__" and str(Path(_QA_ROOT).parent) not in sys.path:
-    sys.path.insert(0, str(Path(_QA_ROOT).parent))
-
+"""模块: 根因分析，框架通过 assess_from_ir / assess 调用（algorithm.py）。"""
 from edc.algorithms.quality.shared.attribution import format_report
-from edc.algorithms.quality.shared.quality_reporter import compute_quality, to_grade, normalize_weights
+from edc.algorithms.quality.shared.quality_reporter import to_grade, normalize_weights
 from edc.algorithms.quality.algorithms.Root_Cause.root_cause import analyze_root_cause
 
 RC_DEFAULTS = {"跨通道Stall": 0.40, "单路断档": 0.30, "周期性丢帧": 0.30}
@@ -124,28 +108,3 @@ def assess_from_ir(info, reader, weights: dict = None, families: dict = None) ->
     report['timestamp_scope'] = {'included_topics': sorted(ts_map),
         'time_sources': {name: getattr(info.topics.get(name), 'time_source', 'unknown') for name in ts_map}}
     return report
-
-
-def main():
-    ap = argparse.ArgumentParser(description="模块 根因分析")
-    ap.add_argument("input", help="时间戳 JSON 或数据目录路径 (IR: episode/dataset)")
-    ap.add_argument("--weights", default=None, help="权重 JSON 字符串")
-    args = ap.parse_args()
-
-    from edc.data.ir.metadata import detect_format, FORMAT_JSON, FORMAT_UNKNOWN
-    fmt = detect_format(args.input)
-    weights = json.loads(args.weights) if args.weights else None
-
-    if fmt != FORMAT_JSON and fmt != FORMAT_UNKNOWN:
-        from edc.algorithms.quality.config import open_info
-        info, reader = open_info(args.input)
-        report = assess_from_ir(info, reader, weights)
-    else:
-        with open(args.input) as f:
-            ts_map = json.load(f)
-        report = assess(ts_map, weights)
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()

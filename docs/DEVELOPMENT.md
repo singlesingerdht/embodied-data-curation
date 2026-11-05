@@ -13,6 +13,8 @@
 
 Public types are exported by `edc`. Readers, robot semantics, SI execution views, and preflight prepare inputs together. There is no need for an all-purpose InputBase; algorithms must not guess units or semantics.
 
+Each of the nine built-in methods owns one folder, `src/edc/algorithms/quality/algorithms/<method>/`, holding all code specific to it: the method itself (for example `run_check.py`); `algorithm.py` with `Algorithm`, a `BuiltinAlgorithm` (itself a `QualityAlgorithm`) declaring name, inputs, parameters, and pre-run checks; and `result.py`, which turns results into report sentences (optional hooks are listed at the top of `shared/verdicts.py`). Shared code names no method; report order is defined only by `ORDER` in `adapters/cpu.py`.
+
 <a id="outputs"></a>
 ## Quality output objects
 

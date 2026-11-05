@@ -26,4 +26,3 @@ namespaces = true
 
 [tool.setuptools.package-data]
 "edc.data" = ["channel_registry.yaml"]
-"edc.algorithms.quality.config" = ["profiles/*.yaml"]

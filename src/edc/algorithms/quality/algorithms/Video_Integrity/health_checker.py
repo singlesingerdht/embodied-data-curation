@@ -6,7 +6,6 @@ import os
 import subprocess
 import json
 import numpy as np
-from typing import List, Dict
 
 
 class VideoHealthChecker:

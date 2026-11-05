@@ -12,8 +12,6 @@ VERDICTS = {PASS: '通过', REVIEW: '复核', SALVAGE: '可救', EXCLUDE: '排�
 CHECKED, NOT_APPLICABLE, FAILED = 'checked', 'not_applicable', 'failed'
 STATUSES = {CHECKED: '已检查', NOT_APPLICABLE: '不适用', FAILED: '没跑完'}
 WORST_FIRST = [EXCLUDE, SALVAGE, FAILED, REVIEW, PASS, NOT_APPLICABLE]
-DECISIONS = {'exclude': '排除', 'salvage': '可救', 'unassessed': '未评估完', 'review': '复核', 'keep': '通过',
-             'failed': '运行失败'}
 
 
 @dataclass

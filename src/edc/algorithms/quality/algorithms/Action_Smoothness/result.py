@@ -35,6 +35,14 @@ def explain(report, labels):
     return f"{arm}{scope}：" + '；'.join(parts)
 
 
+NOT_RUN = ((('pose/arm',), '没有末端位置：数据里没录（yaml 没写 eef_position），也没提供 URDF 来算（eef_position: fk）'),)
+
+
+def arms_note(items):
+    """每条臂各跑一次，格子里按臂列出结论。"""
+    return '，'.join(f'{SIDE.get(i.target, i.target)}{VERDICTS.get(i.verdict) or STATUSES[i.status]}' for i in items)
+
+
 def note(reports, items, labels, common):
     if any(r.get('skipped') == 'too_short' for r in reports):
         return ''

@@ -1,4 +1,6 @@
 """Video_Integrity report -> common Item (edc.algorithms.base); shared rules in quality/shared/verdicts.py."""
+from edc.algorithms.quality.shared.verdicts import frames_only
+
 GUIDE = '每 5 帧抽 1 帧检查。某一类问题（如模糊、遮挡）占抽检帧的 30% 及以上判排除；不到 30% 判通过，格子里备注问题帧数。'  # Shown above this algorithm's problems in the report.
 
 
@@ -23,6 +25,15 @@ def explain(report, labels):
     return frame_counts(report) or '；'.join((report.get('frame_quality') or {}).get('reasons') or [])
 
 
+def target(report, labels):
+    name = report.get('input_channel') or ''
+    return labels.get(name, name)
+
+
 def note(reports, items, labels, common):
+    if any(frames_only(r) for r in reports):
+        from edc.algorithms.quality.algorithms.Video_Integrity.inputs import VIDEO_STREAM_NOTE
+        text = VIDEO_STREAM_NOTE if any(r.get('video_stream') for r in reports) else '逐帧图片，无视频容器可查'
+        common += ('（' if common else '') + text + ('）' if common else '')
     flagged = [f'{i.target} {frame_counts(r)}' for r, i in zip(reports, items) if i.verdict == 'PASS' and frame_counts(r)]
     return common + ('；通过但有问题帧：' + '；'.join(flagged) if flagged else '')

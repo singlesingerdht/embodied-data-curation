@@ -1,5 +1,4 @@
 """Public-installable structured readers. Unsupported layouts fail explicitly."""
-from pathlib import Path
 import json
 import fnmatch
 import numpy as np

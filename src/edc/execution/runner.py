@@ -154,7 +154,6 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                     if status == "runnable":
                         try:
                             artifact_dir.mkdir()
-                            from edc.algorithms.contracts import bind_parameters
                             effective = instance['parameters']['effective']
                             bindings = list(instance['channel_bindings'])
                             record['requested_params'] = params.get(ident, {})

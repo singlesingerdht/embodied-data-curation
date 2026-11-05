@@ -48,5 +48,12 @@ def explain(report, labels):
     return ''
 
 
+def target(report, labels):
+    """“通道 字段”，通道有中文名时用中文名；没有字段的报告按通用规则。"""
+    channel, field = report.get('input_channel', ''), report.get('input_field')
+    if field:
+        return f'{labels[channel]} {field}' if channel in labels else f'{channel}.{field}'
+
+
 def note(reports, items, labels, common):
     return common

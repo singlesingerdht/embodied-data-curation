@@ -23,16 +23,8 @@ class EpisodeAccess(DataReader):
     def channel_values(self, name, indices=None):
         return self.episode.read_values(name, indices)
 
-    def iter_values(self, name):
-        return iter(self.channel_values(name))
-
-    def channel_timestamps(self, name):
-        return self.episode.channels[name].timestamps
-
     def materialize_image_channel(self, info, name, output_path=None):
         if output_path:
             return self.episode.materialize_video(name, output_path)
         return self.episode.video_source(name)
 
-    def image_bytes(self, name):
-        return ((f['index'], f['playback_time'], f['image']) for f in self.episode.iter_frames(name))

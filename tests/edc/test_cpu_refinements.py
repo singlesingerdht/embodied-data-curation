@@ -46,12 +46,17 @@ def test_explicit_metadata_scope(modality, msg_type, name):
 
 
 def test_reference_camera_scores_own_cadence_and_bad_time_excludes():
-    # 头部相机自己断 1 秒：单独一行只看节奏、计入平均；时间重复 → 不能当基准，整项 0 分排除
+    # 头部相机自己断 1 秒：单独一行只看节奏、只扣分（低于其他路平均才计入）；时间重复 → 不能当基准，整项 0 分排除
     info, reader = timing_info()
     head = info.topics['/head/rgb']
+    good = assess_from_ir(info, reader)
+    others = [s['score'] for s in good['sub_indicators'] if s['name'] != '/head/rgb']
+    assert good['score'] == pytest.approx(sum(others) / len(others))  # 头部节奏好不加分
     head.timestamps = (np.arange(100) / 30 + (np.arange(100) >= 50) * 1.0).tolist()
-    row = next(s for s in assess_from_ir(info, reader)['sub_indicators'] if s['name'] == '/head/rgb')
+    bad = assess_from_ir(info, reader)
+    row = next(s for s in bad['sub_indicators'] if s['name'] == '/head/rgb')
     assert row['score'] < 100 and [d['name'] for d in row['details']] == ['采样稳定性']
+    assert bad['score'] < good['score']
     head.timestamps = head.timestamps[:10] + head.timestamps[9:99]
     result = assess_from_ir(info, reader)
     assert result['score'] == 0 and result['verdict'] == 'DO_NOT_USE'

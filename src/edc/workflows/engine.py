@@ -1,5 +1,4 @@
 """Finite stage execution with immutable upstream references and content-checked resume."""
-import copy
 import inspect
 import json
 import operator
@@ -15,7 +14,7 @@ from edc.data.ir.dataset import Dataset
 from edc.data.ir.canonical import open_dataset
 from edc.algorithms.registry import algorithms
 from edc.reporting.results import write_json
-from .references import DatasetView, dataset_reference, open_dataset_reference, digest, file_digest
+from .references import DatasetView, dataset_reference, digest, file_digest
 from .validation import validate_workflow
 from .reviews import read_reviews
 from .gates import quality_gate, combine_gates

@@ -2,12 +2,11 @@
 
 设计原则: 能力位解耦 (value_available / image_available / image_compressed)
 """
-import os
 import json
 import fnmatch
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 
 # ── 模态常量 ──
 MODALITY_IMAGE = "image"
@@ -63,15 +62,6 @@ class IRNotProvided(Exception):
                 msg += f" 仅支持 {available}"
             msg += ")"
         super().__init__(msg)
-
-
-@dataclass
-class Message:
-    """单条消息的元数据 (不解 payload)。"""
-    topic: str
-    msg_type: str = ""
-    timestamp: float = 0.0
-    seq: Optional[int] = None
 
 
 @dataclass
@@ -403,20 +393,3 @@ def _is_episode_json(path: Path) -> bool:
 
 # ── 时间归一化 ──
 
-def normalize_time_seconds(values) -> "Any":
-    """ns/us/ms/s 量级自动归一到秒 (numpy 数组)。
-
-    判定逻辑: 如果中位数绝对值 >> 1e10 → 纳秒; >> 1e7 → 微秒; >> 1e4 → 毫秒。
-    """
-    import numpy as np
-    arr = np.asarray(values, dtype=float)
-    if arr.size == 0:
-        return arr
-    med = float(np.median(np.abs(arr)))
-    if med > 1e10:
-        return arr * 1e-9
-    if med > 1e7:
-        return arr * 1e-6
-    if med > 1e4:
-        return arr * 1e-3
-    return arr

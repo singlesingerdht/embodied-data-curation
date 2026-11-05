@@ -4,7 +4,6 @@ import copy
 from edc.data.channel_registry import NAME_PATTERN, load_channel_registry
 
 # Compatibility export; validation always reads an isolated registry snapshot.
-STANDARD_CHANNELS = load_channel_registry()['channels']
 
 
 def _validate_name(name, registry=None):

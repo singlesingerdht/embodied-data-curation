@@ -78,7 +78,7 @@ def test_field_selection_with_indices_picks_same_components_from_every_field():
 
 
 def test_joint_velocity_threshold_is_adapter_only_and_absent_unless_configured():
-    from edc.robots.numeric_review import method_settings, numeric_settings
+    from edc.algorithms.quality.algorithms.Numeric_Check.review import method_settings, numeric_settings
     assert 'joint_velocity' not in numeric_settings({})['thresholds']  # existing digests unchanged
     settings = numeric_settings({'numeric_check': {'thresholds': {'joint_velocity': {'max_abs': 3.0}}}})
     assert settings['thresholds']['joint_velocity'] == {'max_abs': 3.0}
@@ -97,7 +97,7 @@ def _velocity_channel(n):
 
 
 def test_joint_velocity_limit_counts_frames_and_merges_contiguous_rows():
-    from edc.algorithms.quality.adapters.numeric_supplements import joint_velocity_limit
+    from edc.algorithms.quality.algorithms.Numeric_Check.supplements import joint_velocity_limit
     values = np.zeros((10, 2))
     values[2:5, 0] = [3.5, -4.0, 3.2]   # one segment, 3 rows
     values[7, 0] = 3.1                  # second segment on the same joint

@@ -5,23 +5,17 @@ new algorithms: QualityAlgorithm). Keep successful sibling results when a record
 inputs get no quality verdict: not applicable for missing data/calibration, failed for processing errors.
 """
 import json
-from importlib import import_module
 from pathlib import Path
 
 from edc.algorithms.base import Item, AlgorithmResult, NOT_APPLICABLE, FAILED, decide
-from edc.algorithms.quality.shared.verdicts import dedup_missing_inputs, plain_reason
+from edc.algorithms.quality.adapters.cpu import ORDER
+from edc.algorithms.quality.shared.verdicts import plain_reason, result_module
 from edc.reporting.text import reports
-
-ALGOS = ['Structure_Check', 'Numeric_Check', 'Action_Smoothness', 'Check_Timestamp', 'Sync_Check',
-         'Root_Cause', 'Dedup_Check', 'Reset_Detection', 'Video_Integrity']
 
 
 def guide(algo):
     """What to look at when reviewing this algorithm's problems ('' if it gives none)."""
-    try:
-        return getattr(import_module(f'edc.algorithms.quality.algorithms.{algo}.result'), 'GUIDE', '')
-    except ImportError:
-        return ''
+    return getattr(result_module(algo), 'GUIDE', '')
 
 
 def _unavailable_item(algo, record, report=None, notes=None):
@@ -51,6 +45,7 @@ def to_result(algo, records, notes=None):
     if not records:
         return AlgorithmResult(algo, [Item('本条', FAILED, reason='没有记录')], '没有记录')
     found = [x for r in records for x in reports(r)]
+    module = result_module(algo)
     items, native_notes, corrected = [], [], False
     for record in records:
         record_items = []
@@ -65,12 +60,9 @@ def to_result(algo, records, notes=None):
                 native_notes.append(result.note)
             elif 'edc_item' in report:
                 record_items.append(Item(**report['edc_item']))
-            if algo == 'Dedup_Check':
-                # These omissions concern other channels, not the first report's input_channel.
-                for missing in dedup_missing_inputs(report):
-                    record_items.append(Item(missing['channel'], FAILED,
-                                             reason='缺少有效采集时间，本通道时间重复未检查'))
-                    corrected = True
+            extra = getattr(module, 'extra_items', lambda r: [])(report)  # 算法另记的项，如别的通道没查
+            record_items.extend(extra)
+            corrected = corrected or bool(extra)
         if record['status'] != 'completed':
             # A parent failure may have occurred after some children succeeded. Keep those children,
             # but do not let them conceal an error not accounted for by a child item.
@@ -93,12 +85,8 @@ def to_result(algo, records, notes=None):
         counts = Counter(VERDICTS.get(i.verdict) or STATUSES[i.status] for i in items)
         note = ('不适用' if all(i.status == NOT_APPLICABLE for i in items) else
                 '，'.join(f'{k}{n}项' for k, n in counts.items()))
-    if algo == 'Action_Smoothness' and not native_notes:
-        from edc.algorithms.base import STATUSES, VERDICTS
-        # One invocation is made per arm; the first invocation is not the whole result.
-        sides = {'left': '左臂', 'right': '右臂', 'main': '主臂'}
-        note = '，'.join(f'{sides.get(i.target, i.target)}{VERDICTS.get(i.verdict) or STATUSES[i.status]}'
-                        for i in items)
+    if hasattr(module, 'arms_note') and not native_notes:
+        note = module.arms_note(items)  # One invocation is made per arm; the first is not the whole result.
     scopes = [r.get('input_scope') or {} for r in records]
     excluded = [x for scope in scopes for x in scope.get('excluded_inputs', [])]
     if excluded:
@@ -116,7 +104,7 @@ def episode_results(run_dir, episode=None, notes=None):
     run_dir = Path(run_dir)
     found = sorted(p.parent.name for p in run_dir.glob('*/records.jsonl'))
     results = {}
-    for algo in [a for a in ALGOS if a in found] + [a for a in found if a not in ALGOS]:
+    for algo in [a for a in ORDER if a in found] + [a for a in found if a not in ORDER]:
         records = [json.loads(x) for x in (run_dir / algo / 'records.jsonl').read_text(encoding='utf-8').splitlines() if x]
         if episode is not None:
             records = [r for r in records if r['object']['id'] == episode]

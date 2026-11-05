@@ -5,15 +5,11 @@
   - 通道完整性: 必需通道存在 + 消息数非零
   - 相机配对: 每个 image topic 有对应 camera_info
   - 相机配置: 显式 sensor_id 对应的必需模态存在且非空
-  - 旧相机对称函数仅保留直接调用兼容，不用于新结构报告
 """
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
-from edc.algorithms.quality.shared.topic_info import TopicInfo, MODALITY_IMAGE, MODALITY_OTHER
-
-
-SUPPORTED_FORMATS = {".bag", ".db3", ".mcap", ".parquet", ".pq", ".h5", ".hdf5", ".mp4", ".bvh", ".jsonl", ".csv"}
+from typing import Dict, List, Optional
+from edc.data.ir.metadata import TopicInfo, MODALITY_IMAGE
 
 
 def check_file_integrity(path: str) -> dict:
@@ -109,39 +105,6 @@ def _infer_camera_info(img_topic: str, topics: Dict[str, TopicInfo]) -> Optional
         if info_topic in topics:
             return info_topic
     return None
-
-
-def check_camera_symmetry(topics: Dict[str, TopicInfo]) -> dict:
-    """相机对称: 多相机通道集是否一致"""
-    camera_groups = _group_cameras(topics)
-    if len(camera_groups) < 2:
-        return {"camera_count": len(camera_groups), "symmetric": True, "severity": "pass"}
-    ref = set(camera_groups[0][1])
-    asymmetries = []
-    for cam, sub_paths in camera_groups[1:]:
-        diff = ref.symmetric_difference(set(sub_paths))
-        if diff:
-            asymmetries.append({"camera": cam, "extra": list(set(sub_paths) - ref),
-                                "missing": list(ref - set(sub_paths))})
-    return {
-        "camera_count": len(camera_groups),
-        "symmetric": len(asymmetries) == 0,
-        "asymmetries": asymmetries,
-        "severity": "warning" if asymmetries else "pass",
-    }
-
-
-def _group_cameras(topics: Dict[str, TopicInfo]) -> List[Tuple[str, List[str]]]:
-    groups: Dict[str, List[str]] = {}
-    for name, ti in topics.items():
-        if ti.modality != MODALITY_IMAGE:
-            continue
-        parts = name.split("/")
-        if len(parts) >= 2:
-            cam = parts[0] if len(parts) == 2 else "/".join(parts[:-1])
-            sub = parts[-1]
-            groups.setdefault(cam, []).append(sub)
-    return list(groups.items())
 
 
 def check_camera_configuration(topics, requirements=None, channel_config=None):

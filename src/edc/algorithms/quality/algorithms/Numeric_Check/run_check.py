@@ -1,23 +1,7 @@
-"""模块: 数值内容检查 — 可直接运行的评估入口。
-
-用法:
-    python -m algorithms.Numeric_Check.run_check <data.json>
-    data.json 格式: {"joint_positions": [[...]], "gyro": [[...]], "accel": [[...]],
-                      "cmd_positions": [[...]], "pose_freeze_positions": [[...]]}
-"""
-from pathlib import Path
-import sys
-import os
-import json
-import argparse
+"""模块: 数值内容检查，框架通过 assess 逐字段调用（algorithm.py）。"""
 import numpy as np
-
-_QA_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if __name__ == "__main__" and str(Path(_QA_ROOT).parent) not in sys.path:
-    sys.path.insert(0, str(Path(_QA_ROOT).parent))
-
 from edc.algorithms.quality.shared.attribution import format_report
-from edc.algorithms.quality.shared.quality_reporter import compute_quality, to_grade, normalize_weights
+from edc.algorithms.quality.shared.quality_reporter import to_grade, normalize_weights
 from edc.algorithms.quality.algorithms.Numeric_Check.numeric_check import (
     check_joint_anomaly, check_imu_anomaly, check_cmd_anomaly, check_pose_freeze,
 )
@@ -103,69 +87,3 @@ def assess(joint_positions: np.ndarray = None,
     report["difference_basis"] = "sample-index differences; not physical velocity/jerk or Home reset"
     report["numeric"] = {"joint": joint, "imu": imu, "cmd": cmd, "pose_freeze": pose}
     return report
-
-
-def _load_channel_values(info, reader, channel_name, field):
-    """从 IR 通道按物理量提取 N×D 数组 (走 read_field 统一路径)。"""
-    return reader.read_field(info, channel_name, field)
-
-
-def assess_from_ir(info, reader, weights: dict = None) -> dict:
-    """从 IR DataInfo 评估数值内容。"""
-    joint = gyro = accel = cmd = pose = None
-    try:
-        name, ti = reader.require_joint(info, field="position")
-        joint = reader.read_field(info, name, "position")
-    except Exception:
-        pass
-    try:
-        name, ti = reader.require_pose(info, side="right", field="position")
-        pose = reader.read_field(info, name, "position")
-    except Exception:
-        pass
-    for name, topic in info.topics.items():
-        if not topic.value_available:
-            continue
-        if topic.modality == "imu":
-            if gyro is None and "ang_vel" in (topic.fields or []):
-                gyro = reader.read_field(info, name, "ang_vel")
-            if accel is None and "lin_acc" in (topic.fields or []):
-                accel = reader.read_field(info, name, "lin_acc")
-        if topic.modality == "cmd" and cmd is None and "joint_q" in (topic.fields or []):
-            cmd = reader.read_field(info, name, "joint_q")
-    if all(value is None for value in (joint, pose, gyro, accel, cmd)):
-        from edc.data.readers.base import make_ir_report
-        from edc.data.ir.metadata import IRNotProvided
-        exc = IRNotProvided("joint/pose/imu/cmd 数值通道", info.format, info.capability_summary())
-        return make_ir_report("数值内容检查", "numeric_check", exc)
-    return assess(joint, gyro, accel, cmd, pose, weights)
-
-
-def main():
-    ap = argparse.ArgumentParser(description="模块 数值内容检查")
-    ap.add_argument("input", help="数值数据 JSON 或数据目录路径 (IR: episode/dataset)")
-    ap.add_argument("--weights", default=None, help="权重 JSON 字符串")
-    args = ap.parse_args()
-
-    from edc.data.ir.metadata import detect_format, FORMAT_JSON, FORMAT_UNKNOWN
-    fmt = detect_format(args.input)
-    weights = json.loads(args.weights) if args.weights else None
-
-    if fmt != FORMAT_JSON and fmt != FORMAT_UNKNOWN:
-        from edc.algorithms.quality.config import open_info
-        info, reader = open_info(args.input)
-        report = assess_from_ir(info, reader, weights)
-    else:
-        with open(args.input) as f:
-            data = json.load(f)
-        joint = np.array(data.get("joint_positions", [])) if "joint_positions" in data else None
-        gyro = np.array(data.get("gyro", [])) if "gyro" in data else None
-        accel = np.array(data.get("accel", [])) if "accel" in data else None
-        cmd = np.array(data.get("cmd_positions", [])) if "cmd_positions" in data else None
-        pose = np.array(data.get("pose_freeze_positions", [])) if "pose_freeze_positions" in data else None
-        report = assess(joint, gyro, accel, cmd, pose, weights)
-    print(json.dumps(report, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()

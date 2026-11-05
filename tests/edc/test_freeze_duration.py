@@ -1,7 +1,7 @@
 """Per-robot freeze_min_duration_s: a short hold after motion is a normal pause, not a review candidate."""
 from types import SimpleNamespace
 import numpy as np
-from edc.algorithms.quality.adapters.numeric_supplements import numeric_freeze
+from edc.algorithms.quality.algorithms.Numeric_Check.supplements import numeric_freeze
 
 SETTINGS = {'min_run': 3, 'lookback': 10, 'freeze_eps': 1e-6, 'motion_threshold': 0.01}
 

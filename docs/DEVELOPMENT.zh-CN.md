@@ -13,6 +13,8 @@
 
 公共类型由 `edc` 导出。输入由读取器、机器人语义、SI 执行视图及算法预检共同准备，不需要另建包办所有数据的 InputBase。算法内部不猜单位或通道含义。
 
+九项内置算法各占 `src/edc/algorithms/quality/algorithms/<算法>/` 一个文件夹，只属于它的代码都在里面：检查方法（如 `run_check.py`）；`algorithm.py` 里的 `Algorithm`（继承 `BuiltinAlgorithm`，它本身也是 `QualityAlgorithm`，写中文名、输入、参数、运行前检查）；`result.py`（结果怎么写成报告句子，可选钩子见 `shared/verdicts.py` 开头）。公共代码不点名任何算法，报告顺序只在 `adapters/cpu.py` 的 `ORDER` 定义。
+
 <a id="outputs"></a>
 ## 质量输出对象
 

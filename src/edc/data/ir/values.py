@@ -5,7 +5,6 @@ imu         → {ang_vel, lin_acc, orientation}
 cmd         → {joint_q, joint_v, tau}
 pose        → {position, orientation}         # position=笛卡尔 XYZ
 """
-import numpy as np
 from typing import Any, Dict, List, Optional
 
 
@@ -160,49 +159,3 @@ def ros_values_to_dict(msg: Any, msg_type: str = "") -> Dict[str, Any]:
     return {}
 
 
-def column_to_fields(col_name: str, value: Any) -> Dict[str, Any]:
-    """Parquet/HDF5 列值 → 规范字典 (参考 DF parquet.py _column_to_fields)。"""
-    lc = col_name.lower()
-    try:
-        if isinstance(value, (list, np.ndarray)):
-            arr = list(value)
-            if any(k in lc for k in ("velocity", "joint_v")):
-                return {"velocity": arr}
-            if any(k in lc for k in ("effort", "torque", "tau")):
-                return {"effort": arr}
-            if any(k in lc for k in ("joint_q",)):
-                return {"joint_q": arr}
-            return {"position": arr}
-        if isinstance(value, dict):
-            return value
-        return {"value": [float(value)]}
-    except Exception:
-        return {}
-
-
-def normalize_values(modality: str, raw: Any, name: str = "") -> Dict[str, Any]:
-    """统一入口: 按模态调对应的规范化函数。"""
-    if modality == "imu":
-        if isinstance(raw, dict) and "ang_vel" in raw:
-            return raw
-        if isinstance(raw, (list, np.ndarray)):
-            arr = list(raw)
-            return {"ang_vel": arr[:3], "lin_acc": arr[3:6] if len(arr) > 3 else []}
-        return raw if isinstance(raw, dict) else {}
-    if modality == "joint_state":
-        if isinstance(raw, dict) and "position" in raw:
-            return raw
-        return column_to_fields(name, raw)
-    if modality == "cmd":
-        if isinstance(raw, dict):
-            return raw
-        return column_to_fields(name, raw)
-    if modality == "pose":
-        if isinstance(raw, dict):
-            return raw
-        if isinstance(raw, (list, np.ndarray)):
-            arr = list(raw)
-            # 默认按 xyz_quat 7 维布局 (与 read_field 推断互斥, 此处仅死代码防御)
-            return {"position": arr[:3], "orientation": arr[3:7] if len(arr) >= 7 else []}
-        return {}
-    return raw if isinstance(raw, dict) else {}

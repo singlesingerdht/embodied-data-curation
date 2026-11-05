@@ -88,7 +88,7 @@ def test_generated_or_absent_time_never_enables_time_algorithms(tmp_path):
 
 def test_invalid_right_header_remains_unavailable_not_repeated_zeroes():
     from edc.data.ir.dataset import Channel
-    from edc.algorithms.quality.adapters.cpu import unavailable_dedup_inputs
+    from edc.algorithms.quality.algorithms.Dedup_Check.algorithm import unavailable_dedup_inputs
     left=Channel('left','pose',['position'],4,'source',time_source='acquisition',timestamps=[1,2,3,4])
     right=Channel('right','pose',['position'],4,'source',time_source='unknown',
                   time_evidence={'unavailable_reason':'All four original header values are zero'})
