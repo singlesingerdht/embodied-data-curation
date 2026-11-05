@@ -122,9 +122,9 @@ The example writes `/path/to/results/selected/report.html`, using the same four 
 | `Structure_Check` | Channels, cameras, and duration | Channel list and structural requirements | [Structure](docs/ALGORITHMS.md#structure-check) |
 | `Numeric_Check` | Finite values and configured physical limits | Numeric fields; physical checks also need units and limits | [Numeric validity](docs/ALGORITHMS.md#numeric-check) |
 | `Action_Smoothness` | End-effector vibration while holding still and stuck readings | XYZ feedback and a usable timeline | [Smoothness](docs/ALGORITHMS.md#action-smoothness) |
-| `Check_Timestamp` | Intervals, pairing, and gaps | Valid timestamps with known units | [Timestamps](docs/ALGORITHMS.md#check-timestamp) |
-| `Sync_Check` | Recording spans and record–acquisition time differences | Independent acquisition times and comparable clocks; differences also need record times | [Synchronization](docs/ALGORITHMS.md#sync-check) |
-| `Root_Cause` | Timing anomalies across streams | Comparable timelines and source groups | [Timing attribution](docs/ALGORITHMS.md#root-cause) |
+| `Check_Timestamp` | Timing correspondence between images and other data, and sampling regularity per stream | Valid timestamps with known units | [Timestamps](docs/ALGORITHMS.md#check-timestamp) |
+| `Sync_Check` | Recording span coverage and clock offsets across streams | Independent acquisition times and comparable clocks; differences also need record times | [Synchronization](docs/ALGORITHMS.md#sync-check) |
+| `Root_Cause` | Single-stream gaps, simultaneous interruptions, and periodic anomalies | Comparable timelines and source groups | [Timing attribution](docs/ALGORITHMS.md#root-cause) |
 | `Dedup_Check` | Repeated timestamps or sequence numbers | Original times or sequence information | [Duplicates](docs/ALGORITHMS.md#dedup-check) |
 | `Reset_Detection` | Distance from Home at the start and end | Position feedback, Home, and tolerances | [Reset](docs/ALGORITHMS.md#reset-detection) |
 | `Video_Integrity` | Image content and video integrity | Decodable frames or video | [Images and video](docs/ALGORITHMS.md#video-integrity) |
@@ -133,7 +133,9 @@ Each algorithm retains its own metrics and evidence, without a combined score. [
 
 ## Developers and Project Structure
 
-Quality algorithms can inherit `QualityAlgorithm`, return a list of `Item` objects, and use `AlgorithmResult` to aggregate them. General plugins use `AlgorithmSpec + run(context, params)`; registration connects them to the same input checks and execution flow.
+New quality algorithms can reuse unified data reading, input validation, and report rendering. Follow the existing template, declare inputs and parameters, and register the algorithm to join the same recommendation and execution flow.
+
+Quality algorithms can inherit `QualityAlgorithm` and return a list of `Item` objects containing reasons, metrics, and evidence. They can also return `AlgorithmResult` with an optional one-line summary for the report. General plugins use `AlgorithmSpec + run(context, params)`.
 
 [Output classes and adding a new algorithm](docs/DEVELOPMENT.md#quality-example) · [Reader plugins](docs/DEVELOPMENT.md#readers) · [Contributing (Chinese)](CONTRIBUTING.md)
 

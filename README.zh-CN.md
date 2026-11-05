@@ -122,9 +122,9 @@ edc run /path/to/dataset/episode.mcap \
 | `Structure_Check` | 通道、相机与时长 | 通道目录及结构要求 | [结构检查](docs/ALGORITHMS.zh-CN.md#structure-check) |
 | `Numeric_Check` | 有限值及已配置的物理约束 | 数值字段；物理项另需单位及阈值 | [数值检查](docs/ALGORITHMS.zh-CN.md#numeric-check) |
 | `Action_Smoothness` | 保持段末端振动与读数冻结 | 末端 XYZ 反馈及可用时间轴 | [动作平滑度](docs/ALGORITHMS.zh-CN.md#action-smoothness) |
-| `Check_Timestamp` | 时间间隔、配对及断档 | 有效且单位明确的时间轴 | [时间戳检查](docs/ALGORITHMS.zh-CN.md#check-timestamp) |
-| `Sync_Check` | 各路起止覆盖及录包与采集时间差 | 独立采集时间及可比较的 clock；时间差另需录包时间 | [采集同步](docs/ALGORITHMS.zh-CN.md#sync-check) |
-| `Root_Cause` | 多路时间异常关联 | 可比较的多路时间及来源分组 | [时间异常归因](docs/ALGORITHMS.zh-CN.md#root-cause) |
+| `Check_Timestamp` | 画面与其他数据的时间对应及各路采样节奏 | 有效且单位明确的时间轴 | [时间戳检查](docs/ALGORITHMS.zh-CN.md#check-timestamp) |
+| `Sync_Check` | 各路起止覆盖及时钟偏差 | 独立采集时间及可比较的 clock；时间差另需录包时间 | [采集同步](docs/ALGORITHMS.zh-CN.md#sync-check) |
+| `Root_Cause` | 单路断档、多路同时中断及周期性异常 | 可比较的多路时间及来源分组 | [时间异常归因](docs/ALGORITHMS.zh-CN.md#root-cause) |
 | `Dedup_Check` | 时间戳或序号重复 | 原始时间值或序列信息 | [重复检查](docs/ALGORITHMS.zh-CN.md#dedup-check) |
 | `Reset_Detection` | 开头、结尾与 Home 的距离 | 反馈位置、Home 及容差 | [复位检测](docs/ALGORITHMS.zh-CN.md#reset-detection) |
 | `Video_Integrity` | 图像内容与视频完整性 | 可解码图像帧或视频 | [图像／视频检查](docs/ALGORITHMS.zh-CN.md#video-integrity) |
@@ -133,7 +133,9 @@ edc run /path/to/dataset/episode.mcap \
 
 ## 开发者与组织结构
 
-质量算法可继承 `QualityAlgorithm`、返回 `Item` 列表，由 `AlgorithmResult` 汇总；通用插件使用 `AlgorithmSpec + run(context, params)`，注册后进入同一套预检与执行流程。
+新增质量算法可复用统一的数据读取、输入校验与报告展示。参照现有模板，声明输入和参数并注册后，即可接入同一套推荐与执行流程。
+
+质量算法可继承 `QualityAlgorithm`，返回包含原因、指标和证据的 `Item` 列表；也可返回 `AlgorithmResult`，附一行简短摘要用于报告展示。通用插件使用 `AlgorithmSpec + run(context, params)`。
 
 [输出基类与接入新算法](docs/DEVELOPMENT.zh-CN.md#quality-example) · [读取器插件](docs/DEVELOPMENT.zh-CN.md#readers) · [贡献指南](CONTRIBUTING.md)
 
