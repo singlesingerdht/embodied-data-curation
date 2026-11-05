@@ -61,7 +61,7 @@ def test_reset_v2_resolves_logical_channel_and_keeps_deferred_items(tmp_path):
             assert preflight(plugin, episode)[0] == 'runnable'
             normalized = reset_calibration(episode)
             assert list(normalized['references']) == ['pose']
-            result = plugin._reset(episode)
+            result = plugin.assess(episode, {}, None)
             assert result['method'] == 'calibrated_home_reference_v2'
             assert result['passed'] and result['score'] == 100.0
             assert result['evidence'][0]['requested_channel'] == 'pose/arm/left/feedback'

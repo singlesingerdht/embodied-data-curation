@@ -68,7 +68,7 @@ def imu_episode(n=60, accel_z=9.81, gyro=None, with_gyro=True):
 
 @pytest.mark.parametrize('accel_z,expected', [(9.81, 'keep'), (11., 'review')])
 def test_same_channel_pair_runs_bias_without_changing_historical_score(accel_z, expected):
-    from edc.algorithms.quality.algorithms.Numeric_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Numeric_Check.method import assess
     ep, values = imu_episode(accel_z=accel_z)
     original = {k: v.copy() for k, v in values.items()}
     reports = plugin().run(SimpleNamespace(episode=ep), {})

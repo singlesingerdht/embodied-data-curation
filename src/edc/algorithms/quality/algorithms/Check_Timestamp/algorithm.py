@@ -1,4 +1,4 @@
-"""时间戳对齐：框架怎么调用这项检查（时钟平移、评分标准在这里，检查方法在 run_check.py）。"""
+"""时间戳对齐：框架怎么调用这项检查（时钟平移、评分标准在这里，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm, capabilities
 from edc.algorithms.quality.shared.clock import clock_diagnosis, clock_shift, derived_copies, shift_note, ShiftedReader
 
@@ -39,7 +39,7 @@ def shared_row_intervals(episode, max_gap_s, cadence):
             'reasons': reasons}
 
 
-# Check_Timestamp's own command-line options (run_check.py argparse); values from timestamp_standard.
+# Check_Timestamp's own command-line options (method.py argparse); values from timestamp_standard.
 TIMESTAMP_SCORING = {'absolute_error_floor_ms': 'DEFAULT_ABSOLUTE_ERROR_FLOOR_MS',
                      'dt_cv_no_penalty': 'DEFAULT_DT_CV_NO_PENALTY', 'dt_cv_zero': 'DEFAULT_DT_CV_ZERO',
                      'long_gap_ratio_warning': 'DEFAULT_LONG_GAP_RATIO_WARNING',

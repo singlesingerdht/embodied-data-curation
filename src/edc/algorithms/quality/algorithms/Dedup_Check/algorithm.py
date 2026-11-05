@@ -1,4 +1,4 @@
-"""时间／序列重复检查：框架怎么调用这项检查（挑原始时间输入在这里，检查方法在 run_check.py）。"""
+"""时间／序列重复检查：框架怎么调用这项检查（挑原始时间输入在这里，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm, topic_metadata
 
 
@@ -106,7 +106,7 @@ class Algorithm(BuiltinAlgorithm):
 
     def _dedup(self, ep, params, context=None):
         import numpy as np
-        from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+        from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
         selected = params.get("channel")
         inputs = dedup_inputs(ep, selected)
         if not inputs:

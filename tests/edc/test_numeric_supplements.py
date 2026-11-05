@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from edc.algorithms.quality.adapters.cpu import builtins
-from edc.algorithms.quality.algorithms.Numeric_Check.run_check import assess
+from edc.algorithms.quality.algorithms.Numeric_Check.method import assess
 from edc.algorithms.quality.algorithms.Numeric_Check.settings import thresholds
 from edc.data.ir.dataset import Channel, open_dataset
 from edc.execution.runner import run

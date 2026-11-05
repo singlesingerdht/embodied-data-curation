@@ -6,7 +6,7 @@ import pytest
 from edc import open_dataset
 from edc.algorithms.quality.adapters.cpu import builtins,preflight
 from edc.algorithms.quality.algorithms.Dedup_Check.dedup_check import check_timestamp_dedup
-from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
 
 
 def plugin(name): return next(p for p in builtins() if p.spec.id==name)

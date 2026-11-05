@@ -11,7 +11,7 @@ from edc.data.ir.dataset import open_dataset
 from edc.robots.profiles import load_profile
 from edc.algorithms.quality.adapters.cpu import builtins, preflight
 from edc.algorithms.quality.algorithms.Structure_Check.structure_check import check_camera_configuration
-from edc.algorithms.quality.algorithms.Structure_Check.run_check import assess as structure_assess
+from edc.algorithms.quality.algorithms.Structure_Check.method import assess as structure_assess
 from edc.algorithms.quality.algorithms.Numeric_Check.numeric_check import check_joint_anomaly
 
 

@@ -1,7 +1,7 @@
 """Collect one episode's common results (edc.algorithms.base) from a run folder and write quality.json.
 
-Every algorithm already returns the common Item with its report (built-in: quality/shared/verdicts.py `emit`;
-new algorithms: QualityAlgorithm). Keep successful sibling results when a record/channel fails. Unavailable
+Every algorithm stores one report per Item with `edc_item` (edc.algorithms.base `package`; built-in ones attach it
+to their own report in quality/shared/verdicts.py `emit`). Keep successful sibling results when a record/channel fails. Unavailable
 inputs get no quality verdict: not applicable for missing data/calibration, failed for processing errors.
 """
 import json
@@ -46,7 +46,7 @@ def to_result(algo, records, notes=None):
         return AlgorithmResult(algo, [Item('本条', FAILED, reason='没有记录')], '没有记录')
     found = [x for r in records for x in reports(r)]
     module = result_module(algo)
-    items, native_notes, corrected = [], [], False
+    items, corrected = [], False
     for record in records:
         record_items = []
         for report in reports(record):
@@ -54,10 +54,6 @@ def to_result(algo, records, notes=None):
                     'processing_error', 'missing_dependency', 'missing_input', 'needs_calibration'):
                 record_items.append(_unavailable_item(algo, record, report, notes))
                 corrected = True
-            elif 'edc_result' in report:  # A QualityAlgorithm subclass returns the whole result.
-                result = AlgorithmResult.from_dict(report['edc_result'])
-                record_items.extend(result.items)
-                native_notes.append(result.note)
             elif 'edc_item' in report:
                 record_items.append(Item(**report['edc_item']))
             extra = getattr(module, 'extra_items', lambda r: [])(report)  # 算法另记的项，如别的通道没查
@@ -77,7 +73,7 @@ def to_result(algo, records, notes=None):
         items.extend(record_items)
     if not items:
         return AlgorithmResult(algo, [Item('本条', FAILED, reason='算法没有给出统一格式的结论')], '')
-    note = native_notes[0] if native_notes else next((x['edc_note'] for x in found if 'edc_note' in x), '')
+    note = next((x['edc_note'] for x in found if 'edc_note' in x), '')
     if corrected:
         # Counts attached before processing errors were classified can misleadingly say REVIEW/PASS.
         from collections import Counter
@@ -85,7 +81,7 @@ def to_result(algo, records, notes=None):
         counts = Counter(VERDICTS.get(i.verdict) or STATUSES[i.status] for i in items)
         note = ('不适用' if all(i.status == NOT_APPLICABLE for i in items) else
                 '，'.join(f'{k}{n}项' for k, n in counts.items()))
-    if hasattr(module, 'arms_note') and not native_notes:
+    if hasattr(module, 'arms_note'):
         note = module.arms_note(items)  # One invocation is made per arm; the first is not the whole result.
     scopes = [r.get('input_scope') or {} for r in records]
     excluded = [x for scope in scopes for x in scope.get('excluded_inputs', [])]

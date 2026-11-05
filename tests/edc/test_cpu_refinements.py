@@ -7,9 +7,9 @@ import pytest
 
 from edc.data.ir.metadata import DataInfo, TopicInfo
 from edc.algorithms.quality.shared.timing_scope import partition_timing_topics
-from edc.algorithms.quality.algorithms.Check_Timestamp.run_check import assess_from_ir
+from edc.algorithms.quality.algorithms.Check_Timestamp.method import assess_from_ir
 from edc.algorithms.quality.algorithms.Root_Cause.root_cause import analyze_root_cause, _detect_real_stall
-from edc.algorithms.quality.algorithms.Root_Cause.run_check import assess as root_assess
+from edc.algorithms.quality.algorithms.Root_Cause.method import assess as root_assess
 
 
 def timing_info(extra=None):
@@ -160,7 +160,7 @@ def test_root_insufficient_intervals_never_pass(axes):
 def test_increasing_timestamps_and_repeated_images_are_independent(tmp_path):
     cv2 = pytest.importorskip('cv2'); pytest.importorskip('xxhash')
     from edc.algorithms.quality.algorithms.Video_Integrity.frame_quality import FrameQualityDetector
-    from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
     path = tmp_path/'lossless.avi'
     writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*'FFV1'), 30, (64, 64))
     assert writer.isOpened()

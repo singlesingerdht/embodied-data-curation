@@ -13,7 +13,7 @@
 
 公共类型由 `edc` 导出。输入由读取器、机器人语义、SI 执行视图及算法预检共同准备，不需要另建包办所有数据的 InputBase。算法内部不猜单位或通道含义。
 
-九项内置算法各占 `src/edc/algorithms/quality/algorithms/<算法>/` 一个文件夹，只属于它的代码都在里面：检查方法（如 `run_check.py`）；`algorithm.py` 里的 `Algorithm`（继承 `BuiltinAlgorithm`，它本身也是 `QualityAlgorithm`，写中文名、输入、参数、运行前检查）；`result.py`（结果怎么写成报告句子，可选钩子见 `shared/verdicts.py` 开头）。公共代码不点名任何算法，报告顺序只在 `adapters/cpu.py` 的 `ORDER` 定义。
+九项内置算法各占 `src/edc/algorithms/quality/algorithms/<算法>/` 一个文件夹，只属于它的代码都在里面，固定三个文件：`algorithm.py` 里的 `Algorithm`（继承 `BuiltinAlgorithm`，它本身也是 `QualityAlgorithm`；写中文名、输入、参数、运行前检查，`assess()` 从数据里取出方法要的输入）；`method.py`（方法本体，只做计算，其余辅助文件由它引用）；`result.py`（把方法的报告翻成检查项，可选钩子见 `shared/verdicts.py` 开头）。内置和插件的检查项都经 `package` 存进运行记录。公共代码不点名任何算法，报告顺序只在 `adapters/cpu.py` 的 `ORDER` 定义。
 
 <a id="outputs"></a>
 ## 质量输出对象
@@ -22,7 +22,7 @@
 |---|---|
 | `Item` | 一个检查对象：`target`、执行 `status`、质量 `verdict`、短 `reason`、`metrics`、`evidence`；可救时提供 `remedy` |
 | `AlgorithmResult` | 一项算法的检查项列表及短摘要；`level` 自动按检查项汇总，`to_dict()`／`from_dict()` 序列化 |
-| `QualityAlgorithm` | 调用 `check()`，验证非空 Item 列表，包装成 `{'edc_result': ...}`；子类无需再写一套输出封装 |
+| `QualityAlgorithm` | 调用 `check()`，验证非空 Item 列表，用 `package` 存成每项一份报告（内置算法也用它）；子类无需再写一套输出封装 |
 
 ```python
 from edc import Item, AlgorithmResult

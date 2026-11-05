@@ -20,7 +20,7 @@ def time_axis(channel):
 
 
 def assess(episode, channel, params, context):
-    from edc.algorithms.quality.algorithms.Action_Smoothness.shake import DEFAULTS, assess_arrays
+    from edc.algorithms.quality.algorithms.Action_Smoothness.method import DEFAULTS, assess_arrays
     where = {'side': channel.side, 'input_channel': channel.name, 'input': channel.source, 'num_poses': channel.count}
     try:
         t = time_axis(channel)

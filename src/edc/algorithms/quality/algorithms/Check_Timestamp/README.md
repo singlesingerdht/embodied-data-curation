@@ -25,5 +25,5 @@
 
 ## 代码
 
-- `run_check.py`：`assess_from_ir` 是框架调用的入口；`score_reference` 给头部打分，`score_topic` 给其他每一路打分。阈值常量在文件开头（`DEFAULT_*`），各机型统一的覆盖值（间隔波动 0.3 起扣、0.6 扣满，误差下限为最快彩色相机帧间隔的 1/3）在 `algorithm.py`。
+- `method.py`：`assess_from_ir` 是框架调用的入口；`score_reference` 给头部打分，`score_topic` 给其他每一路打分。阈值常量在文件开头（`DEFAULT_*`），各机型统一的覆盖值（间隔波动 0.3 起扣、0.6 扣满，误差下限为最快彩色相机帧间隔的 1/3）在 `algorithm.py`。
 - `result.py`：把结果写成报告里的中文句子。

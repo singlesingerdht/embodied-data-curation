@@ -1,4 +1,4 @@
-"""数值检查：框架怎么调用这项检查（逐字段读数、配置和补充检查在这里，检查方法在 run_check.py）。"""
+"""数值检查：框架怎么调用这项检查（逐字段读数、配置和补充检查在这里，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
 from edc.robots.scope import numeric_fields
 

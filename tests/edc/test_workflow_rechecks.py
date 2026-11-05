@@ -52,12 +52,9 @@ def demo(tmp_path, monkeypatch):
     (Item('right', status='not_applicable', reason='Unit unknown'), 'unassessed'),
     (Item('right', status='failed', reason='Decoder failed'), 'unassessed'),
 ])
-@pytest.mark.parametrize('kind', ['edc_item', 'edc_result'])
-def test_workflow_uses_common_items_without_rescoring(item, expected, kind):
-    from dataclasses import asdict
-    from edc.algorithms.base import AlgorithmResult
-    report = ({kind: asdict(item)} if kind == 'edc_item' else
-              {kind: AlgorithmResult('test__quality', [item]).to_dict()})
+def test_workflow_uses_common_items_without_rescoring(item, expected):
+    from edc.algorithms.base import package
+    report = package([item])[0]
     record = {'algorithm': {'id': 'test__quality'}, 'object': {'type': 'episode', 'id': 'e'},
               'status': 'completed', 'result': {'reports': [report]}}
     before = copy.deepcopy(record)

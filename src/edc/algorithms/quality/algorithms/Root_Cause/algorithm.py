@@ -1,4 +1,4 @@
-"""时间异常归因：框架怎么调用这项检查（先平移时钟、去掉派生通道，检查方法在 run_check.py）。"""
+"""时间异常归因：框架怎么调用这项检查（先平移时钟、去掉派生通道，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
 from edc.algorithms.quality.shared.clock import (clock_diagnosis, clock_shift, derived_copies, invalid_timelines,
                                                  shift_note, ShiftedReader)

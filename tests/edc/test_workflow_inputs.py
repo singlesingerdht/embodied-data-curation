@@ -28,7 +28,7 @@ def test_clock_mapping_consumed_by_real_cpu_method(tmp_path,monkeypatch,ident):
     before=source.read_bytes()
     params={'channels':['rgb/head','/fast'],'target_clock':'head_clock'}
     seen=[]
-    module=importlib.import_module(f'edc.algorithms.quality.algorithms.{ident}.run_check')
+    module=importlib.import_module(f'edc.algorithms.quality.algorithms.{ident}.method')
     method='assess' if ident=='Sync_Check' else 'assess_from_ir'
     original=getattr(module,method)
     def capture(*args,**kwargs):
@@ -113,12 +113,12 @@ def test_selected_field_view_consumes_its_source_clock_mapping(tmp_path,monkeypa
     source,profile=mcap_fixture(tmp_path)
     profile['channels']['arm_view']={'modality':'joint_space','fields':['position'],
         'select':{'channel':'/fast','field':'position','indices':[0]}}
-    from edc.algorithms.quality.algorithms.Sync_Check import run_check
-    original=run_check.assess;seen=[]
+    from edc.algorithms.quality.algorithms.Sync_Check import method
+    original=method.assess;seen=[]
     def capture(axes,**params):
         seen.append(axes)
         return original(axes,**params)
-    monkeypatch.setattr(run_check,'assess',capture)
+    monkeypatch.setattr(method,'assess',capture)
     with open_dataset(source,profile=profile) as ds:
         run(ds,algorithm_ids=['Sync_Check'],params={'Sync_Check':{
             'channels':['rgb/head','arm_view'],'target_clock':'head_clock'}},output=tmp_path/'results')

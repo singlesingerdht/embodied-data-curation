@@ -76,7 +76,7 @@ def test_finiteness_only_complete_remains_a_pass():
 
 @pytest.mark.parametrize('short', [True, False])
 def test_dedup_missing_sibling_time_is_not_a_fault_on_first_channel(short):
-    from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
     raw = ({'verdict': 'NOT_APPLICABLE', 'score': None, 'assessment_complete': False,
             'reasons': ['At least two recorded samples are required']} if short else assess([1, 2, 3]))
     raw.update(input_channel='/config', assessment_complete=False,

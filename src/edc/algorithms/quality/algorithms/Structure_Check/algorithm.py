@@ -1,4 +1,4 @@
-"""结构完整性：框架怎么调用这项检查（输入准备在这里，检查方法在 run_check.py）。"""
+"""结构完整性：框架怎么调用这项检查（输入准备在这里，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm, too_short
 
 

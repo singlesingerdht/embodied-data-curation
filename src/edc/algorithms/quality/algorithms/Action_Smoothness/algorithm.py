@@ -1,6 +1,6 @@
-"""动作平滑度：框架怎么调用这项检查（选末端通道在这里，检查方法在 shake.py，适配在 inputs.py）。"""
+"""动作平滑度：框架怎么调用这项检查（选末端通道在这里，检查方法在 method.py，适配在 inputs.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
-from edc.algorithms.quality.algorithms.Action_Smoothness.shake import DEFAULTS
+from edc.algorithms.quality.algorithms.Action_Smoothness.method import DEFAULTS
 
 
 def selected_pose(episode, params=None):

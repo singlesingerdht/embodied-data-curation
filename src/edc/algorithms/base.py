@@ -93,4 +93,14 @@ class QualityAlgorithm:
         items = self.check(context.episode, params)
         if not items or not all(isinstance(i, Item) for i in items):
             raise ValueError(f'{self.spec.id}: check() must return a nonempty list of Item')
-        return {'edc_result': AlgorithmResult(self.spec.id, items).to_dict()}
+        return package(items)
+
+
+def package(items, note='', reports=None):
+    """检查项存进运行记录的统一格式：一项一份报告，带 edc_item；格子文字放在第一份的 edc_note。
+    内置算法把检查项附在自己的原始报告上（reports，与 items 一一对应）；插件没有原始报告。"""
+    reports = reports if reports is not None else [{} for _ in items]
+    for report, item in zip(reports, items):
+        report['edc_item'] = asdict(item)
+    reports[0]['edc_note'] = note
+    return reports

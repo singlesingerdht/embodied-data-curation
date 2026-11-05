@@ -63,7 +63,7 @@ def assess(episode, params, context):
 
 
 def _assess_channel(episode, channel, params, context, index, started, role):
-    from edc.algorithms.quality.algorithms.Video_Integrity import run_check
+    from edc.algorithms.quality.algorithms.Video_Integrity import method
     from edc.algorithms.quality.algorithms.Video_Integrity.frame_quality import FrameQualityDetector
     mode = params['input_mode']
     if mode == 'frames':
@@ -96,7 +96,7 @@ def _assess_channel(episode, channel, params, context, index, started, role):
         materialize = getattr(context, 'materialize_video', episode.materialize_video)
         path = (materialize(channel.name, directory / f'rgb-{index}.mp4')
                 if directory is not None else episode.video_source(channel.name))
-        result = run_check.assess(path, cam_type=role, weights=params.get('weights'),
+        result = method.assess(path, cam_type=role, weights=params.get('weights'),
             sample_step=params.get('sample_step', 5), downscale=params.get('downscale', 4))
         evidence = getattr(context, 'video_evidence', episode.video_evidence)
         result.update(evidence(channel.name, inspection_input=path))

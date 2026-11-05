@@ -6,7 +6,7 @@ from subprocess import CompletedProcess
 
 import pytest
 
-from edc.algorithms.base import AlgorithmResult, Item, FAILED, NOT_APPLICABLE, decide
+from edc.algorithms.base import AlgorithmResult, Item, FAILED, NOT_APPLICABLE, decide, package
 from edc.algorithms.quality.adapters.results import to_result, write_quality
 from edc.algorithms.quality.shared.verdicts import emit
 from edc.data.regenerate import regenerate
@@ -88,12 +88,12 @@ def test_missing_result_for_one_instance_does_not_hide_other_instance():
 
 
 def test_native_plugin_success_survives_other_instance_failure():
-    native = AlgorithmResult('team__test', [Item('left', verdict='PASS', metrics={'n': 3})], 'native note')
-    result = to_result('team__test', [record([{'edc_result': native.to_dict()}]),
+    native = AlgorithmResult('team__test', [Item('left', verdict='PASS', metrics={'n': 3})])
+    result = to_result('team__test', [record(package(native.items)),
                                     record(status='processing_error', instance='right', reason='boom')])
     assert result.items[0].__dict__ == native.items[0].__dict__
     assert result.items[1].status == FAILED
-    assert to_result('team__test', [record([{'edc_result': native.to_dict()}])]).to_dict() == native.to_dict()
+    assert to_result('team__test', [record(package(native.items))]).to_dict() == native.to_dict()
 
 
 def write_summary(target, results, decision=None):

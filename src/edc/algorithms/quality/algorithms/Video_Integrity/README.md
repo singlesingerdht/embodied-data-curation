@@ -17,7 +17,7 @@ LeRobot image／video feature 可共存；只有 Video_Integrity 的公共适配
 
 ## 用法
 
-随 `edc batch` 运行；框架经 `inputs.py` 调用 `run_check.assess`，参数写在机器人 yaml 的 `checks.Video_Integrity`。
+随 `edc batch` 运行；框架经 `inputs.py` 调用 `method.assess`，参数写在机器人 yaml 的 `checks.Video_Integrity`。
 
 ## 输入 / 输出
 

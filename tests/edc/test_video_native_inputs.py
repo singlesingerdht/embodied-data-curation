@@ -56,7 +56,7 @@ def test_auto_frames_no_video_or_timeline_required(tmp_path, monkeypatch):
 
 
 def test_mixed_storage_routes_each_selected_channel(tmp_path, monkeypatch):
-    from edc.algorithms.quality.algorithms.Video_Integrity import run_check
+    from edc.algorithms.quality.algorithms.Video_Integrity import method
     ep = episode(tmp_path, {'image': 'frames', 'video': 'video'})
     calls = []
     def materialize(name, path):
@@ -65,7 +65,7 @@ def test_mixed_storage_routes_each_selected_channel(tmp_path, monkeypatch):
         return str(path)
     ep.materialize_video = materialize
     ep.video_evidence = lambda name, inspection_input: {'inspection_object': 'original_encoded_video'}
-    monkeypatch.setattr(run_check, 'assess', lambda *a, **kw: {'score': 100, 'passed': True})
+    monkeypatch.setattr(method, 'assess', lambda *a, **kw: {'score': 100, 'passed': True})
     rows = assess(ep, {'sample_step': 1}, Context(None, ep, tmp_path))
     assert [r['input_mode'] for r in rows] == ['frames', 'video']
     assert calls == ['video']

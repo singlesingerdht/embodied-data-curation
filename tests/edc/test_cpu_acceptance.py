@@ -33,7 +33,7 @@ def test_raw_unknown_time_dedup_without_sync_claim(tmp_path):
 
 def test_dedup_checks_later_channel_and_single_sample(tmp_path):
     from edc.data.ir.dataset import Channel
-    from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
     assert assess([1])['dedup']['timestamp_dedup']['total_count'] == 1
     channels = {name: Channel(name, 'other', [], len(values), '', time_source='container', timestamps=values)
                 for name, values in [('good', list(range(10))), ('bad', [1]*10)]}
@@ -70,7 +70,7 @@ def test_pending_calibration_only_checks_finite_values(tmp_path):
 
 
 def test_pose_freeze_is_reflected_in_numeric_verdict():
-    from edc.algorithms.quality.algorithms.Numeric_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Numeric_Check.method import assess
     positions = np.zeros((30,3))
     positions[:10,0] = np.arange(10)*.1
     positions[10:,0] = .9
@@ -86,13 +86,13 @@ def test_joint_range_warning_cannot_hide_nonfinite_error():
 
 
 def test_sync_without_record_time_only_checks_spans():
-    from edc.algorithms.quality.algorithms.Sync_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Sync_Check.method import assess
     result = assess({'a':[i*.1 for i in range(40)],'b':[i*.1+.001 for i in range(40)]})
     assert not result['assessment_complete'] and '缺少录包时间' in ' '.join(result['reasons'])
 
 
 def test_sync_names_late_channel_and_moving_clock():
-    from edc.algorithms.quality.algorithms.Sync_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Sync_Check.method import assess
     ts = {'a': [i*.1 for i in range(1000)], 'b': [6+i*.1 for i in range(940)]}  # b 晚开始 6 秒
     clock = {'channels': {'a': {'record_minus_header_ms': 2.0, 'record_minus_header_change_ms': 1.0},
                           'b': {'record_minus_header_ms': 3.0, 'record_minus_header_change_ms': 250.0}}}

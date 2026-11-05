@@ -70,14 +70,14 @@ def test_cache_does_not_escape_workdir_or_accept_missing_outputs(tmp_path):
 def test_cpu_video_and_visual_share_one_materialization(tmp_path, monkeypatch):
     from edc.algorithms.quality.algorithms.Video_Integrity import inputs as video
     vision = pytest.importorskip('edc.algorithms.quality.adapters.vision', reason='GPU extension is outside CPU distribution')
-    from edc.algorithms.quality.algorithms.Video_Integrity import run_check
+    from edc.algorithms.quality.algorithms.Video_Integrity import method
     ep, calls = fixture_episode(tmp_path, 'original_encoded_video')
     ep.format = 'mp4'
     ep.channels['rgb'].representation = {'camera_role': 'head', 'camera_role_status': 'confirmed'}
     cache = MediaCache(tmp_path/'shared')
     work1 = tmp_path/'video'; work1.mkdir()
     work2 = tmp_path/'visual'; work2.mkdir()
-    monkeypatch.setattr(run_check, 'assess', lambda *args, **kwargs: {'score': 100, 'passed': True})
+    monkeypatch.setattr(method, 'assess', lambda *args, **kwargs: {'score': 100, 'passed': True})
     monkeypatch.setattr(vision, 'worker', lambda ctx, job, name: {'job': job})
     first = video.assess(ep, {'input_mode': 'video'}, Context(None, ep, work1, cache))[0]
     second = vision.VisualQuality().run(Context(None, ep, work2, cache), {})

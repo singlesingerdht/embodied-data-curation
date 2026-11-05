@@ -30,7 +30,7 @@ def evaluate(values, modality='joint_space', field='position', kind='feedback', 
 
 
 def test_limits_unconfigured_is_separate_from_success_and_legacy_score():
-    from edc.algorithms.quality.algorithms.Numeric_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Numeric_Check.method import assess
     values = np.array([[0.], [.1], [.2]])
     result, checks = evaluate(values)
     original = assess(joint_positions=values)

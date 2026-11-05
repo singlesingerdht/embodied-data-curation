@@ -261,8 +261,8 @@ class BuiltinAlgorithm(QualityAlgorithm):
         """推荐时“能查什么、只能查一部分”的说明；不写就列出选中的通道。"""
 
     def method(self):
-        """原检查方法 run_check.py。"""
-        return import_module(f"edc.algorithms.quality.algorithms.{self.spec.id}.run_check")
+        """原检查方法 method.py。"""
+        return import_module(f"edc.algorithms.quality.algorithms.{self.spec.id}.method")
 
     def assess(self, ep, params, context):
         """运行一次，返回原方法的报告（一个或一组）。"""

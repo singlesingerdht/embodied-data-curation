@@ -31,7 +31,7 @@ def test_internal_imports_do_not_mutate_search_path():
     import edc.data.ir.dataset
     import edc.data.ir.dataset
     assert edc.data.ir.dataset.Episode is edc.data.ir.dataset.Episode
-    from edc.algorithms.quality.algorithms.Numeric_Check import run_check
+    from edc.algorithms.quality.algorithms.Numeric_Check import method
     assert before == sys.path
 
 

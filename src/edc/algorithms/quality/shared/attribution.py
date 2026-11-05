@@ -91,7 +91,7 @@ def build_verdict_reasons(module: dict, threshold: float = 85.0) -> Tuple[str, L
 def format_report(module: dict, threshold: float = 85.0) -> dict:
     """组装单模块的最终输出契约: score + grade + verdict + reasons + 归因 + 子指标。
 
-    各模块 run_check 调用此函数得到统一输出结构。
+    各算法的 method.py 调用此函数得到统一输出结构。
     """
     attribution = build_attribution(module)
     verdict, reasons = build_verdict_reasons(module, threshold)

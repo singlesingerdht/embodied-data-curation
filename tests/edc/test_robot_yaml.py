@@ -129,7 +129,8 @@ def test_item_rules_and_decision_order():
 
 
 def record(report, status='completed', reason=None):
-    return {'status': status, 'reason': reason, 'result': {'reports': [report]} if report else None}
+    return {'status': status, 'reason': reason,
+            'result': {'reports': report if isinstance(report, list) else [report]} if report else None}
 
 
 def test_builtin_reports_carry_four_verdicts():

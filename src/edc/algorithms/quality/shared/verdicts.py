@@ -13,7 +13,7 @@ import datetime
 import re
 from importlib import import_module
 
-from edc.algorithms.base import Item, CHECKED, NOT_APPLICABLE, FAILED, PASS, REVIEW, SALVAGE, EXCLUDE, VERDICTS
+from edc.algorithms.base import Item, package, CHECKED, NOT_APPLICABLE, FAILED, PASS, REVIEW, SALVAGE, EXCLUDE, VERDICTS
 
 TO_VERDICT = {'DO_NOT_USE': EXCLUDE, 'SALVAGE': SALVAGE, 'NEEDS_REVIEW': REVIEW, 'OBSERVATION': REVIEW,
               'ACCEPTABLE': PASS}
@@ -183,9 +183,7 @@ def emit(algo, raw, labels):
                             '（仅供人工复核，不改变画面判断）')
     if evidence:
         note = '；'.join(filter(None, [note, *evidence]))
-    for report, item in zip(reports, items):
-        report['edc_item'] = item.__dict__.copy()
-    reports[0]['edc_note'] = note
+    package(items, note, reports)
     return raw
 
 

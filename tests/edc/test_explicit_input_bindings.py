@@ -96,12 +96,12 @@ def test_source_frame_mode_never_encodes_or_applies_container_metrics(tmp_path,m
 
 def test_video_path_uses_robot_camera_role_and_single_evidence_input(tmp_path,monkeypatch):
     from edc.algorithms.quality.algorithms.Video_Integrity.inputs import assess
-    from edc.algorithms.quality.algorithms.Video_Integrity import run_check
+    from edc.algorithms.quality.algorithms.Video_Integrity import method
     c=Channel('/misleading/wrist/head','rgb',[],4,'source.mcap',image_available=True,
         representation={'camera_role':'chest','camera_role_status':'confirmed'})
     seen=[]
     def check(path,**params):seen.append(params['cam_type']);return {'score':100}
-    monkeypatch.setattr(run_check,'assess',check)
+    monkeypatch.setattr(method,'assess',check)
     ep=SimpleNamespace(path=tmp_path/'source.mcap',channels={c.name:c},
         materialize_video=lambda n,p:str(p),
         video_evidence=lambda n,inspection_input:{'inspection_object':'derived_preview','checked_path':inspection_input})

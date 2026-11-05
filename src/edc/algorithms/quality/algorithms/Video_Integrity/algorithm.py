@@ -1,4 +1,4 @@
-"""视频完整性：框架怎么调用这项检查（选图片或视频入口在这里，适配在 inputs.py，检查方法在 run_check.py）。"""
+"""视频完整性：框架怎么调用这项检查（选图片或视频入口在这里，适配在 inputs.py，检查方法在 method.py）。"""
 from edc.algorithms.quality.adapters.cpu import BuiltinAlgorithm
 from edc.algorithms.quality.algorithms.Video_Integrity.inputs import input_mode
 

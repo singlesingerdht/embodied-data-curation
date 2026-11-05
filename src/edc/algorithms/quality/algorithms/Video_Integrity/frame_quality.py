@@ -11,7 +11,7 @@
   - 欠曝: mean in (5,70) AND std>15
   - 偏色: RGB 通道均值差 > 100
 
-全帧扫描 (非采样), 作为 run_check 的画面质量守门。
+全帧扫描 (非采样), 作为 method 的画面质量守门。
 """
 import cv2
 import numpy as np

@@ -115,7 +115,7 @@ def test_builtin_parameter_rules_and_fixed_report_snapshot(tmp_path):
 
 
 def test_configured_thresholds_keep_default_behavior_without_silent_rescoring():
-    from edc.algorithms.quality.algorithms.Dedup_Check.run_check import assess
+    from edc.algorithms.quality.algorithms.Dedup_Check.method import assess
     values=[1]*5+list(range(2,97))
     assert assess(values)['dedup']['timestamp_dedup']['severity']=='error'
     configured=assess(values,dedup_ratio_low=.1,dedup_ratio_high=.2)

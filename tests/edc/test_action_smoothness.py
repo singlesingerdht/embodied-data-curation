@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from edc import open_dataset, recommend, run
-from edc.algorithms.quality.algorithms.Action_Smoothness.shake import assess_arrays
+from edc.algorithms.quality.algorithms.Action_Smoothness.method import assess_arrays
 
 
 def fixture(tmp_path, *, clock='shared', unit='m', arms=('right',)):
