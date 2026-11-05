@@ -1,6 +1,7 @@
 """Public plugin metadata and entry-point discovery (interface version 1)."""
 from dataclasses import dataclass, field
 from importlib.metadata import entry_points
+import os
 import re
 
 
@@ -89,10 +90,13 @@ class Registry:
                     "reason": str(exc),
                 })
                 continue
-            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*__[A-Za-z][A-Za-z0-9_]*", plugin.spec.id):
-                raise ValueError(f"External plugin ID must use team__algorithm: {plugin.spec.id}")
-            self.register(plugin)
+            self.register_external(plugin)
         return self
+
+    def register_external(self, plugin):
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*__[A-Za-z][A-Za-z0-9_]*", plugin.spec.id):
+            raise ValueError(f"External plugin ID must use team__algorithm: {plugin.spec.id}")
+        self.register(plugin)
 
 
 def algorithms():
@@ -100,4 +104,21 @@ def algorithms():
     registry = Registry("edc.algorithms")
     for plugin in builtins():
         registry.register(plugin)
-    return registry.discover()
+    registry.discover()
+    for folder in filter(None, os.environ.get('EDC_PLUGINS', '').split(os.pathsep)):
+        registry.register_external(folder_plugin(folder))
+    return registry
+
+
+def folder_plugin(folder):
+    """EDC_PLUGINS 里写的插件文件夹（多个用冒号隔开）：不用安装，直接取文件夹里 algorithm.py 的 plugin。
+    改了代码下次运行就生效；只影响带这个环境变量的命令（edc batch 的子进程会继承）。"""
+    import sys
+    from importlib import import_module
+    from pathlib import Path
+    path = Path(folder).resolve()
+    if not (path / 'algorithm.py').is_file():
+        raise ValueError(f'EDC_PLUGINS: {folder} 里没有 algorithm.py')
+    if str(path.parent) not in sys.path:
+        sys.path.insert(0, str(path.parent))
+    return import_module(f'{path.name}.algorithm').plugin

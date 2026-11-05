@@ -49,7 +49,7 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 | 新写的算法（推荐） | `algorithm.py` + `method.py` + `README.md` | `check()` 直接返回 `Item` |
 | 别人给的旧格式现成方法 | 再加 `result.py` | `method.py` 出原报告，`result.py` 翻成 `Item`（同九个内置算法） |
 
-先做成插件（单独的包，装上即用，不改本项目）；认可后再转正为内置算法。样板：[`examples/plugins/algorithm`](../examples/plugins/algorithm/)（关节跳变，阈值只作演示）。
+先做成插件（单独一个文件夹，命令前加 `EDC_PLUGINS` 就能跑，不改本项目）；认可后再转正为内置算法。样板：[`examples/plugins/algorithm`](../examples/plugins/algorithm/)（关节跳变，阈值只作演示）。
 
 ### 写
 
@@ -57,26 +57,22 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 - `check(episode, params)`：按类型找通道（如关节反馈的 position），不写死通道名；读数据用 `read_signal`（已是国际单位）；判断交给 `method.py`；返回 `Item` 列表。想在报告格子写一句总结，返回 `AlgorithmResult(spec.id, items, note)`。缺数据时返回 `not_applicable` 项并写原因。
 - `method.py`：纯计算，输入数组、输出数字和结论，可单独测试。
 
-### 登记、运行
+### 运行
 
-插件的 `pyproject.toml` 登记一行，`edc` 启动时按它找到算法：
-
-```toml
-[project.entry-points."edc.algorithms"]
-team_example__joint_jump = "joint_jump.algorithm:plugin"
-```
+不用安装：命令前加 `EDC_PLUGINS=插件文件夹`（多个用冒号隔开），框架直接读文件夹里 `algorithm.py` 的 `plugin`，改了代码下次运行就生效，只影响这条命令：
 
 ```bash
-pip install -e examples/plugins/algorithm      # 装上
-edc batch 数据目录 --robot 机型                  # 报告多一列“关节跳变”，参与整条结论
-pip uninstall edc-example-algorithm            # 卸掉
+EDC_PLUGINS=examples/plugins/algorithm/joint_jump .venv/bin/edc algorithms        # 列表多一行“关节跳变”
+EDC_PLUGINS=examples/plugins/algorithm/joint_jump .venv/bin/edc batch 数据 --robot 机型 --output reports/名字.html
 ```
 
-共用环境里装上的插件会进每个人的 `edc batch`；试用请装在单独环境。
+不想要了直接删文件夹；定型后长期使用就转正。
+
+改阈值、跳过、只手动跑的写法见样板的 [README](../examples/plugins/algorithm/README.md)。
 
 ### 转正
 
-文件夹改名搬进 `src/edc/algorithms/quality/algorithms/`（如 `Joint_Jump/`），`spec` 的 id 改成同名，在 `quality/adapters/cpu.py` 的 `ORDER` 里加上，删掉插件登记。类名用 `Algorithm`、导入 method 用相对路径，代码不用改。
+文件夹改名搬进 `src/edc/algorithms/quality/algorithms/`（如 `Joint_Jump/`），`spec` 的 id 改成同名，在 `quality/adapters/cpu.py` 的 `ORDER` 里加上，删掉原插件文件夹。类名用 `Algorithm`、导入 method 用相对路径，代码不用改。
 
 ## 通用插件与运行上下文
 

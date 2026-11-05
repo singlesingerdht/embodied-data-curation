@@ -49,7 +49,7 @@ There are two ways in; the folder looks the same (`algorithm.py` connects to the
 | A newly written method (preferred) | `algorithm.py` + `method.py` + `README.md` | `check()` returns `Item`s directly |
 | An existing method with its own report format | plus `result.py` | `method.py` returns its report, `result.py` turns it into `Item`s (as the nine built-ins do) |
 
-Start as a plugin (a separate package; installing it is enough, this repository is unchanged) and promote it to a built-in once accepted. Template: [`examples/plugins/algorithm`](../examples/plugins/algorithm/) (joint jump; demonstration thresholds only).
+Start as a plugin (a separate folder run with an `EDC_PLUGINS` prefix; this repository is unchanged) and promote it to a built-in once accepted. Template: [`examples/plugins/algorithm`](../examples/plugins/algorithm/) (joint jump; demonstration thresholds only).
 
 ### Write
 
@@ -57,26 +57,22 @@ Start as a plugin (a separate package; installing it is enough, this repository 
 - `check(episode, params)`: find channels by type (for example joint feedback position) rather than fixed names; read with `read_signal` (SI units); leave the judgment to `method.py`; return a list of `Item`. To give the report cell a one-line summary, return `AlgorithmResult(spec.id, items, note)`. Missing data gives a `not_applicable` item with a reason.
 - `method.py`: computation only, arrays in and numbers/verdicts out, testable on its own.
 
-### Register and run
+### Run
 
-One entry point in the plugin's `pyproject.toml` lets `edc` find it:
-
-```toml
-[project.entry-points."edc.algorithms"]
-team_example__joint_jump = "joint_jump.algorithm:plugin"
-```
+No installation: prefix the command with `EDC_PLUGINS=FOLDER` (several separated by colons); the framework loads `plugin` from the folder's `algorithm.py`, code edits apply on the next run, and only that command sees it:
 
 ```bash
-pip install -e examples/plugins/algorithm      # install
-edc batch DATA --robot ROBOT                   # one more report column, part of the episode decision
-pip uninstall edc-example-algorithm            # remove
+EDC_PLUGINS=examples/plugins/algorithm/joint_jump .venv/bin/edc algorithms        # one more line: the plugin
+EDC_PLUGINS=examples/plugins/algorithm/joint_jump .venv/bin/edc batch DATA --robot ROBOT --output reports/NAME.html
 ```
 
-A plugin installed in a shared environment runs in everyone's `edc batch`; try plugins in a separate environment.
+To drop it, delete the folder; for long-term use, promote it.
+
+Thresholds, skipping and manual-only runs are described in the template [README](../examples/plugins/algorithm/README.md) (Chinese).
 
 ### Promote
 
-Rename the folder into `src/edc/algorithms/quality/algorithms/` (for example `Joint_Jump/`), change the `spec` id to the same name, add it to `ORDER` in `quality/adapters/cpu.py`, and drop the plugin entry point. With the class named `Algorithm` and a relative import of method, the code is unchanged.
+Rename the folder into `src/edc/algorithms/quality/algorithms/` (for example `Joint_Jump/`), change the `spec` id to the same name, add it to `ORDER` in `quality/adapters/cpu.py`, and delete the original plugin folder. With the class named `Algorithm` and a relative import of method, the code is unchanged.
 
 ## General plugins and context
 
