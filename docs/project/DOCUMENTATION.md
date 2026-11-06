@@ -37,8 +37,7 @@ python -m http.server 8765 --bind 127.0.0.1 --directory docs/_build/html
 生成页面也可以从 `docs/_build/html/index.html` 打开，完整搜索请使用 HTTP 预览。
 
 文档环境无需安装 EDC、GPU 包或模型。中文搜索使用 jieba 和 `search-dictionary.txt` 中的专业词。
-Mermaid 脚本由 jsDelivr 加载固定版本，供 `how-to/WORKFLOWS.md` 中的工作流图渲染使用。
-离线时该图无法绘制，正文、目录与搜索仍可使用本地构建资源。
+Mermaid 扩展沿用现有配置，供后续图示使用。
 
 ## 新增或调整页面
 
@@ -55,7 +54,7 @@ Mermaid 脚本由 jsDelivr 加载固定版本，供 `how-to/WORKFLOWS.md` 中的
 
 - `_ext/site_navigation.py` 维护页面配对（`PAIRS`）、单语页面（`SHARED`）和两份菜单。
 - `layout.html` 把当前页与配对表写入页面数据；`_static/navigation.js` 据此改写正文链接、保留锚点与搜索词。
-- 筛选导出、工作流、证据与命令行均提供独立中英文页面；共用的维护页通过 `?lang=en` 或 `?lang=zh-CN` 保持导航语言。
+- 筛选导出、证据与命令行均提供独立中英文页面；共用的维护页通过 `?lang=en` 或 `?lang=zh-CN` 保持导航语言。
 - 只有中文正文的页面在英文菜单中标注“中文”。新增单语页面时，务必同时加入 `SHARED`、`NAVIGATION` 和对应 toctree。
 
 ## 自动构建与发布
@@ -77,7 +76,7 @@ Mermaid 脚本由 jsDelivr 加载固定版本，供 `how-to/WORKFLOWS.md` 中的
 ## 发布后启用 README 页面跳转
 
 README 直接使用“快速开始”“数据接入”“算法指南”“开发指南”等用途作为链接文字。
-发布前保留仓库 Markdown 链接；部署成功后，在文档环境运行：
+README 默认使用仓库 Markdown 链接。需要切换到已部署站点时，在文档环境运行：
 
 ```bash
 # 检查正式页面及章节是否可访问，只预览，不写文件。

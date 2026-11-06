@@ -1,4 +1,4 @@
-# 框架结构与设计取舍
+# 框架设计
 
 [返回主页](../../README.zh-CN.md) · [English](ARCHITECTURE.md) · [说明区域](index.md)
 
@@ -66,7 +66,7 @@ src/edc/
 
 新算法通过 `edc.algorithms` 使用 `AlgorithmSpec` 与 `run(context, params)` 注册；新格式通过 `edc.readers` 接入。外部 ID 使用 `team__algorithm`，重复 ID 或不兼容接口版本明确失败；模型与 GPU 依赖按需加载。
 
-具体写法见[接入新质量算法](../how-to/ALGORITHM_PLUGIN.zh-CN.md)与[接入新的数据格式读取器](../how-to/READER_PLUGIN.zh-CN.md)；对象定义见[输出对象与接口参考](../reference/OUTPUTS.zh-CN.md)。
+具体写法见[算法扩展](../how-to/ALGORITHM_PLUGIN.zh-CN.md)与[读取器扩展](../how-to/READER_PLUGIN.zh-CN.md)；对象定义见[接口与输出参考](../reference/OUTPUTS.zh-CN.md)。
 
 ## 明确的边界
 
@@ -78,5 +78,4 @@ src/edc/
 ## 相关页面
 
 - [从质量检查到自主数据整理](QUALITY_VALIDATION.zh-CN.md)：三个价值层次、研究依据与验证安排。
-- [数据格式与机器人配置参考](../reference/DATA_AND_ROBOTS.zh-CN.md)：字段、单位与时间声明。
-- [编排并运行质量工作流](../how-to/WORKFLOWS.md)：阶段、复检与挂起规则。
+- [格式与配置参考](../reference/DATA_AND_ROBOTS.zh-CN.md)：字段、单位与时间声明。

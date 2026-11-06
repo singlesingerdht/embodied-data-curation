@@ -28,7 +28,7 @@ Install, prepare data, and produce the first report end to end.
 :link: how-to/index.en
 :link-type: doc
 
-Connect data, run algorithms, export data, orchestrate workflows, write plugins.
+Connect data, run algorithms, export data, write plugins.
 :::
 
 :::{grid-item-card} Reference
@@ -52,10 +52,10 @@ What data quality means, design choices, evidence limits, and research foundatio
 | Task | Entry point |
 |---|---|
 | Install and run a complete example | [Tutorial: quick start](tutorial/QUICKSTART.md) |
-| Connect a recording | [Connect data and configure a robot](how-to/DATA_AND_ROBOT.md) |
-| Select applicable checks | [Recommend, select, and run algorithms](how-to/RUN_AND_SELECT.md) |
-| Export selected data | [Select and export data by report](how-to/SELECTION.en.md) |
-| Extend algorithms or formats | [Add a quality algorithm](how-to/ALGORITHM_PLUGIN.md) · [Add a reader plugin](how-to/READER_PLUGIN.md) |
+| Connect a recording | [Data and Robot Configuration](how-to/DATA_AND_ROBOT.md) |
+| Select applicable checks | [Run Algorithms](how-to/RUN_AND_SELECT.md) |
+| Export selected data | [Selection and Export](how-to/SELECTION.en.md) |
+| Extend algorithms or formats | [Algorithm Plugins](how-to/ALGORITHM_PLUGIN.md) · [Reader Plugins](how-to/READER_PLUGIN.md) |
 | Review research foundations and validation | [From quality checks to autonomous data curation](explanation/QUALITY_VALIDATION.md) |
 
 EDC provides data quality checks and evidence-based selection. Task-value and policy-value methods are planned; see [research foundations and validation](explanation/QUALITY_VALIDATION.md).

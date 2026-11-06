@@ -27,7 +27,7 @@ html_theme.sidebar_secondary.remove: true
 :link: how-to/index
 :link-type: doc
 
-接入数据、运行算法、导出数据、编排工作流、开发插件。
+接入数据、运行算法、导出数据、开发插件。
 :::
 
 :::{grid-item-card} 参考
@@ -51,10 +51,10 @@ html_theme.sidebar_secondary.remove: true
 | 任务 | 入口 |
 |---|---|
 | 安装并运行完整示例 | [教程：快速开始](tutorial/QUICKSTART.zh-CN.md) |
-| 接入采集记录 | [接入数据并配置机器人](how-to/DATA_AND_ROBOT.zh-CN.md) |
-| 选择适用的检查 | [推荐、选择并运行算法](how-to/RUN_AND_SELECT.zh-CN.md) |
-| 导出筛选结果 | [按报告筛选并导出数据](how-to/SELECTION.md) |
-| 扩展算法或数据格式 | [接入新质量算法](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [接入读取器](how-to/READER_PLUGIN.zh-CN.md) |
+| 接入采集记录 | [数据与机器人配置](how-to/DATA_AND_ROBOT.zh-CN.md) |
+| 选择适用的检查 | [算法运行](how-to/RUN_AND_SELECT.zh-CN.md) |
+| 导出筛选结果 | [筛选与导出](how-to/SELECTION.md) |
+| 扩展算法或数据格式 | [算法扩展](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [接入读取器](how-to/READER_PLUGIN.zh-CN.md) |
 | 了解研究依据与验证范围 | [从质量检查到自主数据整理](explanation/QUALITY_VALIDATION.zh-CN.md) |
 
 EDC 提供数据质量检查与有证据支持的筛选。任务价值与策略价值方法计划逐步接入，见[研究依据与验证安排](explanation/QUALITY_VALIDATION.zh-CN.md)。

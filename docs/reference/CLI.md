@@ -1,6 +1,6 @@
 # EDC 命令行参考
 
-[返回主页](../../README.zh-CN.md) · [操作指南](../how-to/index.md)
+[返回主页](../../README.zh-CN.md) · [English](CLI.en.md) · [操作指南](../how-to/index.md)
 
 本页列出 `edc` 命令与选项。命令行为以安装版 `edc <命令> --help` 和源码为准；操作步骤见对应的操作指南页。
 
@@ -8,16 +8,16 @@
 
 | 命令 | 用途 | 操作指南 |
 |---|---|---|
-| `edc channels <数据>` | 列出读取器在数据中找到的通道 | [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md) |
-| `edc robot check --robot <yaml> --data <数据>` | 核对机器人 YAML 声明的字段能否读出 | [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md) |
-| `edc robot urdf --urdf <文件>` | 列出 URDF 的链与关节 | [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md#urdf) |
-| `edc robot urdf --robot <yaml> --data <数据1> [数据2]` | 核对 YAML 中 URDF 段的关节方向与坐标系 | [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md#urdf) |
-| `edc batch <输入...> --robot <yaml>` | 对每条轨迹运行已登记质量集合，生成一份 HTML | [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md) |
-| `edc run <数据> --output <目录>` | 单份数据、完整输出目录；可指定算法 | [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md) |
-| `edc algorithms` | 列出已注册的质量算法（内置与已安装） | [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md) |
-| `edc regenerate <report.json> --output <目录>` | 按 batch 报告复制或链接选中数据 | [按报告筛选并导出数据](../how-to/SELECTION.md) |
-| `edc workflow check <配置>` | 校验阶段顺序、方法与强制复检 | [编排并运行质量工作流](../how-to/WORKFLOWS.md) |
-| `edc workflow run <配置> --output <目录>` | 执行配置的阶段并保存放行决定 | [编排并运行质量工作流](../how-to/WORKFLOWS.md) |
+| `edc channels <数据>` | 列出读取器在数据中找到的通道 | [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md) |
+| `edc robot check --robot <yaml> --data <数据>` | 核对机器人 YAML 声明的字段能否读出 | [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md) |
+| `edc robot urdf --urdf <文件>` | 列出 URDF 的链与关节 | [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md#urdf) |
+| `edc robot urdf --robot <yaml> --data <数据1> [数据2]` | 核对 YAML 中 URDF 段的关节方向与坐标系 | [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md#urdf) |
+| `edc batch <输入...> --robot <yaml>` | 对每条轨迹运行已登记质量集合，生成一份 HTML | [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md) |
+| `edc run <数据> --output <目录>` | 单份数据、完整输出目录；可指定算法 | [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md) |
+| `edc algorithms` | 列出已注册的质量算法（内置与已安装） | [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md) |
+| `edc regenerate <report.json> --output <目录>` | 按 batch 报告复制或链接选中数据 | [筛选与导出](../how-to/SELECTION.md) |
+| `edc workflow check <配置>` | 校验阶段顺序、方法与强制复检 | — |
+| `edc workflow run <配置> --output <目录>` | 执行配置的阶段并保存放行决定 | — |
 
 ## 常用选项
 
@@ -56,7 +56,7 @@ edc run <数据> [--robot <yaml> | --profile <yaml>] --output <目录> \
 
 ### `edc regenerate`
 
-完整参数、选择条件与退出码见[按报告筛选并导出数据](../how-to/SELECTION.md)。
+完整参数、选择条件与退出码见[筛选与导出](../how-to/SELECTION.md)。
 
 ### `edc workflow`
 
@@ -65,7 +65,7 @@ edc workflow check <工作流.yaml>
 edc workflow run <工作流.yaml> --output <目录> [--resume]
 ```
 
-`check` 只校验配置；`run` 执行阶段。`--resume` 从已保存的状态恢复执行。阶段字段见[编排并运行质量工作流](../how-to/WORKFLOWS.md)。
+`check` 只校验配置；`run` 执行阶段。`--resume` 从已保存的状态恢复执行。
 
 ## 环境变量
 

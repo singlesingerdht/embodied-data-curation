@@ -9,8 +9,8 @@ Framework design, data quality concepts, research foundations, and validation pl
 | Topic | Page | Main answer |
 |---|---|---|
 | Why curate data? What do quality, task value, and policy value each establish? | [From quality checks to autonomous data curation](QUALITY_VALIDATION.md) | User needs, three value levels, research support, validation plans, long-term goal |
-| Why are data, configuration, results, and extension points divided this way? | [Framework structure and design choices](ARCHITECTURE.md) | Dataset → Episode → Channel, four-part configuration, SI and unknowns, result semantics, finite-stage workflows |
-| What does passing a check establish, and what does it not? | [Framework structure and design choices](ARCHITECTURE.md), and [from quality checks to autonomous data curation](QUALITY_VALIDATION.md#needs) | Scope of checked conditions and limits of conclusions |
+| Why are data, configuration, results, and extension points divided this way? | [Framework Design](ARCHITECTURE.md) | Dataset → Episode → Channel, four-part configuration, SI and unknowns, result semantics, finite-stage workflows |
+| What does passing a check establish, and what does it not? | [Framework Design](ARCHITECTURE.md), and [from quality checks to autonomous data curation](QUALITY_VALIDATION.md#needs) | Scope of checked conditions and limits of conclusions |
 
 ## Related areas
 
@@ -22,5 +22,5 @@ Framework design, data quality concepts, research foundations, and validation pl
 :maxdepth: 1
 
 From quality checks to autonomous data curation <QUALITY_VALIDATION>
-Framework structure and design choices <ARCHITECTURE>
+Framework Design <ARCHITECTURE>
 ```

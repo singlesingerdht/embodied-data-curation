@@ -1,4 +1,4 @@
-# Recommend, Select, and Run Algorithms
+# Run Algorithms
 
 [Home](../../README.md) · [简体中文](RUN_AND_SELECT.zh-CN.md) · [Built-in algorithm reference](../reference/ALGORITHMS.md)
 
@@ -39,7 +39,7 @@ edc batch /path/to/dataset \
 
 ### Use the same parameters (Python API)
 
-Pass the same effective parameters to recommendation and execution. Compile a robot card; read a complete profile directly:
+Pass the same effective parameters to recommendation and execution. Compile a robot card; read a complete profile directly. The example below uses the same MCAP configuration as the home page:
 
 ```python
 from pathlib import Path
@@ -61,12 +61,12 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
                      params={k: v for k, v in params.items() if k in selected})
 ```
 
-Card parameters belong only under `checks.<algorithm_id>`; no separate parameter file overrides them. After the yaml changes, `edc batch` asks for a new signature. Use `arms: [left]` and `channels` according to each method's schema; rerun recommendations with the same updated scope. [Declared robot versus run scope](../reference/DATA_AND_ROBOTS.md#scope)
+Card parameters belong only under `checks.<algorithm_id>`; no separate parameter file overrides them. After the YAML changes, `edc batch` asks for a new signature. Use `arms: [left]` and `channels` according to each method's schema; rerun recommendations with the same updated scope. [Declared robot versus run scope](../reference/DATA_AND_ROBOTS.md#scope)
 
 <a id="results"></a>
 ## 3. Read the results
 
-HTML provides an overall decision, episode overview, problems by algorithm, and episode details. Locate the affected episode and method, then inspect its reason. Full metrics and evidence are in JSON and outputs retained with `--keep`. See the [real MCAP reference result](../tutorial/QUICKSTART.md#results).
+HTML provides an overall decision, episode overview, problems by algorithm, and episode details. Locate the affected episode and method, then inspect its reason. Full metrics and evidence are in JSON and outputs retained with `--keep`. See the [Quick Start](../tutorial/QUICKSTART.md#results).
 
 Item verdicts are PASS, REVIEW, SALVAGE, or EXCLUDE. Inapplicability and execution failure are distinct from quality judgments. A summary decision does not replace complete evaluation or workflow release conditions; unchecked inputs are not passes.
 
@@ -74,6 +74,5 @@ Item verdicts are PASS, REVIEW, SALVAGE, or EXCLUDE. Inapplicability and executi
 
 ## Next steps
 
-- Copy or link the data a report selects: [select and export data by report](SELECTION.en.md).
-- Chain stages into a rechecked flow: [orchestrate and run a quality workflow](WORKFLOWS.en.md).
+- Copy or link the data a report selects: [Selection and Export](SELECTION.en.md).
 - Tighten or skip a check: [built-in algorithm reference](../reference/ALGORITHMS.md) and [scope and evidence reference](../reference/EVIDENCE_AND_SCOPE.en.md).

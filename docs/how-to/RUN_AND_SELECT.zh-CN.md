@@ -1,4 +1,4 @@
-# 推荐、选择并运行算法
+# 算法运行
 
 [返回主页](../../README.zh-CN.md) · [English](RUN_AND_SELECT.md) · [内置质量算法参考](../reference/ALGORITHMS.zh-CN.md)
 
@@ -35,11 +35,11 @@ edc batch /path/to/dataset \
   --keep /path/to/results/details --jobs 1
 ```
 
-`--keep` 保存每条轨迹的完整结果与证据；目录须新建。`--jobs` 控制轨迹并发，默认16，首次使用建议1。`--tmp` 可指定临时目录。只列注册算法用 `edc algorithms`；没有独立的推荐 CLI 或 `edc config export` 命令。完整命令行参数见[命令行参考](../reference/CLI.md)。
+`--keep` 保存每条轨迹的完整结果与证据；目录须新建。`--jobs` 控制轨迹并发，默认16，首次使用建议1。`--tmp` 可指定临时目录。只列注册算法用 `edc algorithms`；没有独立的推荐命令行入口或 `edc config export` 命令。完整命令行参数见[命令行参考](../reference/CLI.md)。
 
-### 用同一套参数（Python API）
+### 使用同一套参数（Python 接口）
 
-推荐与执行应传入同一套生效参数。机器人卡片需先编译；完整 profile 直接读取。下面例子与主页 MCAP 配置一致：
+推荐与执行应传入同一套生效参数。机器人卡片需先编译；完整配置直接读取。下面例子与主页 MCAP 配置一致：
 
 ```python
 from pathlib import Path
@@ -61,7 +61,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
                      params={k: v for k, v in params.items() if k in selected})
 ```
 
-卡片参数只写在 `checks.<算法ID>`，不另用参数文件覆盖；yaml 改过后 `edc batch` 会要求重新签名。范围参数如 `arms: [left]` 与输入 `channels` 依具体方法声明使用。切换范围后推荐与执行都要使用更新的参数。[机器人声明与本次检查范围](../reference/DATA_AND_ROBOTS.zh-CN.md#scope)
+卡片参数只写在 `checks.<algorithm_id>`，不另用参数文件覆盖；YAML 改过后 `edc batch` 会要求重新签名。范围参数如 `arms: [left]` 与输入 `channels` 依具体方法声明使用。切换范围后推荐与执行都要使用更新的参数。[机器人声明与本次检查范围](../reference/DATA_AND_ROBOTS.zh-CN.md#scope)
 
 <a id="results"></a>
 ## 3. 阅读结果
@@ -74,6 +74,5 @@ HTML 提供整体结论、逐条一览、按算法看问题和逐条详情。先
 
 ## 下一步
 
-- 按报告筛选并导出数据：[按报告筛选并导出数据](SELECTION.md)。
-- 把多个阶段串成可复检的流程：[编排并运行质量工作流](WORKFLOWS.md)。
+- 按报告筛选并导出数据：[筛选与导出](SELECTION.md)。
 - 想让某项检查更严格或跳过某项检查：[内置质量算法参考](../reference/ALGORITHMS.zh-CN.md) 与[检查范围与证据参数参考](../reference/EVIDENCE_AND_SCOPE.md)。

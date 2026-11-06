@@ -1,9 +1,9 @@
-# Data Formats and Robot Configuration Reference
+# Formats and Configuration Reference
 
-[Home](../../README.md) · [简体中文](DATA_AND_ROBOTS.zh-CN.md) · [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md)
+[Home](../../README.md) · [简体中文](DATA_AND_ROBOTS.zh-CN.md) · [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md)
 
 This page is for **lookup**: which data formats are supported, which robot configurations ship with the repository, which robot-YAML fields exist, and how units and time are declared.
-Step-by-step instructions are in [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md); format dependencies are installed as described in the [quick start](../tutorial/QUICKSTART.md).
+Step-by-step instructions are in [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md); format dependencies are installed as described in the [quick start](../tutorial/QUICKSTART.md).
 
 Readers extract numbers, images, and timestamps from files. Robot configuration describes which part each recording belongs to, what it represents, and which units it uses. Choose a matching format and configuration, then check which algorithms can run on the data.
 
@@ -110,6 +110,6 @@ Distinguish acquisition, container, playback, synthetic, and unknown time. Unit 
 
 ## Related pages
 
-- [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md): inspect fields, write the configuration, validate with URDF.
-- [Recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md): check what the current configuration can run.
+- [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md): inspect fields, write the configuration, validate with URDF.
+- [Run Algorithms](../how-to/RUN_AND_SELECT.md): check what the current configuration can run.
 - [Scope and evidence reference](EVIDENCE_AND_SCOPE.en.md): arm scope, record-header evidence, and joint freeze evidence.

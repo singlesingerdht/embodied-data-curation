@@ -1,11 +1,11 @@
-# Add a Reader Plugin for a New Data Format
+# Reader Plugins
 
 [Home](../../README.md) · [简体中文](READER_PLUGIN.zh-CN.md) · [Output objects and interface reference](../reference/OUTPUTS.md)
 
 Reader plugins expose a data format as Dataset → Episode → Channel through the `edc.readers` entry point.
 The contract for the reader interface is in the [output objects and interface reference](../reference/OUTPUTS.md#readers); the data model and its boundaries are in [framework structure and design choices](../explanation/ARCHITECTURE.md).
 
-A robot using an existing format usually requires only a configuration; see [connect data and configure a robot](DATA_AND_ROBOT.md).
+A robot using an existing format usually requires only a configuration; see [Data and Robot Configuration](DATA_AND_ROBOT.md).
 
 ## 1. Start from the template
 
@@ -29,7 +29,7 @@ Implementation requirements:
 pip install /path/to/reader-plugin
 ```
 
-Open a representative source with the public API and a matching robot configuration, then run the applicable checks using [recommend, select, and run algorithms](RUN_AND_SELECT.md). Confirm that preflight and execution discover the installed reader. Validation covers:
+Open a representative source with the public API and a matching robot configuration, then run the applicable checks using [Run Algorithms](RUN_AND_SELECT.md). Confirm that preflight and execution discover the installed reader. Validation covers:
 
 - available, missing, corrupt, and failed inputs each have an explicit outcome;
 - multi-episode boundaries come from metadata or selectors, not file counts;

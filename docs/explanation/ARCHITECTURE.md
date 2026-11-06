@@ -1,4 +1,4 @@
-# Framework Structure and Design Choices
+# Framework Design
 
 [Home](../../README.md) · [简体中文](ARCHITECTURE.zh-CN.md) · [Explanation area](index.en.md)
 
@@ -66,7 +66,7 @@ Workflows orchestrate an explicit, finite stage list using SI execution inputs, 
 
 New algorithms register through `edc.algorithms` using `AlgorithmSpec` and `run(context, params)`; new formats register through `edc.readers`. External IDs use `team__algorithm`; duplicate IDs and incompatible interface versions fail explicitly. Model and GPU dependencies load lazily.
 
-See [add a new quality algorithm](../how-to/ALGORITHM_PLUGIN.md) and [add a reader plugin](../how-to/READER_PLUGIN.md); object definitions are in the [output objects and interface reference](../reference/OUTPUTS.md).
+See [Algorithm Plugins](../how-to/ALGORITHM_PLUGIN.md) and [add a reader plugin](../how-to/READER_PLUGIN.md); object definitions are in the [output objects and interface reference](../reference/OUTPUTS.md).
 
 ## Explicit limits
 
@@ -79,4 +79,3 @@ See [add a new quality algorithm](../how-to/ALGORITHM_PLUGIN.md) and [add a read
 
 - [From quality checks to autonomous data curation](QUALITY_VALIDATION.md): the three value levels, research foundations, and validation plans.
 - [Data formats and robot configuration reference](../reference/DATA_AND_ROBOTS.md): fields, units, and time declarations.
-- [Orchestrate and run a quality workflow](../how-to/WORKFLOWS.en.md): stages, rechecks, and suspension rules.

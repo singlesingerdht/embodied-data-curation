@@ -1,6 +1,6 @@
-# EDC Command-Line Reference
+# Command-Line Reference
 
-[Home](../../README.md) · [简体中文](CLI.en.md) · [How-to guides](../how-to/index.en.md)
+[Home](../../README.md) · [简体中文](CLI.md) · [How-to guides](../how-to/index.en.md)
 
 Commands and common options are listed below. The installed `edc <command> --help` and source code are authoritative; follow the linked guides for procedures.
 
@@ -8,16 +8,16 @@ Commands and common options are listed below. The installed `edc <command> --hel
 
 | Command | Purpose | Guide |
 |---|---|---|
-| `edc channels <data>` | List channels found by the reader | [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md) |
-| `edc robot check --robot <yaml> --data <data>` | Verify that fields declared in robot YAML can be read | [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md) |
-| `edc robot urdf --urdf <file>` | List URDF chains and joints | [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md#urdf) |
-| `edc robot urdf --robot <yaml> --data <data1> [data2]` | Check joint directions and coordinate frames in the YAML's URDF section | [Connect data and configure a robot](../how-to/DATA_AND_ROBOT.md#urdf) |
-| `edc batch <inputs...> --robot <yaml>` | Run the registered quality suite on each episode and generate one HTML report | [Recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md) |
-| `edc run <data> --output <directory>` | Run on one input with a complete output directory; optionally select algorithms | [Recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md) |
-| `edc algorithms` | List registered quality algorithms, both built-in and installed | [Recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md) |
+| `edc channels <data>` | List channels found by the reader | [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md) |
+| `edc robot check --robot <yaml> --data <data>` | Verify that fields declared in robot YAML can be read | [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md) |
+| `edc robot urdf --urdf <file>` | List URDF chains and joints | [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md#urdf) |
+| `edc robot urdf --robot <yaml> --data <data1> [data2]` | Check joint directions and coordinate frames in the YAML's URDF section | [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md#urdf) |
+| `edc batch <inputs...> --robot <yaml>` | Run the registered quality suite on each episode and generate one HTML report | [Run Algorithms](../how-to/RUN_AND_SELECT.md) |
+| `edc run <data> --output <directory>` | Run on one input with a complete output directory; optionally select algorithms | [Run Algorithms](../how-to/RUN_AND_SELECT.md) |
+| `edc algorithms` | List registered quality algorithms, both built-in and installed | [Run Algorithms](../how-to/RUN_AND_SELECT.md) |
 | `edc regenerate <report.json> --output <directory>` | Copy or link selected data using a batch report | [Select and export data from a report](../how-to/SELECTION.en.md) |
-| `edc workflow check <config>` | Validate stage order, methods, and mandatory rechecks | [Orchestrate and run quality workflows](../how-to/WORKFLOWS.en.md) |
-| `edc workflow run <config> --output <directory>` | Execute configured stages and save the release decision | [Orchestrate and run quality workflows](../how-to/WORKFLOWS.en.md) |
+| `edc workflow check <config>` | Validate stage order, methods, and mandatory rechecks | — |
+| `edc workflow run <config> --output <directory>` | Execute configured stages and save the release decision | — |
 
 ## Common options
 
@@ -65,7 +65,7 @@ edc workflow check <workflow.yaml>
 edc workflow run <workflow.yaml> --output <directory> [--resume]
 ```
 
-`check` validates configuration only; `run` executes stages. `--resume` resumes from saved state. See [orchestrate and run quality workflows](../how-to/WORKFLOWS.en.md) for stage fields.
+`check` validates configuration only; `run` executes stages. `--resume` resumes from saved state.
 
 ## Environment variables
 

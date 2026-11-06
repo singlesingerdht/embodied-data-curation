@@ -1,9 +1,9 @@
-# Time-Difference Evidence, Arm Scope, and Joint Visual Review
+# Scope and Evidence Reference
 
-[简体中文](EVIDENCE_AND_SCOPE.en.md)
+[简体中文](EVIDENCE_AND_SCOPE.md)
 
 This page lists configuration and evidence fields for time differences, arm scope, and joint visual review. These evidence features do not add standalone algorithms or change algorithm scores, physical thresholds, or output base classes.
-For algorithm inputs and judgments, see the [built-in quality algorithm reference](ALGORITHMS.md); for stage handoffs and rechecks, see [quality workflows](../how-to/WORKFLOWS.en.md).
+For algorithm inputs and judgments, see the [built-in quality algorithm reference](ALGORITHMS.md).
 
 ## Time algorithms: configuration and results
 

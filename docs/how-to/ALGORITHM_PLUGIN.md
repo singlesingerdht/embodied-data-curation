@@ -1,4 +1,4 @@
-# Add a Quality Algorithm
+# Algorithm Plugins
 
 [简体中文](ALGORITHM_PLUGIN.zh-CN.md) · [Interface reference](../reference/OUTPUTS.md)
 

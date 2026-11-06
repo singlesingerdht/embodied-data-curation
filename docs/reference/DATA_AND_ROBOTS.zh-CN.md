@@ -1,9 +1,9 @@
-# 数据格式与机器人配置参考
+# 格式与配置参考
 
-[返回主页](../../README.zh-CN.md) · [English](DATA_AND_ROBOTS.md) · [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)
+[返回主页](../../README.zh-CN.md) · [English](DATA_AND_ROBOTS.md) · [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md)
 
 本页用于**查阅**：支持哪些数据格式、仓库已有哪些机器人配置、机器人 YAML 有哪些字段，以及单位与时间的声明方式。
-具体操作步骤见[接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)；格式依赖的安装见[快速开始](../tutorial/QUICKSTART.zh-CN.md)。
+具体操作步骤见[数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md)；格式依赖的安装见[快速开始](../tutorial/QUICKSTART.zh-CN.md)。
 
 读取器负责从文件中取出数值、图像和时间记录；机器人配置说明这些记录属于哪个部件、表示什么、使用什么单位。先选择匹配的格式和配置，再查看当前数据能运行哪些算法。
 
@@ -110,6 +110,6 @@
 
 ## 相关页面
 
-- [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)：查看字段、编写配置、URDF 核对。
-- [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md)：确认当前配置能运行哪些检查。
-- [检查范围与证据参数参考](EVIDENCE_AND_SCOPE.md)：机械臂范围、时间差证据与画面联合复核的详细参数。
+- [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md)：查看字段、编写配置、URDF 核对。
+- [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md)：确认当前配置能运行哪些检查。
+- [范围与证据参考](EVIDENCE_AND_SCOPE.md)：机械臂范围、时间差证据与画面联合复核的详细参数。

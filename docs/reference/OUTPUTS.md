@@ -1,9 +1,9 @@
-# Output Objects and Interface Reference
+# Interfaces and Outputs
 
-[Home](../../README.md) · [简体中文](OUTPUTS.zh-CN.md) · [Add a quality algorithm](../how-to/ALGORITHM_PLUGIN.md)
+[Home](../../README.md) · [简体中文](OUTPUTS.zh-CN.md) · [Algorithm Plugins](../how-to/ALGORITHM_PLUGIN.md)
 
 Public interfaces for algorithm inputs, quality results, plugins, and run records.
-For the procedure of writing a plugin, see [add a new quality algorithm](../how-to/ALGORITHM_PLUGIN.md); for the reasoning behind these boundaries, see [framework structure and design choices](../explanation/ARCHITECTURE.md).
+For the procedure of writing a plugin, see [Algorithm Plugins](../how-to/ALGORITHM_PLUGIN.md); for the reasoning behind these boundaries, see [Framework Design](../explanation/ARCHITECTURE.md).
 
 <a id="interfaces"></a>
 ## Interface types
@@ -60,7 +60,7 @@ Plugins register under `edc.algorithms`. `AlgorithmSpec` declares ID, version, c
 
 The quality helper does not force value methods to return quality judgments or collapse distributions and experimental estimates into a score. Editing/augmentation returns `output / params / source_mapping`; validate derived copies before quality rechecks, and new data must not overwrite sources. The current transform validator accepts only identity mappings that keep row counts and times unchanged; resampling, arbitrary segment edits, and channel additions/removals are currently unsupported. Every editing/augmentation output branch must be followed immediately by a quality stage, or configuration validation fails.
 
-[Workflow documentation](../how-to/WORKFLOWS.en.md) and [synthetic plugins](../../examples/plugins/workflow/) illustrate the supported contracts.
+[Synthetic plugins](../../examples/plugins/workflow/) illustrate the supported contracts.
 
 ## Run artifacts
 
@@ -76,11 +76,11 @@ Reader plugins register under `edc.readers` and must:
 - Distinguish acquisition, container, playback, synthetic, and unknown time; preserve unknown units and semantics.
 - Verify numeric, image, time, and provenance reads against declarations, including missing and failed inputs.
 
-For steps and installation, see [add a reader plugin for a new data format](../how-to/READER_PLUGIN.md).
+For steps and installation, see [Reader Plugins](../how-to/READER_PLUGIN.md).
 
 ## Related pages
 
-- [Add a new quality algorithm](../how-to/ALGORITHM_PLUGIN.md)
-- [Add a reader plugin for a new data format](../how-to/READER_PLUGIN.md)
-- [Framework structure and design choices](../explanation/ARCHITECTURE.md)
+- [Algorithm Plugins](../how-to/ALGORITHM_PLUGIN.md)
+- [Reader Plugins](../how-to/READER_PLUGIN.md)
+- [Framework Design](../explanation/ARCHITECTURE.md)
 - [Built-in quality algorithm reference](ALGORITHMS.md)

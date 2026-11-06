@@ -1,4 +1,4 @@
-# Copy data selected by a report
+# Selection and Export
 
 [简体中文](SELECTION.md)
 
@@ -12,6 +12,8 @@ Use the JSON written alongside the HTML by `edc batch --output /path/to/report.h
 edc regenerate /path/to/report.json --output /path/to/selected \
   [--mode copy|link] [--include keep,review] [--profile /path/to/robot.yaml] [--preview]
 ```
+
+Square brackets mark optional arguments; omit the brackets when running.
 
 ```bash
 # Preview selection
@@ -61,5 +63,3 @@ selected/
 | No matches | No output directory; exit 0 |
 | Duplicate names, missing source, nonexistent source or reserved-name conflict | Record failures, continue other entries; exit 1 |
 | Nonempty or nested output, missing or invalid report | Reject without writing; exit 2 |
-
-Value, editing, and augmentation algorithms need separate integration. Existing finite stages, optional empty stages, provenance validation, rechecks, and synthetic examples are documented in [workflow guide](WORKFLOWS.en.md).

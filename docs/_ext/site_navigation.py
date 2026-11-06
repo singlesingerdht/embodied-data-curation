@@ -10,7 +10,6 @@ from pathlib import Path
 
 PAIRS = {
     'how-to/SELECTION': 'how-to/SELECTION.en',
-    'how-to/WORKFLOWS': 'how-to/WORKFLOWS.en',
     'reference/CLI': 'reference/CLI.en',
     'reference/EVIDENCE_AND_SCOPE': 'reference/EVIDENCE_AND_SCOPE.en',
     'index': 'index.en',
@@ -53,12 +52,11 @@ NAVIGATION = {
             ('tutorial/QUICKSTART.zh-CN', '快速开始'),
         ]},
         {'title': '操作指南', 'index': 'how-to/index', 'items': [
-            ('how-to/DATA_AND_ROBOT.zh-CN', '接入数据并配置机器人'),
-            ('how-to/RUN_AND_SELECT.zh-CN', '推荐、选择并运行算法'),
-            ('how-to/SELECTION', '按报告筛选并导出数据'),
-            ('how-to/WORKFLOWS', '编排并运行质量工作流'),
-            ('how-to/ALGORITHM_PLUGIN.zh-CN', '接入新质量算法'),
-            ('how-to/READER_PLUGIN.zh-CN', '接入新的数据格式读取器'),
+            ('how-to/DATA_AND_ROBOT.zh-CN', '数据与机器人配置'),
+            ('how-to/RUN_AND_SELECT.zh-CN', '算法运行'),
+            ('how-to/SELECTION', '筛选与导出'),
+            ('how-to/ALGORITHM_PLUGIN.zh-CN', '算法扩展'),
+            ('how-to/READER_PLUGIN.zh-CN', '读取器扩展'),
         ]},
         {'title': '参考', 'index': 'reference/index', 'items': [
             ('reference/DATA_AND_ROBOTS.zh-CN', '数据格式与机器人配置'),
@@ -69,7 +67,7 @@ NAVIGATION = {
         ]},
         {'title': '说明', 'index': 'explanation/index', 'items': [
             ('explanation/QUALITY_VALIDATION.zh-CN', '研究依据与验证'),
-            ('explanation/ARCHITECTURE.zh-CN', '框架结构与设计取舍'),
+            ('explanation/ARCHITECTURE.zh-CN', '框架设计'),
         ]},
         {'title': '项目与维护', 'items': [
             ('project/DOCUMENTATION', '文档维护与发布'),
@@ -80,12 +78,11 @@ NAVIGATION = {
             ('tutorial/QUICKSTART', 'Quick start'),
         ]},
         {'title': 'How-to guides', 'index': 'how-to/index.en', 'items': [
-            ('how-to/DATA_AND_ROBOT', 'Connect data and configure a robot'),
-            ('how-to/RUN_AND_SELECT', 'Recommend, select, and run algorithms'),
+            ('how-to/DATA_AND_ROBOT', 'Data and Robot Configuration'),
+            ('how-to/RUN_AND_SELECT', 'Run Algorithms'),
             ('how-to/SELECTION.en', 'Select and export data'),
-            ('how-to/WORKFLOWS.en', 'Workflows and rechecks'),
-            ('how-to/ALGORITHM_PLUGIN', 'Add a quality algorithm'),
-            ('how-to/READER_PLUGIN', 'Add a reader plugin'),
+            ('how-to/ALGORITHM_PLUGIN', 'Algorithm Plugins'),
+            ('how-to/READER_PLUGIN', 'Reader Plugins'),
         ]},
         {'title': 'Reference', 'index': 'reference/index.en', 'items': [
             ('reference/DATA_AND_ROBOTS', 'Data formats and robot configuration'),

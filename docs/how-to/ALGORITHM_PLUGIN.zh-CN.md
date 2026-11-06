@@ -1,4 +1,4 @@
-# 接入新质量算法
+# 算法扩展
 
 [English](ALGORITHM_PLUGIN.md) · [接口参考](../reference/OUTPUTS.zh-CN.md)
 
@@ -33,7 +33,7 @@ def measure_steps(positions):
     return maximum
 ```
 
-输入为 `N × D` 关节角数组，单位 rad；输出为最大相邻变化量。已有方法可在此复用计算逻辑。
+输入为 `N × D` 关节角数组，单位为弧度；输出为最大相邻变化量。已有方法可在此复用计算逻辑。
 
 ## 3. 实现算法接口
 
@@ -60,7 +60,7 @@ class JointJump(QualityAlgorithm):
                                "default": 0.2},
             },
         },
-        input_descriptions=("关节位置反馈，单位 rad，至少两个样本。",),
+        input_descriptions=("关节位置反馈，以弧度为单位，至少两个样本。",),
     )
 
     def check(self, episode, params):
@@ -86,7 +86,7 @@ class JointJump(QualityAlgorithm):
             items.append(Item(
                 channel.name,
                 verdict="REVIEW" if maximum > threshold else "PASS",
-                reason=f"最大相邻变化 {maximum:.3f} rad。",
+                reason=f"最大相邻变化 {maximum:.3f} 弧度。",
                 metrics={"max_step_rad": maximum},
             ))
         return items
@@ -100,7 +100,7 @@ plugin = JointJump()
 | `AlgorithmSpec` | 声明 ID、版本、参数和输入要求 |
 | `check(episode, params)` | 对一条轨迹执行检查 |
 | `episode.channels` | 按模态、字段和反馈类型选择通道 |
-| `episode.read_signal()` | 读取执行器准备的 SI 数值数组 |
+| `episode.read_signal()` | 读取执行器准备的国际单位制数值数组 |
 | `Item` | 保存检查对象、判断、指标和证据 |
 
 外部算法 ID 使用 `team__algorithm`。`presets=("quality_cpu",)` 将算法加入批量质量集合；仅按需执行时可省略。示例阈值用于演示，实际阈值在机器人配置中设置。

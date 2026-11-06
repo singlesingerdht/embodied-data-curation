@@ -1,4 +1,4 @@
-# Connect Data and Robot Configuration
+# Data and Robot Configuration
 
 [简体中文](DATA_AND_ROBOT.zh-CN.md)
 
@@ -83,11 +83,19 @@ This command reads declared channels and checks numeric ranges in the first epis
 <a id="urdf"></a>
 ### URDF
 
-Joint limits and forward kinematics require a URDF under the corresponding arm. Inspect the chain, then list joints in recorded order:
+If you have a URDF, the command can generate a YAML fragment for its joint chain. First inspect the link tree and choose the arm's base and tip:
+
+```bash
+edc robot urdf --urdf /path/to/robot.urdf
+```
+
+Specify the chain to print a copyable `urdf` configuration:
 
 ```bash
 edc robot urdf --urdf /path/to/robot.urdf --base base_link --tip tool_link
 ```
+
+Merge the output under `arms.main` or `arms.left/right`, alongside `joints`:
 
 ```yaml
 urdf:
@@ -97,7 +105,7 @@ urdf:
   tip_link: tool_link
 ```
 
-`urdf.file` resolves relative to the robot YAML. With two episodes and measured end-effector positions, validate the chain and frame relation:
+EDC reads joint limits, velocity limits, and kinematics from the URDF. The command prints the joint-chain fragment; complete the YAML with data fields, units, time, and cameras. Order `urdf.joints` to match the recorded columns. `urdf.file` resolves relative to the robot YAML. With two episodes and measured end-effector positions, validate the chain and frame relation:
 
 ```bash
 edc robot urdf --robot /path/to/robot.yaml \
@@ -132,4 +140,4 @@ with edc.open_dataset("/path/to/data", profile=profile) as dataset:
     result = edc.run(dataset, output="/path/to/results/run", params=params)
 ```
 
-[Algorithm selection and reports](RUN_AND_SELECT.md) · [Formats and configuration](../reference/DATA_AND_ROBOTS.md)
+[Run Algorithms](RUN_AND_SELECT.md) · [Formats and configuration](../reference/DATA_AND_ROBOTS.md)

@@ -3,7 +3,7 @@
 [Home](../../README.md) · [简体中文](ALGORITHMS.zh-CN.md) · [Recommend, select, and run](../how-to/RUN_AND_SELECT.md)
 
 This page describes the **inputs, parameters, outputs, and limits** of the nine built-in quality algorithms. It is for lookup and does not cover running them.
-To inspect inputs, choose algorithms, execute them, and read the report, see [recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md); output fields are in the [output objects and interface reference](OUTPUTS.md).
+To inspect inputs, choose algorithms, execute them, and read the report, see [Run Algorithms](../how-to/RUN_AND_SELECT.md); output fields are in the [output objects and interface reference](OUTPUTS.md).
 
 Installed metadata and source define all parameters; example thresholds are not universal device calibration. Items are PASS, REVIEW, SALVAGE, or EXCLUDE; inapplicability and execution failure are distinct from quality judgments.
 
@@ -93,7 +93,7 @@ The three timing methods share optional `record_header_deviation_threshold_ms` e
 
 ## Related pages
 
-- [Recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md): preflight, execution, and reading the report.
+- [Run Algorithms](../how-to/RUN_AND_SELECT.md): preflight, execution, and reading the report.
 - [Output objects and interface reference](OUTPUTS.md): `Item`, `AlgorithmResult`, and run records.
 - [Data formats and robot configuration reference](DATA_AND_ROBOTS.md): fields, units, and time declarations these algorithms rely on.
 - [Scope and evidence reference](EVIDENCE_AND_SCOPE.en.md): arm scope, record-header evidence, and joint freeze evidence.

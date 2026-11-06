@@ -59,7 +59,7 @@ edc batch /path/to/dataset/episode.mcap \
   --keep /path/to/results/details --jobs 1
 ```
 
-`--keep` is optional and requires a new directory. Select individual methods with `edc run --algorithm ...`; see [algorithm selection](../how-to/RUN_AND_SELECT.md#selection). No algorithm-code changes are needed.
+`--keep` is optional and requires a new directory. Select individual methods with `edc run --algorithm ...`; see [Run Algorithms](../how-to/RUN_AND_SELECT.md#selection). No algorithm-code changes are needed.
 
 <a id="results"></a>
 ## 4. View results
@@ -80,10 +80,10 @@ The reference aggregate decision is **review recommended**. These results apply 
 | Reset_Detection | REVIEW | Existing Home calibration yields review; the short summary does not expand deviations, so inspect retained outputs |
 | Video_Integrity | PASS | Frame sampling; left/right wrists have 3 and 2 blurred frames respectively out of 290 sampled frames each |
 
-Recommendation, successful execution, and quality passing are distinct. Local reports retain complete records; the guide shows only the necessary summary. [Reading and locating findings](../how-to/RUN_AND_SELECT.md#results)
+Recommendation, successful execution, and quality passing are distinct. Local reports retain complete records; the guide shows only the necessary summary. [Run Algorithms](../how-to/RUN_AND_SELECT.md#results)
 
 ## Next steps
 
-- Switch to another dataset: first check fields and configuration with [connect data and configure a robot](../how-to/DATA_AND_ROBOT.md).
-- Run only some checks or change the scope: [recommend, select, and run algorithms](../how-to/RUN_AND_SELECT.md).
+- Switch to another dataset: first check fields and configuration with [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md).
+- Run only some checks or change the scope: [Run Algorithms](../how-to/RUN_AND_SELECT.md).
 - Look up an algorithm's parameters, rules, and limits: [built-in quality algorithm reference](../reference/ALGORITHMS.md).

@@ -1,9 +1,9 @@
 # 内置质量算法参考
 
-[返回主页](../../README.zh-CN.md) · [English](ALGORITHMS.md) · [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md)
+[返回主页](../../README.zh-CN.md) · [English](ALGORITHMS.md) · [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md)
 
 本页逐项说明九项内置质量算法的**输入条件、参数、输出与判断、适用边界**，用于查询，不包含运行步骤。
-如何确认输入、选择算法、执行并阅读报告，见[推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md)；输出对象的字段见[输出对象与接口参考](OUTPUTS.zh-CN.md)。
+如何确认输入、选择算法、执行并阅读报告，见[算法运行](../how-to/RUN_AND_SELECT.zh-CN.md)；输出对象的字段见[接口与输出参考](OUTPUTS.zh-CN.md)。
 
 所有参数以安装版算法元数据及源码为准，示例参数不作为跨设备通用标定。共同结果表示为通过、复核、可救、排除；没有检查条件和执行失败与质量判断分开。
 
@@ -62,7 +62,7 @@
 - **边界：** 这是定位线索，不是设备故障的确定诊断；单一共享行时间不足以独立归因。
 - [实现](../../src/edc/algorithms/quality/algorithms/Root_Cause/)
 
-三个时间算法的可选 `record_header_deviation_threshold_ms` 与原时间差证据见[检查范围与证据参数参考](EVIDENCE_AND_SCOPE.md)。默认 `null`；补充证据不自动改分。
+三个时间算法的可选 `record_header_deviation_threshold_ms` 与原时间差证据见[范围与证据参考](EVIDENCE_AND_SCOPE.md)。默认 `null`；补充证据不自动改分。
 
 <a id="dedup-check"></a>
 ## Dedup_Check · 时间／序列重复
@@ -93,7 +93,7 @@
 
 ## 相关页面
 
-- [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md)：预检、执行与报告阅读。
-- [输出对象与接口参考](OUTPUTS.zh-CN.md)：`Item`、`AlgorithmResult` 与结果记录。
-- [数据格式与机器人配置参考](DATA_AND_ROBOTS.zh-CN.md)：各算法依赖的字段、单位与时间声明。
-- [检查范围与证据参数参考](EVIDENCE_AND_SCOPE.md)：机械臂范围、时间差证据、画面联合复核。
+- [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md)：预检、执行与报告阅读。
+- [接口与输出参考](OUTPUTS.zh-CN.md)：`Item`、`AlgorithmResult` 与结果记录。
+- [格式与配置参考](DATA_AND_ROBOTS.zh-CN.md)：各算法依赖的字段、单位与时间声明。
+- [范围与证据参考](EVIDENCE_AND_SCOPE.md)：机械臂范围、时间差证据、画面联合复核。

@@ -1,9 +1,9 @@
-# 输出对象与接口参考
+# 接口与输出参考
 
-[返回主页](../../README.zh-CN.md) · [English](OUTPUTS.md) · [接入新质量算法](../how-to/ALGORITHM_PLUGIN.zh-CN.md)
+[返回主页](../../README.zh-CN.md) · [English](OUTPUTS.md) · [算法扩展](../how-to/ALGORITHM_PLUGIN.zh-CN.md)
 
 算法输入、质量结果、插件与运行记录的公共接口。
-如何写一个算法插件见[接入新质量算法](../how-to/ALGORITHM_PLUGIN.zh-CN.md)；为什么这样划分见[框架结构与设计取舍](../explanation/ARCHITECTURE.zh-CN.md)。
+如何写一个算法插件见[算法扩展](../how-to/ALGORITHM_PLUGIN.zh-CN.md)；为什么这样划分见[框架设计](../explanation/ARCHITECTURE.zh-CN.md)。
 
 <a id="interfaces"></a>
 ## 接口类型
@@ -41,7 +41,7 @@
 ```python
 from edc import Item, AlgorithmResult
 
-items = [Item('left arm', verdict='REVIEW', reason='Joint step exceeds the declared threshold.',
+items = [Item('左臂', verdict='REVIEW', reason='关节变化超过设定阈值。',
               metrics={'max_step_rad': 0.3}, evidence=[{'row': 12}])]
 payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 ```
@@ -60,7 +60,7 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 
 质量便利基类不要求价值方法输出质量判断，也不把分布或实验估值换成一个分数。编辑／增强按现有约定返回 `output / params / source_mapping`，副本经验证后再质检；新数据不能覆盖源文件。当前变换验证器只接受行不增减、时间不变的 identity 映射；当前不支持时间重采样、任意片段修改或通道增删。每个编辑／增强输出分支都必须紧接质量阶段，否则配置检查失败。
 
-[工作流文档](../how-to/WORKFLOWS.md)与[合成插件](../../examples/plugins/workflow/)提供受支持契约的示例。
+[合成插件](../../examples/plugins/workflow/)提供受支持契约的示例。
 
 ## 运行产物
 
@@ -76,11 +76,11 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 - 区分采集、容器、播放、生成及未知时间；未知语义和单位保留未知。
 - 图像、数值、时间读取及来源映射须与声明一致，验证可用／缺输入／失败情况。
 
-编写步骤与安装方式见[接入新的数据格式读取器](../how-to/READER_PLUGIN.zh-CN.md)。
+编写步骤与安装方式见[读取器扩展](../how-to/READER_PLUGIN.zh-CN.md)。
 
 ## 相关页面
 
-- [接入新质量算法](../how-to/ALGORITHM_PLUGIN.zh-CN.md)
-- [接入新的数据格式读取器](../how-to/READER_PLUGIN.zh-CN.md)
-- [框架结构与设计取舍](../explanation/ARCHITECTURE.zh-CN.md)
+- [算法扩展](../how-to/ALGORITHM_PLUGIN.zh-CN.md)
+- [读取器扩展](../how-to/READER_PLUGIN.zh-CN.md)
+- [框架设计](../explanation/ARCHITECTURE.zh-CN.md)
 - [内置质量算法参考](ALGORITHMS.zh-CN.md)
