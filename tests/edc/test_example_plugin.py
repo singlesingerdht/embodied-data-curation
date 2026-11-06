@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from edc.algorithms.quality.adapters.results import to_result
 
@@ -27,12 +28,27 @@ def test_example_plugin_items_and_note_reach_the_report(monkeypatch):
 
 def test_edc_plugins_loads_a_folder_without_installing(monkeypatch, tmp_path):
     import sys
-    import pytest
     from edc.algorithms.registry import algorithms
     monkeypatch.setattr(sys, 'path', list(sys.path))  # 加载时加进 sys.path 的路径，测试后还原
+    # CI installs this example too; exercise folder loading independently of installed plugins.
+    monkeypatch.setattr('edc.algorithms.registry.entry_points', lambda group: [])
+    monkeypatch.delenv('EDC_PLUGINS', raising=False)
     assert 'team_example__joint_jump' not in algorithms().plugins
     monkeypatch.setenv('EDC_PLUGINS', str(EXAMPLE / 'joint_jump'))
     assert algorithms().plugins['team_example__joint_jump'].spec.name == '关节跳变'
     monkeypatch.setenv('EDC_PLUGINS', str(tmp_path))
     with pytest.raises(ValueError, match='没有 algorithm.py'):
+        algorithms()
+
+
+def test_edc_plugins_rejects_an_installed_duplicate(monkeypatch):
+    from edc.algorithms.registry import algorithms
+    monkeypatch.syspath_prepend(str(EXAMPLE))
+    from joint_jump.algorithm import plugin
+    monkeypatch.setattr('edc.algorithms.registry.entry_points', lambda group: [
+        SimpleNamespace(name=plugin.spec.id, load=lambda: plugin)] if group == 'edc.algorithms' else [])
+    monkeypatch.delenv('EDC_PLUGINS', raising=False)
+    assert algorithms().plugins[plugin.spec.id] is plugin
+    monkeypatch.setenv('EDC_PLUGINS', str(EXAMPLE / 'joint_jump'))
+    with pytest.raises(ValueError, match=f'Duplicate plugin ID: {plugin.spec.id}'):
         algorithms()
