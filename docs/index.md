@@ -11,45 +11,57 @@ html_theme.sidebar_secondary.remove: true
 **EDC = Embodied Data Curation**。面向具身数据使用者与算法开发者，
 通过数据读取、机器人配置、质量检查、报告与证据，为数据选择提供可追溯的依据。
 
+## 文档
+
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} 快速开始
-:link: QUICKSTART.zh-CN
+:::{grid-item-card} 教程 · 快速开始
+:link: tutorial/QUICKSTART.zh-CN
 :link-type: doc
 
-准备数据与配置，运行九项内置质量检查，查看报告。
+安装、准备数据并生成首份报告。
 :::
 
-:::{grid-item-card} 数据与机器人配置
-:link: DATA_AND_CONFIGURATION.zh-CN
+:::{grid-item-card} 操作指南
+:link: how-to/index
 :link-type: doc
 
-查看已有格式与配置，明确字段、机械臂、单位、时钟与标定。
+接入数据、运行算法、导出数据、编排工作流、开发插件。
 :::
 
-:::{grid-item-card} 推荐与算法选择
-:link: ALGORITHMS.zh-CN
+:::{grid-item-card} 参考
+:link: reference/index
 :link-type: doc
 
-根据当前输入选择方法，了解各项质量检查的依据与边界。
+格式、字段、单位、算法参数、输出对象与命令行。
 :::
 
-:::{grid-item-card} 算法开发
-:link: DEVELOPMENT.zh-CN
+:::{grid-item-card} 说明
+:link: explanation/index
 :link-type: doc
 
-使用 QualityAlgorithm、AlgorithmSpec 和统一输出接口接入插件。
+数据质量的含义、设计取舍、证据边界与研究依据。
 :::
 
 ::::
 
+## 入门路径
+
+| 任务 | 入口 |
+|---|---|
+| 安装并运行完整示例 | [教程：快速开始](tutorial/QUICKSTART.zh-CN.md) |
+| 接入采集记录 | [接入数据并配置机器人](how-to/DATA_AND_ROBOT.zh-CN.md) |
+| 选择适用的检查 | [推荐、选择并运行算法](how-to/RUN_AND_SELECT.zh-CN.md) |
+| 导出筛选结果 | [按报告筛选并导出数据](how-to/SELECTION.md) |
+| 扩展算法或数据格式 | [接入新质量算法](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [接入读取器](how-to/READER_PLUGIN.zh-CN.md) |
+| 了解研究依据与验证范围 | [从质量检查到自主数据整理](explanation/QUALITY_VALIDATION.zh-CN.md) |
+
+EDC 提供数据质量检查与有证据支持的筛选。任务价值与策略价值方法计划逐步接入，见[研究依据与验证安排](explanation/QUALITY_VALIDATION.zh-CN.md)。
+
 ## 框架概览
 
 ![EDC 总览：以质量证据、任务进展和策略反馈支持数据整理](assets/framework-overview.zh-CN.svg)
-
-当前提供数据质量检查；任务价值与策略价值的方法将逐步接入框架。
-具体研究依据与验证边界见[从质量检查到自主数据整理](QUALITY_VALIDATION.zh-CN.md)。
 
 ## 运行与使用结果
 
@@ -62,37 +74,27 @@ edc batch /path/to/dataset/episode.mcap \
 ```
 
 浏览器打开报告，按轨迹和算法查看结论、原因与证据；需要导出时使用
-[`edc regenerate`](SELECTION.md)。运行成功、数据质量通过和工作流放行分别表达。
+[`edc regenerate`](how-to/SELECTION.md)。运行成功、数据质量通过和工作流放行分别表达。
+第一次运行请按[教程](tutorial/QUICKSTART.zh-CN.md)准备环境与数据。
 
 ```{toctree}
 :hidden:
 :maxdepth: 1
 
-快速开始 <QUICKSTART.zh-CN>
-数据与配置 <DATA_AND_CONFIGURATION.zh-CN>
-算法指南 <ALGORITHMS.zh-CN>
-筛选与导出 <SELECTION>
+教程 <tutorial/QUICKSTART.zh-CN>
+操作指南 <how-to/index>
+参考 <reference/index>
+说明 <explanation/index>
+项目与维护 <project/DOCUMENTATION>
 ```
 
 ```{toctree}
 :hidden:
 :maxdepth: 1
 
-算法开发 <DEVELOPMENT.zh-CN>
-工作流与复检 <WORKFLOWS>
-证据与检查范围 <EVIDENCE_AND_SCOPE>
-研究方向与验证 <QUALITY_VALIDATION.zh-CN>
-贡献与维护 <DOCUMENTATION>
-```
-
-```{toctree}
-:hidden:
-:maxdepth: 1
-
-Overview <index.en>
-Quickstart <QUICKSTART>
-Data and configuration <DATA_AND_CONFIGURATION>
-Algorithms <ALGORITHMS>
-Development <DEVELOPMENT>
-Research and validation <QUALITY_VALIDATION>
+English overview <index.en>
+Tutorial <tutorial/QUICKSTART>
+How-to guides <how-to/index.en>
+Reference <reference/index.en>
+Explanation <explanation/index.en>
 ```

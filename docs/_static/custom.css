@@ -36,3 +36,7 @@ html:not([data-edc-language="en"]) .edc-locale-en { display: none !important; }
 @media (max-width: 575px) {
   .edc-language { gap: 0.45rem; font-size: 0.8rem; }
 }
+
+/* Area titles in the sidebar link to the area overview. */
+.edc-nav-group a { color: inherit; text-decoration: none; }
+.edc-nav-group a:hover { color: var(--pst-color-primary); }

@@ -12,45 +12,57 @@ Turn usable robot data into experience worth learning from.
 the framework connects data readers, robot configuration, quality checks,
 reports, and evidence to make data selection traceable.
 
+## Documentation
+
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} Quick start
-:link: QUICKSTART
+:::{grid-item-card} Tutorial · Quick start
+:link: tutorial/QUICKSTART
 :link-type: doc
 
-Prepare data and configuration, run nine built-in quality checks, and read the report.
+Install, prepare data, and produce the first report end to end.
 :::
 
-:::{grid-item-card} Data and robot configuration
-:link: DATA_AND_CONFIGURATION
+:::{grid-item-card} How-to guides
+:link: how-to/index.en
 :link-type: doc
 
-Find supported formats and configure fields, arms, units, clocks, and calibration.
+Connect data, run algorithms, export data, orchestrate workflows, write plugins.
 :::
 
-:::{grid-item-card} Recommendation and selection
-:link: ALGORITHMS
+:::{grid-item-card} Reference
+:link: reference/index.en
 :link-type: doc
 
-Choose methods for your inputs and understand what each quality check can establish.
+Formats, fields, units, algorithm parameters, output objects, and commands.
 :::
 
-:::{grid-item-card} Algorithm development
-:link: DEVELOPMENT
+:::{grid-item-card} Explanation
+:link: explanation/index.en
 :link-type: doc
 
-Add plugins with QualityAlgorithm, AlgorithmSpec, and the shared output interface.
+What data quality means, design choices, evidence limits, and research foundations.
 :::
 
 ::::
 
+## Getting started
+
+| Task | Entry point |
+|---|---|
+| Install and run a complete example | [Tutorial: quick start](tutorial/QUICKSTART.md) |
+| Connect a recording | [Connect data and configure a robot](how-to/DATA_AND_ROBOT.md) |
+| Select applicable checks | [Recommend, select, and run algorithms](how-to/RUN_AND_SELECT.md) |
+| Export selected data | [Select and export data by report](how-to/SELECTION.en.md) |
+| Extend algorithms or formats | [Add a quality algorithm](how-to/ALGORITHM_PLUGIN.md) · [Add a reader plugin](how-to/READER_PLUGIN.md) |
+| Review research foundations and validation | [From quality checks to autonomous data curation](explanation/QUALITY_VALIDATION.md) |
+
+EDC provides data quality checks and evidence-based selection. Task-value and policy-value methods are planned; see [research foundations and validation](explanation/QUALITY_VALIDATION.md).
+
 ## Framework overview
 
 ![EDC overview: quality evidence, task progress, and policy feedback guide data curation](assets/framework-overview.svg)
-
-Data quality checks are available today; task and policy value methods will be integrated progressively.
-See [From Quality Checks to Autonomous Data Curation](QUALITY_VALIDATION.md) for research foundations and validation boundaries.
 
 ## Run checks and use the results
 
@@ -63,5 +75,6 @@ edc batch /path/to/dataset/episode.mcap \
 ```
 
 Open the report in a browser to inspect conclusions, reasons, and evidence by recording or algorithm.
-Use [`edc regenerate`](SELECTION.md) to export selected data. Successful execution,
+Use [`edc regenerate`](how-to/SELECTION.en.md) to export selected data. Successful execution,
 passing quality checks, and workflow clearance are separate outcomes.
+For a first run, follow the [tutorial](tutorial/QUICKSTART.md).

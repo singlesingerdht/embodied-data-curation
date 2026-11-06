@@ -281,7 +281,7 @@ def quality(d):
     d.text("复用的方法，明确的边界", 826, 508, 680, 42, 28, bold=True)
     d.text("九项质量检查 → 原始指标与证据 → 筛选导出", 826, 568, 680, 42, 25, TEAL, True)
     d.text("复用检查逻辑；机器人语义、限值与时钟仍需确认。\n通过表示满足已检查条件，策略收益另行验证。", 826, 632, 674, 104, 24, MUTED)
-    d.footer("工程依据：仓库机器人配置、docs/DATA_AND_CONFIGURATION.zh-CN.md、docs/ALGORITHMS.zh-CN.md。",
+    d.footer("工程依据：仓库机器人配置、docs/how-to/DATA_AND_ROBOT.zh-CN.md、docs/reference/ALGORITHMS.zh-CN.md。",
              "不把能打开文件等同于完整支持；当前配置的适用范围见专题。原始数据只读，输出保留来源。")
 
 
@@ -379,7 +379,7 @@ def autonomy(d):
     d.text("怎样证明框架确实在改进？", 826, 513, 684, 40, 27, bold=True)
     d.text("独立复核：缺陷是否更少，有用经验是否保留？\n训练对照：全量、等量随机、EDC 子集比较。\n逐层验证：质量 → 任务价值 → 策略价值。", 826, 578, 680, 138, 24, INK)
     d.text("不以放宽质量要求制造提升；最终测试与规则调整分开。", 826, 748, 680, 29, 18, AMBER)
-    d.footer("研究来源与接入边界见 docs/QUALITY_VALIDATION.zh-CN.md；FLORA 为外部研究参考，DemoTempo 按已有材料介绍。",
+    d.footer("研究来源与接入边界见 docs/explanation/QUALITY_VALIDATION.zh-CN.md；FLORA 为外部研究参考，DemoTempo 按已有材料介绍。",
              "现有论文分别支持部分环节；自动调整路线、生成新算法与完整自主循环，仍需框架级集成和验证。")
 
 

@@ -1,13 +1,13 @@
 # From Quality Checks to Autonomous Data Curation
 
-[Home](../README.md) · [简体中文](QUALITY_VALIDATION.zh-CN.md) · [Algorithms](ALGORITHMS.md) · [Selection and export](SELECTION.md) · [Presentation (Chinese)](presentations/edc-framework.zh-CN.pptx)
+[Home](../../README.md) · [简体中文](QUALITY_VALIDATION.zh-CN.md) · [Algorithms](../reference/ALGORITHMS.md) · [Selection and export](../how-to/SELECTION.en.md) · [Presentation](../presentations/edc-framework.zh-CN.pptx)
 
 <a id="needs"></a>
 ## What Users Need, and Why Check the Data?
 
-Users need **data suited to their task and policy, with reasons for selecting it**. Requirements include the task and success criteria, target policy and training stage, required inputs and quality conditions, and data/computing budget. Applicable methods also need expert demonstrations or reliable reference data. Today, [configuration](DATA_AND_CONFIGURATION.md) specifies inputs and checks, yielding reports, issue evidence, and [selected copies or symlinks with source manifests](SELECTION.md). Planned outputs add task annotations, model-specific subsets, and improved data versions.
+Users need **data suited to their task and policy, with reasons for selecting it**. Requirements include the task and success criteria, target policy and training stage, required inputs and quality conditions, and data/computing budget. Applicable methods also need expert demonstrations or reliable reference data. Today, [configuration](../how-to/DATA_AND_ROBOT.md) specifies inputs and checks, yielding reports, issue evidence, and [selected copies or symlinks with source manifests](../how-to/SELECTION.en.md). Planned outputs add task annotations, model-specific subsets, and improved data versions.
 
-**Data quality means the reliability of a record as input for a specified training task: required information is complete, values are valid with clear meanings and units, and observations and actions correspond as required.** It concerns whether saved data reliably represents what the robot observed, what it did, and how the two correspond. Completing a demonstration does not guarantee a usable record; unchecked data may be good, but confirmation is missing.
+**Data quality means the reliability of a record as input for a specified training task: required information is complete, values are valid with clear meanings and units, and observations and actions correspond as required.** It concerns whether saved data reliably represents what the robot observed, what it did, and how the two correspond. Demonstration completion and record validity are separate properties.
 
 Necessary conditions are prerequisites for valid training inputs. For grasping training that requires hand-camera images and joint actions, missing images remove required observations; NaN actions remove valid targets; and incorrectly pairing a pre-grasp image with a release action misrepresents their relationship.
 
@@ -26,7 +26,7 @@ EDC turns supported requirements into checks, locating problems and retaining ev
 | **Task-aware: task value** | What experience is worth learning? Derive local progress, key-operation, and recovery signals from expert demonstrations and task requirements | Research foundations exist; methods await integration |
 | **Policy-aware: policy value** | Does this experience suit the target model? Use model learning feedback and reliable references | Research foundations exist; methods await integration |
 
-Cross-robot reuse rests on configuration and shared reading/precheck interfaces. Robots map their respective parts, fields, and units to reuse checks; semantics, physical thresholds, and calibration still require individual confirmation. [Supported formats and conditions](DATA_AND_CONFIGURATION.md#formats) specify the boundaries.
+Cross-robot reuse rests on configuration and shared reading/precheck interfaces. Robots map their respective parts, fields, and units to reuse checks; semantics, physical thresholds, and calibration still require individual confirmation. [Supported formats and conditions](../reference/DATA_AND_ROBOTS.md#formats) specify the boundaries.
 
 Task value concerns the learning content of experience; policy value concerns its usefulness to a specified model. Reliable data need not have equal learning value, and failed trajectories can contain useful experience. Alignment here is tested through selection and learning outcomes, rather than assuming complete understanding of human intent.
 
@@ -51,7 +51,7 @@ Published experiments support specific parts of this mechanism:
 - **STEAM combined with CFGRL** achieves **83.5%** average success across four real-robot tasks, versus **58.8%** for the best baseline, supporting demonstration-derived learning signals. [Experiments](https://arxiv.org/html/2606.29834v2#S4)
 - **RoboDrop** reports average real-robot task success rising from **35.0% to 67.5%** after curation, supporting model-related data selection. [Experiments](https://arxiv.org/html/2609.10021v1#S5.SS4)
 
-These are results of the respective papers and experimental conditions, not EDC results. STEAM's combined gains cannot be attributed solely to filtering.
+These figures are paper-specific experimental results. STEAM's combined gains include more than filtering.
 
 <a id="evidence"></a>
 ### Trace the Process and Test the Reasoning
@@ -66,9 +66,9 @@ A proposed example is adding recovery experience for a grasping policy. Task sig
 
 **User needs → annotation and assessment → data selection or improvement → task and training feedback → updates to rules, algorithms, and processing → reassessment.**
 
-Today, EDC provides shared reading, [applicability recommendations and execution](ALGORITHMS.md#selection), evidence recording, and [finite-stage workflows (Chinese)](WORKFLOWS.md). Recommendations check inputs, parameters, and dependencies; they do not identify the optimal algorithm for a user's goal. Workflows require provenance and consistency validation followed by quality rechecks on editing/augmentation branches; outputs that fail checks cannot proceed. Arbitrary segment scheduling and general resampling transforms are not currently supported.
+Today, EDC provides shared reading, [applicability recommendations and execution](../how-to/RUN_AND_SELECT.md#selection), evidence recording, and [finite-stage workflows](../how-to/WORKFLOWS.en.md). Recommendations check inputs, parameters, and dependencies; they do not identify the optimal algorithm for a user's goal. Workflows require provenance and consistency validation followed by quality rechecks on editing/augmentation branches; outputs that fail checks cannot proceed. Arbitrary segment scheduling and general resampling transforms are not currently supported.
 
-Value methods will be integrated progressively. Beyond the core mechanisms above, [FLORA](https://arxiv.org/abs/2610.31779) offers an external reference for annotation using outcome, process, and timestamped description signals. MGT-QV informs segment curation, while DemoTempo informs demonstration resampling and data improvement. The latter two are described from available research materials, without unverified public links or experimental results.
+Value methods will be integrated progressively. Beyond the core mechanisms above, [FLORA](https://arxiv.org/abs/2610.31779) offers an external reference for annotation using outcome, process, and timestamped description signals. MGT-QV informs segment curation, while DemoTempo informs demonstration resampling and data improvement. Public links and experimental results for MGT-QV and DemoTempo remain unverified.
 
 **The long-term goal is to compare and adapt curation plans through feedback, enabling continuous autonomous improvement.** Users set goals, necessary quality requirements, and budgets; EDC will explore selection among allowed algorithms, rules, and processing methods, and eventually generate new algorithms for validation before integration. Each iteration should retain plan versions, evidence, costs, and outcomes. Necessary quality requirements must not be relaxed merely to increase retention. The research supports individual parts; complete autonomous decision-making and combined benefits remain to be implemented and validated.
 
@@ -86,4 +86,4 @@ These are planned evaluations, not completed full-framework experiments.
 
 Training comparisons fix the policy, preprocessing, and test conditions, use multiple seeds and repeated random sampling, and report episode counts, duration, success rates, and variation. Keep reference data, evaluator-learning data, rule-adjustment data, and final testing separate. Beating an equally sized random subset supports the selection criteria; also beating the full dataset supports the benefit of removing records in that experiment.
 
-**Rerunning the framework's own checks, passing software tests, or citing one paper cannot replace independent validation of the complete framework.** Agreement with humans supports task understanding; policy training and task performance test learning benefits.
+Independent framework validation combines agreement with human judgments, policy training, and task performance. Software tests and repeated quality checks establish implementation behavior; training evaluations establish learning benefits.

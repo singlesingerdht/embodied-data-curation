@@ -3,7 +3,9 @@
   <div class="edc-locale edc-locale-{{ locale }}" lang="{{ locale }}">
     <p class="edc-version">{{ '版本' if locale == 'zh-CN' else 'Version' }} {{ release }}</p>
     {% for group in groups %}
-    <p class="edc-nav-group">{{ group.title }}</p>
+    <p class="edc-nav-group">
+      {% if group.href %}<a href="{{ group.href }}">{{ group.title }}</a>{% else %}{{ group.title }}{% endif %}
+    </p>
     <ul>
       {% for item in group['items'] %}
       <li><a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.title }}</a></li>

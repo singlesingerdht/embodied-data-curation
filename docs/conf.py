@@ -29,6 +29,7 @@ html_js_files = ["navigation.js"]
 html_favicon = "_static/favicon.svg"
 templates_path = ["_templates"]
 html_show_copyright = False
+html_show_sourcelink = False
 html_search_options = {"dict": str(DOCS / "search-dictionary.txt")}
 html_theme_options = {
     "logo": {"text": "EDC"},

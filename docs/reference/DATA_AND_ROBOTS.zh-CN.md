@@ -1,79 +1,53 @@
-# 数据接入与配置
+# 数据格式与机器人配置参考
 
-[返回主页](../README.zh-CN.md) · [English](DATA_AND_CONFIGURATION.md) · [快速开始](QUICKSTART.zh-CN.md)
+[返回主页](../../README.zh-CN.md) · [English](DATA_AND_ROBOTS.md) · [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)
 
-<a id="formats"></a>
-## 支持范围：数据格式与已有配置
+本页用于**查阅**：支持哪些数据格式、仓库已有哪些机器人配置、机器人 YAML 有哪些字段，以及单位与时间的声明方式。
+具体操作步骤见[接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)；格式依赖的安装见[快速开始](../tutorial/QUICKSTART.zh-CN.md)。
 
 读取器负责从文件中取出数值、图像和时间记录；机器人配置说明这些记录属于哪个部件、表示什么、使用什么单位。先选择匹配的格式和配置，再查看当前数据能运行哪些算法。
 
-### 数据格式
+<a id="formats"></a>
+## 数据格式
 
 | 格式 | 可以读取什么 | 使用要求 |
 |---|---|---|
 | LeRobot v2.1 / v3.0 | 数值列、支持的图像列及配套视频 | 保留描述各段操作的 metadata 和索引，以及视频中的对应范围；配置各列含义。官方读取方式需要 Python ≥3.12 与 `.[lerobot]`；也可使用 `.[formats]` 提供的读取方式 |
 | HDF5 | 文件内的数值数组与图像 | 指定每段操作所在的组，例如 `data/demo_0`；一个文件可包含多段操作。配置数组名称、分量顺序和时间信息 |
-| Parquet | 数值列及支持的图像列 | 非 LeRobot 数据须另行说明每段操作的起止行和时间列，不能把每个文件直接当成一段操作 |
+| Parquet | 数值列及支持的图像列 | 使用 `episode_index`（或 profile 指定的 `episode_column`）划分轨迹；无该列时整个文件作为一条轨迹 |
 | ROS1 / ROS2 bag | 已支持消息中的关节、位姿、IMU、图像及时间记录 | 需要 `rosbags`；文件中的消息定义须可读取。自定义消息还要确认所需字段能被提取 |
 | MCAP | 已支持的 ROS1、ROS2 CDR 或 Protobuf 消息中的数值、图像及时间记录 | 需要 `mcap` 和对应解码库；文件内须有可用的消息定义，Protobuf 需内嵌描述文件。不能读取的内容会限制对应检查 |
 | JSON＋视频目录 | 逐条数值记录和相机视频，如 X1 Pro 的 robot-bridge 导出目录 | JSON 结构、数据名称和视频文件布局须匹配读取器；数值与视频逐帧如何对应须明确 |
 | 独立 MP4 | 视频画面及文件中的播放时间 | 可做图像／视频检查；单独的视频不提供关节位置，也不能用播放时间证明设备采集同步 |
 
-格式依赖的安装见[快速开始](QUICKSTART.zh-CN.md)。读取器实现见 [`src/edc/data/readers/`](../src/edc/data/readers/)。图片和视频都可以检查画面；视频文件是否损坏等检查只适用于视频文件。
+读取器实现见 [`src/edc/data/readers/`](../../src/edc/data/readers/)。图片和视频都可以检查画面；视频文件是否损坏等检查只适用于视频文件。
 
-### 已有机器人配置
+<a id="configs"></a>
+## 已有机器人配置
 
 下表列出仓库已有的配置及其对应数据。选择时应同时核对文件格式和数据名称；同一机型采用不同采集方式时，也可能需要不同配置。
 
 | 配置 | 对应数据 | 已配置内容与使用要求 |
 |---|---|---|
-| [X1 Pro · MCAP](../configs/robots/x1pro_mcap.yaml) | 快速开始使用的 MCAP 记录 | 双臂关节与末端、四路彩色相机及头部深度等；关节位置／速度和末端 XYZ 单位已登记。设备时钟关系、深度比例和部分数值限值仍未确认 |
-| [X1 Pro · JSON＋视频](../configs/robots/x1pro.yaml) | robot-bridge 导出的 JSON＋三路 MP4 | 双臂、主从端数据和头部／腕部相机；数值名称为 `follow_*`、`master_*` 等。夹爪等部分单位未知，不能直接替代 MCAP 配置 |
-| [乐聚 KUAVO 4pro](../configs/robots/leju_kuavo.yaml) | 灵巧手版 ROS1 bag | 双臂关节、灵巧手、IMU 和相机；末端位置由关节及 URDF 计算。深度比例未确认，不能做米制深度检查 |
-| [珞石双臂](../configs/robots/luoshi.yaml) | 配置所对应的 LeRobot v3.0 数据 | 14 项关节数组按左7、右7拆分，三路彩色相机；无实际末端位置反馈，不能用末端指令替代；缺关节限位和速度上限 |
-| [pepsi_sort 单臂](../configs/robots/pepsi_sort.yaml) | 配置所对应的 LeRobot v3.0 数据 | 末端位姿、夹爪和腕部相机；无关节角，夹爪单位未知。按帧号生成的时间不能用于采集同步检查 |
-| [Franka Panda · 仿真](../configs/robots/franka_panda.yaml) | robomimic／robosuite 的 HDF5 数据 | 单臂关节、末端和夹爪；`data/demo_*` 分别保存每段操作。属于仿真数据，20 Hz 帧时间不是真实采集时间 |
+| [X1 Pro · MCAP](../../configs/robots/x1pro_mcap.yaml) | 快速开始使用的 MCAP 记录 | 双臂关节与末端、四路彩色相机及头部深度等；关节位置／速度和末端 XYZ 单位已登记。设备时钟关系、深度比例和部分数值限值仍未确认 |
+| [X1 Pro · JSON＋视频](../../configs/robots/x1pro.yaml) | robot-bridge 导出的 JSON＋三路 MP4 | 双臂、主从端数据和头部／腕部相机；数值名称为 `follow_*`、`master_*` 等。夹爪等部分单位未知，不能直接替代 MCAP 配置 |
+| [乐聚 KUAVO 4pro](../../configs/robots/leju_kuavo.yaml) | 灵巧手版 ROS1 bag | 双臂关节、灵巧手、IMU 和相机；末端位置由关节及 URDF 计算。深度比例未确认，不能做米制深度检查 |
+| [珞石双臂](../../configs/robots/luoshi.yaml) | 配置所对应的 LeRobot v3.0 数据 | 14 项关节数组按左7、右7拆分，三路彩色相机；无实际末端位置反馈，不能用末端指令替代；缺关节限位和速度上限 |
+| [pepsi_sort 单臂](../../configs/robots/pepsi_sort.yaml) | 配置所对应的 LeRobot v3.0 数据 | 末端位姿、夹爪和腕部相机；无关节角，夹爪单位未知。按帧号生成的时间不能用于采集同步检查 |
+| [Franka Panda · 仿真](../../configs/robots/franka_panda.yaml) | robomimic／robosuite 的 HDF5 数据 | 单臂关节、末端和夹爪；`data/demo_*` 分别保存每段操作。属于仿真数据，20 Hz 帧时间不是真实采集时间 |
 
 这些配置描述对应数据的读取方式和检查参数，不代表同型号机器人的所有数据都能直接套用。算法能否运行仍取决于本次文件内容和配置是否齐全。
 
-### 使用前具体核对什么
+## 使用前具体核对什么
 
 - **文件里的数据怎么存？** bag／MCAP 中的一条“消息”就是一条带时间的记录；“消息类型”说明里面有哪些字段、怎样存储。例如关节消息里可能有 `position` 和 `velocity`。如果厂家改用了自定义结构，读取器需要能解析它，才能取出数值；只识别文件后缀还不够。
 - **取出的数值是什么？** 配置要说明 `position` 是关节角还是末端位置，用度、弧度还是米；`effort` 是电流还是力矩；记录的是下发指令还是实际反馈。这就是需要确认的数据含义，不根据字段名猜测。
 - **图像和时间能否用于所选检查？** 图像需要能解码成画面。深度还需说明一个读数对应多少米、哪些值表示测量无效；时间则需说明记录时刻及单位。比较不同设备时，还要确认它们的时钟关系，详见[单位与时间](#units-time)。
 
-<a id="dataset"></a>
-## 1. 查看字段与轨迹
+<a id="robot-fields"></a>
+## 机器人 YAML 字段
 
-```bash
-python examples/quickstart/list_inputs.py /path/to/dataset/episode.mcap
-```
-
-示例脚本使用公共 IR。当前 `edc channels` 命令在本例 MCAP 上会因缺少 `Episode.info` 报错，因此此处采用脚本查看，读取器与算法保持不变。
-
-输出的源 topic／feature 填入配置的 `source`。保留实际字段名与分量顺序：关节位置、速度、effort 不能只凭消息名确定物理含义。
-
-一份数据集可以包含多次操作，每次操作里又有各路关节、相机等记录。例如，100 次抓取可以构成一个数据集，每次抓取分别检查左臂、右臂和相机数据；代码中分别称为 `Dataset`（数据集）、`Episode`（一段操作）和 `Channel`（一路数据）。
-
-每段操作从哪里开始和结束，以数据中已有的说明或显式配置为准，不靠文件数量猜测。LeRobot 使用其 metadata；多段操作共存在一个 HDF5 中时，可用 `data.episode_group` 指定存放各段操作的组。自定义集合可通过 `dataset.yaml` 列出每段操作，例如：
-
-```yaml
-schema_version: 1
-id: my_task_dataset
-version: '1'
-episodes:
-  - id: take_001
-    path: episode.mcap
-    format: mcap
-    selector: {}
-```
-
-相对数据路径以清单目录为准；本例只有在一次完整采集确实对应一个文件时才成立。一个文件中的多个轨迹必须使用对应读取器支持的 selector，不按文件数量推断轨迹数量。原始数据只读，输出放到独立目录。
-
-<a id="robot"></a>
-## 2. 机器人与算法配置
-
-从 [single_arm.yaml](../configs/templates/single_arm.yaml)、[dual_arm.yaml](../configs/templates/dual_arm.yaml) 或 [dual_arm_hand.yaml](../configs/templates/dual_arm_hand.yaml) 开始。机器人 YAML 的主要字段：
+从 [single_arm.yaml](../../configs/templates/single_arm.yaml)、[dual_arm.yaml](../../configs/templates/dual_arm.yaml) 或 [dual_arm_hand.yaml](../../configs/templates/dual_arm_hand.yaml) 开始。机器人 YAML 的主要字段：
 
 | 字段 | 职责 |
 |---|---|
@@ -84,23 +58,10 @@ episodes:
 | `imu` / `other` | IMU 分量或其他明确登记的数值 |
 | `checks` | 算法参数、通道选择及本次检查范围；`skip: [算法ID]` 跳过某项检查 |
 
-典型单臂配置（字段名必须按自己的数据修改）：
-
-```yaml
-robot:
-  name: my_robot
-  confirmed_by: data_owner
-arms:
-  main:
-    joints: {source: observation.state, index: 0-5, unit: rad}
-    eef_position: {source: observation.eef, index: 0-2, unit: m}
-cameras:
-  head: {source: observation.images.head, mount: head}
-checks:
-  Numeric_Check: {arms: all}
-```
-
 `source` 是实际字段，`field` 选择消息内成员（如 `position`），`index` 选择分量。`0-5` 含两端；也可写 `[0, 2, 4]`。关节声明需要明确分量数量。派生的标准逻辑名如 `joint/arm/main/feedback` 用于算法绑定；逻辑名不会把指令变成反馈。
+
+<a id="scope"></a>
+### 机器人声明与本次检查范围
 
 **机器人声明与本次范围分开：**
 
@@ -115,14 +76,8 @@ checks:
 
 同一机器人可引用于多个任务，任务与 episode 信息属于数据集。换采集批次后，仍需核对源字段、单位、标定及 clock 的适用范围。
 
-```bash
-edc robot check --robot /path/to/robot.yaml --data /path/to/dataset/episode.mcap
-```
-
-该命令用于上述机器人卡片 YAML 的字段核对；读到值不等于已经证明物理含义。快速开始的 [`x1pro_mcap.yaml`](../configs/robots/x1pro_mcap.yaml) 是完整 profile，显式保留逐字段确认及未知 clock；直接供 `open_dataset(profile=...)`、`run --robot` 与 `batch --robot` 使用，不经 `compile_card()` 再编译。
-
 <a id="units-time"></a>
-## 3. 单位与时间
+## 单位与时间
 
 ### 单位
 
@@ -151,34 +106,10 @@ edc robot check --robot /path/to/robot.yaml --data /path/to/dataset/episode.mcap
 - LeRobot 通常有共享行时间；只有数据确实保存原始采集时间时，才可绑定为采集依据。共享行时间不能冒充每路独立时间。
 - 卡片可用 `data.time: {source: source_timestamp, unit: ns}` 绑定明确的原时间列；没有时用 `data.time_note` 说明。不能填入一个生成的索引列并声称是真实采集时间。
 - 卡片编译产生的 clock 标识不是设备同步的实测证据；跨通道使用前须核实这一声明。未知或不同 clock 使用完整 profile 保留未知状态或显式映射。
-- 选择头部相机作参考，不等于确认共同 clock。算法各自的时间条件见[算法指南](ALGORITHMS.zh-CN.md)。
+- 选择头部相机作参考，不等于确认共同 clock。算法各自的时间条件见[内置质量算法参考](ALGORITHMS.zh-CN.md)。
 
-<a id="urdf"></a>
-## 4. URDF：获取关节信息并核对
+## 相关页面
 
-URDF 可以提供链、关节顺序、限位、速度上限及正运动学；它不能自动确定数据字段、指令／反馈、时钟、相机、任务或全部单位。
-
-```bash
-edc robot urdf --urdf /path/to/robot.urdf
-edc robot urdf --urdf /path/to/robot.urdf --base base_link --tip tool_link
-```
-
-把返回的链信息按**数据的关节列顺序**写入对应臂：
-
-```yaml
-urdf:
-  file: robot/arm.urdf
-  joints: [joint1, joint2, joint3, joint4, joint5, joint6]
-  base_link: base_link
-  tip_link: tool_link
-  # tip_offset: [0, 0, 0.1]  # 数据所指工作点在 tip_link 中的位置，m
-```
-
-URDF 文件路径相对机器人 YAML。关节方向、零位、链与数据必须一致；仅支持已展开的普通 URDF。`eef_position: fk` 可从已配置的关节与链计算末端位置，不代表末端已实测验证。
-
-```bash
-edc robot urdf --robot /path/to/robot.yaml \
-  --data /path/to/episode_1 /path/to/episode_2
-```
-
-有记录末端时，用第一条轨迹求坐标关系，再在第二条核对。未记录末端或没有两条可用轨迹时，只能做可用的关节核对。动作不丰富、坐标关系可吸收的误差和小偏差可能无法辨别。Home、容差、末端工作点及标定适用范围仍须明确配置。
+- [接入数据并配置机器人](../how-to/DATA_AND_ROBOT.zh-CN.md)：查看字段、编写配置、URDF 核对。
+- [推荐、选择并运行算法](../how-to/RUN_AND_SELECT.zh-CN.md)：确认当前配置能运行哪些检查。
+- [检查范围与证据参数参考](EVIDENCE_AND_SCOPE.md)：机械臂范围、时间差证据与画面联合复核的详细参数。

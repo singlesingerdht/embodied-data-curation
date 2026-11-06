@@ -29,7 +29,7 @@ python -m build
 
 ## 新插件
 
-参考 [插件模板](examples/plugins/algorithm)（新算法继承 `edc.algorithms.base.QualityAlgorithm`，见 `joint_jump/`）、[读取器模板](examples/plugins/reader)、[输出基类与完整示例](docs/DEVELOPMENT.zh-CN.md)。先通过独立安装、可用／缺输入／缺依赖／失败隔离测试，再登记支持范围。
+参考 [插件模板](examples/plugins/algorithm)（新算法继承 `edc.algorithms.base.QualityAlgorithm`，见 `joint_jump/`）、[读取器模板](examples/plugins/reader)、[输出基类与完整示例](docs/how-to/ALGORITHM_PLUGIN.zh-CN.md)。先通过独立安装、可用／缺输入／缺依赖／失败隔离测试，再登记支持范围。
 
 质量、价值、编辑、增强类别独立；dataset 粒度需 `preflight_dataset(dataset, params)`，对当前子集调用一次。真实价值方法必须保留原输出，不以盘点数量代替实验收益。
 
