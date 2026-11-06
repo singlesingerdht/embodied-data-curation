@@ -41,14 +41,14 @@ Mermaid 脚本由 jsDelivr 加载固定版本，供 `WORKFLOWS.md` 中的工作�
 `.github/workflows/docs.yml` 对文档变更执行严格构建，生成可下载的 HTML artifact。
 普通 push、pull request 和默认手动运行都只构建，发布默认关闭。
 
-以后确定要发布时：
+更新线上内容时：
 
-1. 核对站点内容、访问范围及私有仓库的 GitHub Pages 计划支持。
-2. 将文档与工作流合入默认分支 `main`；仓库 **Settings → Pages** 选择 **GitHub Actions**。
+1. 将文档修改合入默认分支 `main`。
+2. 仓库 **Settings → Pages** 保持 **GitHub Actions**，使用现有 Sphinx 工作流发布。
 3. 手动运行 **EDC documentation**，明确选择 `publish`，构建通过后再部署。
 
-正式入口使用 `https://singlesingerdht.github.io/embodied-data-curation/`，当前尚未发布。
-私有仓库的 Pages 网站通常仍可公开访问，不能将私有仓库直接等同于私有网站。
+正式入口已发布：[使用指南](https://singlesingerdht.github.io/embodied-data-curation/)。
+不要改用从分支直接发布；它会用 Jekyll 将 README 生成为首页，无法展示这套双语导航与页面结构。
 
 参考：[GitHub Pages 自定义工作流](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。
 
