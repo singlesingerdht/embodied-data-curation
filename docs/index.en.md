@@ -26,6 +26,8 @@ Click the image to view it at full size.
 - **Automation**: Expert demonstrations provide signals for learning to judge, while task and training feedback make selection outcomes comparable, enabling assessment and selection to become progressively automated.
 - **Evidence**: Expert experience provides a task reference and model feedback provides a learning reference, allowing choices to be explained in relation to user goals and their effects to be tested.
 
+Related papers support parts of these mechanisms: **STEAM** supports learning automated assessment from demonstrations, while **RoboDrop** supports data selection guided by model learning signals.
+
 Data quality checks and selection/export are available today; task-value and policy-value methods will be integrated progressively.
 [From Quality Checks to Autonomous Data Curation](explanation/QUALITY_VALIDATION.md).
 
