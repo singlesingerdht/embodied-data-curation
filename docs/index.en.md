@@ -22,9 +22,9 @@ reports, and evidence to make data selection traceable.
 Click the image to view it at full size.
 :::
 
-- **Cross-robot reuse**: Configuration maps each robot's fields, units, and components to shared inputs, so the same checks work across robot types.
-- **Automation**: Learn assessment criteria from demonstrations and improve selection through data and training feedback, progressively reducing manual judgment and rule tuning.
-- **Evidence**: Connect each selection decision to quality evidence, task progress, and model learning signals, making its basis traceable and its effects verifiable.
+- **Cross-robot reuse**: Robot designs differ, but motion, perception, and timing data share common meanings, allowing checks to be reused through a shared representation.
+- **Automation**: Expert demonstrations provide signals for learning to judge, while task and training feedback make selection outcomes comparable, enabling assessment and selection to become progressively automated.
+- **Evidence**: Expert experience provides a task reference and model feedback provides a learning reference, allowing choices to be explained in relation to user goals and their effects to be tested.
 
 Data quality checks and selection/export are available today; task-value and policy-value methods will be integrated progressively.
 [From Quality Checks to Autonomous Data Curation](explanation/QUALITY_VALIDATION.md).
