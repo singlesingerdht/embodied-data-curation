@@ -11,12 +11,50 @@ html_theme.sidebar_secondary.remove: true
 **EDC = Embodied Data Curation**。面向具身数据使用者与算法开发者，
 通过数据读取、机器人配置、质量检查、报告与证据，为数据选择提供可追溯的依据。
 
-## 文档
+## 框架概览
+
+:::{figure} assets/framework-overview.zh-CN.svg
+:alt: EDC 总览：以质量证据、任务进展和策略反馈支持数据整理
+:target: _images/framework-overview.zh-CN.svg
+:figclass: edc-overview
+
+点击图片查看大图。
+:::
+
+当前可完成数据质量检查与筛选导出；任务价值和策略价值方法将逐步接入。
+[了解研究依据与验证安排](explanation/QUALITY_VALIDATION.zh-CN.md)。
+
+## 从这里开始
+
+::::{grid} 1 1 2 2
+:gutter: 3
+
+:::{grid-item-card} 数据使用者
+
+检查数据、查看问题与证据，并导出选中的记录。
+
+[快速开始](tutorial/QUICKSTART.zh-CN.md) · [配置数据与机器人](how-to/DATA_AND_ROBOT.zh-CN.md)
+
+[运行算法](how-to/RUN_AND_SELECT.zh-CN.md) · [筛选与导出](how-to/SELECTION.md)
+:::
+
+:::{grid-item-card} 算法开发者
+
+复用数据读取、检查与报告能力，接入算法或数据格式。
+
+[算法扩展](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [读取器扩展](how-to/READER_PLUGIN.zh-CN.md)
+
+[输出对象与接口](reference/OUTPUTS.zh-CN.md)
+:::
+
+::::
+
+## 文档导航
 
 ::::{grid} 1 2 2 2
 :gutter: 3
 
-:::{grid-item-card} 教程 · 快速开始
+:::{grid-item-card} 教程
 :link: tutorial/QUICKSTART.zh-CN
 :link-type: doc
 
@@ -34,48 +72,17 @@ html_theme.sidebar_secondary.remove: true
 :link: reference/index
 :link-type: doc
 
-格式、字段、单位、算法参数、输出对象与命令行。
+查阅数据格式、配置字段、算法参数与接口。
 :::
 
 :::{grid-item-card} 说明
 :link: explanation/index
 :link-type: doc
 
-数据质量的含义、设计取舍、证据边界与研究依据。
+了解框架设计、质量含义、研究依据与验证。
 :::
 
 ::::
-
-## 入门路径
-
-| 任务 | 入口 |
-|---|---|
-| 安装并运行完整示例 | [教程：快速开始](tutorial/QUICKSTART.zh-CN.md) |
-| 接入采集记录 | [数据与机器人配置](how-to/DATA_AND_ROBOT.zh-CN.md) |
-| 选择适用的检查 | [算法运行](how-to/RUN_AND_SELECT.zh-CN.md) |
-| 导出筛选结果 | [筛选与导出](how-to/SELECTION.md) |
-| 扩展算法或数据格式 | [算法扩展](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [接入读取器](how-to/READER_PLUGIN.zh-CN.md) |
-| 了解研究依据与验证范围 | [从质量检查到自主数据整理](explanation/QUALITY_VALIDATION.zh-CN.md) |
-
-EDC 提供数据质量检查与有证据支持的筛选。任务价值与策略价值方法计划逐步接入，见[研究依据与验证安排](explanation/QUALITY_VALIDATION.zh-CN.md)。
-
-## 框架概览
-
-![EDC 总览：以质量证据、任务进展和策略反馈支持数据整理](assets/framework-overview.zh-CN.svg)
-
-## 运行与使用结果
-
-已有数据与匹配的机器人配置后，可执行：
-
-```bash
-edc batch /path/to/dataset/episode.mcap \
-  --robot configs/robots/x1pro_mcap.yaml \
-  --output /path/to/results/report.html --jobs 1
-```
-
-浏览器打开报告，按轨迹和算法查看结论、原因与证据；需要导出时使用
-[`edc regenerate`](how-to/SELECTION.md)。运行成功、数据质量通过和工作流放行分别表达。
-第一次运行请按[教程](tutorial/QUICKSTART.zh-CN.md)准备环境与数据。
 
 ```{toctree}
 :hidden:

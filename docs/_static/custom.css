@@ -14,6 +14,8 @@ html[data-theme="dark"] {
 .edc-intro { color: var(--pst-color-text-muted); font-size: 1.2rem; margin-bottom: 1.5rem; }
 .edc-version { color: var(--pst-color-text-muted); font-size: 0.85rem; }
 .bd-article img, .mermaid svg { max-width: 100%; }
+.edc-overview { margin: 0 0 1rem; }
+.edc-overview figcaption { color: var(--pst-color-text-muted); font-size: 0.85rem; text-align: center; }
 @media (max-width: 575px) {
   .bd-article h1 { font-size: 1.9rem; }
   .edc-intro { font-size: 1.05rem; }
