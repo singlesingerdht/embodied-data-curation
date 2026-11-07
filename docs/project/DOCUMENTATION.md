@@ -76,7 +76,8 @@ Mermaid 扩展沿用现有配置，供后续图示使用。
 ## 发布后启用 README 页面跳转
 
 README 直接使用“快速开始”“数据接入”“算法指南”“开发指南”等用途作为链接文字。
-README 默认使用仓库 Markdown 链接。需要切换到已部署站点时，在文档环境运行：
+README 的指南入口使用已发布网站地址；图片、配置和源码仍链接仓库文件。
+新增指南或移动页面后，在文档环境核对并启用对应入口：
 
 ```bash
 # 检查正式页面及章节是否可访问，只预览，不写文件。
@@ -92,6 +93,9 @@ git diff -- README.md README.zh-CN.md
 `explanation/QUALITY_VALIDATION.html#quality-validation-automation`。
 图片、配置、源码、PPT 和 README 自身的语言切换链接保持仓库路径。
 页面尚未发布或章节不存在时不修改 README；脚本不提交、不推送、不部署。
+
+`_ext/site_redirects.py` 为目录调整前已发布的页面保留跳转，兼容此前分享的指南地址与明确章节。
+移动已有页面时应同步维护跳转，严格构建会检查跳转目标是否存在。
 
 本地可先检查映射：
 

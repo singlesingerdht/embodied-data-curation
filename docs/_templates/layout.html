@@ -6,8 +6,8 @@
   document.documentElement.dataset.edcShared = {{ ('true' if edc_shared_page else 'false') | tojson }};
   document.documentElement.dataset.edcLanguage = {{ edc_locale | tojson }};
   document.documentElement.dataset.edcDoc = {{ edc_current_docname | tojson }};
-  document.documentElement.dataset.edcPairs = {{ edc_page_pairs | tojson }};
-  document.documentElement.dataset.edcSharedPages = {{ edc_shared_pages | tojson }};
+  document.documentElement.dataset.edcPairs = JSON.stringify({{ edc_page_pairs | tojson }});
+  document.documentElement.dataset.edcSharedPages = JSON.stringify({{ edc_shared_pages | tojson }});
   {% if edc_shared_page %}
   if (new URLSearchParams(location.search).get('lang') === 'en') {
     document.documentElement.dataset.edcLanguage = 'en';

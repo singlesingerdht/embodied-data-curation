@@ -2,7 +2,7 @@
 
 **EDC = Embodied Data Curation**. A data curation framework for robot data users and algorithm developers.
 
-[简体中文](README.zh-CN.md) · [Documentation](docs/index.en.md) · [Quick start](docs/tutorial/QUICKSTART.md) · [Data integration](docs/how-to/DATA_AND_ROBOT.md) · [Algorithms](docs/reference/ALGORITHMS.md) · [Development](docs/how-to/ALGORITHM_PLUGIN.md)
+[简体中文](README.zh-CN.md) · [Documentation](https://singlesingerdht.github.io/embodied-data-curation/index.en.html) · [Quick start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html) · [Data integration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html) · [Algorithms](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html) · [Development](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html)
 
 ## Overview
 
@@ -10,7 +10,7 @@
 
 ![EDC vision: let user goals drive how data evolves, through cross-robot reuse, automation, and verifiable choices](docs/assets/framework-overview.png)
 
-**User needs** include the task and success criteria, target policy, quality requirements, and data/computing budget, with expert demonstrations or reliable references where applicable. Today, users receive quality reports, issue evidence, selected data copies or symlinks, and source manifests. Planned outputs add task annotations and data subsets or improved versions suited to the target policy. [Needs and deliverables](docs/explanation/QUALITY_VALIDATION.md#needs)
+**User needs** include the task and success criteria, target policy, quality requirements, and data/computing budget, with expert demonstrations or reliable references where applicable. Today, users receive quality reports, issue evidence, selected data copies or symlinks, and source manifests. Planned outputs add task annotations and data subsets or improved versions suited to the target policy. [Needs and deliverables](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-needs)
 
 - **Data quality | Different robots. One approach to quality checks.** Make data from different robots readable and interpretable by machines, with reusable quality checks.
 - **Task value | Turn human understanding into machine learning signals.** Draw on expert demonstrations and task requirements to identify key actions and corrective experience worth learning.
@@ -18,14 +18,14 @@
 
 Across these three levels, the framework pursues two further advantages:
 
-- **Automation | Learn to assess from experience; improve choices through feedback.** Learn assessment criteria from expert demonstrations and use data and training feedback to guide selection, progressively reducing manual assessment, rule adjustment, and method selection. [Mechanisms and research evidence](docs/explanation/QUALITY_VALIDATION.md#automation)
-- **Evidence | Trace the basis of each choice and test its effects.** Connect selection to quality evidence, task progress, and model learning signals; record processing steps and validate choices with independent feedback. [Verifying choices](docs/explanation/QUALITY_VALIDATION.md#evidence)
+- **Automation | Learn to assess from experience; improve choices through feedback.** Learn assessment criteria from expert demonstrations and use data and training feedback to guide selection, progressively reducing manual assessment, rule adjustment, and method selection. [Mechanisms and research evidence](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-automation)
+- **Evidence | Trace the basis of each choice and test its effects.** Connect selection to quality evidence, task progress, and model learning signals; record processing steps and validate choices with independent feedback. [Verifying choices](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-evidence)
 
 > Data quality checks are available today. Task-value and policy-value methods have research foundations and will be integrated progressively.
 
 > **Long-term goal: you set the objective; the framework keeps exploring autonomously—which data to keep, which experience to learn from, and what to improve next.**
 
-See [From Quality Checks to Autonomous Data Curation](docs/explanation/QUALITY_VALIDATION.md) for the three levels, research foundations, and validation plans, or the [presentation (Chinese)](docs/presentations/edc-framework.zh-CN.pptx). Readers cover LeRobot, HDF5, Parquet, ROS bags, MCAP, and more; see [supported formats](docs/reference/DATA_AND_ROBOTS.md#formats) for conditions.
+See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html) for the three levels, research foundations, and validation plans, or the [presentation (Chinese)](docs/presentations/edc-framework.zh-CN.pptx). Readers cover LeRobot, HDF5, Parquet, ROS bags, MCAP, and more; see [supported formats](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.html#data-and-robots-formats) for conditions.
 
 ## What's New
 
@@ -38,7 +38,7 @@ See [From Quality Checks to Autonomous Data Curation](docs/explanation/QUALITY_V
 - **Data users**: provide data and robot configuration → review recommendations and select algorithms → run, inspect reports, and export data.
 - **Algorithm developers**: write algorithms and declare inputs/outputs → register and validate → join the same recommendation and execution flow.
 
-Both paths share input checks, execution, and result recording. [Modules and extensions](docs/reference/OUTPUTS.md#interfaces)
+Both paths share input checks, execution, and result recording. [Modules and extensions](https://singlesingerdht.github.io/embodied-data-curation/reference/OUTPUTS.html#outputs-interfaces)
 
 ## Installation and Quick Start
 
@@ -55,7 +55,7 @@ pip install '.[formats]'
 
 **2. Prepare data**
 
-Place a real X1 Pro dual-arm MCAP recording matching [`x1pro_mcap.yaml`](configs/robots/x1pro_mcap.yaml) at `/path/to/dataset/episode.mcap`. [Sample details and availability](docs/tutorial/QUICKSTART.md#data)
+Place a real X1 Pro dual-arm MCAP recording matching [`x1pro_mcap.yaml`](configs/robots/x1pro_mcap.yaml) at `/path/to/dataset/episode.mcap`. [Sample details and availability](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html#quickstart-data)
 
 **3. Run and view results**
 
@@ -65,7 +65,7 @@ edc batch /path/to/dataset/episode.mcap \
   --output /path/to/results/report.html --jobs 1
 ```
 
-Open `/path/to/results/report.html` in a browser; `report.json` is saved alongside it. Successful execution does not mean all data passed. [Full quick start](docs/tutorial/QUICKSTART.md)
+Open `/path/to/results/report.html` in a browser; `report.json` is saved alongside it. Successful execution does not mean all data passed. [Full quick start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html)
 
 **4. Export selected data (optional)**
 
@@ -79,7 +79,7 @@ edc regenerate /path/to/results/report.json --output /path/to/selected --mode co
 edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
 ```
 
-Output includes copies or links and a source manifest, `manifest.json`. Originals stay unchanged; links require the sources to remain available. [Export and limitations](docs/how-to/SELECTION.md)
+Output includes copies or links and a source manifest, `manifest.json`. Originals stay unchanged; links require the sources to remain available. [Export and limitations](https://singlesingerdht.github.io/embodied-data-curation/how-to/SELECTION.en.html)
 
 ## Data and Configuration
 
@@ -89,11 +89,11 @@ Dataset information describes file locations, tasks, and operation boundaries; r
 
 | Task | Documentation |
 |---|---|
-| Inspect fields, formats, and operation boundaries | [Dataset integration](docs/how-to/DATA_AND_ROBOT.md#dataset) |
-| Map source fields and configure one or two arms | [Robot configuration](docs/how-to/DATA_AND_ROBOT.md#robot) |
-| Confirm units, time sources, and clocks | [Units and time](docs/reference/DATA_AND_ROBOTS.md#units-time) |
-| Inspect URDF joints and validate configuration | [URDF usage and limits](docs/how-to/DATA_AND_ROBOT.md#urdf) |
-| Set algorithm inputs, scope, and parameters | [Algorithm configuration](docs/how-to/RUN_AND_SELECT.md#selection) |
+| Inspect fields, formats, and operation boundaries | [Dataset integration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-dataset) |
+| Map source fields and configure one or two arms | [Robot configuration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-robot) |
+| Confirm units, time sources, and clocks | [Units and time](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.html#data-and-robots-units-time) |
+| Inspect URDF joints and validate configuration | [URDF usage and limits](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-urdf) |
+| Set algorithm inputs, scope, and parameters | [Algorithm configuration](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-selection) |
 
 Values with unknown units can be retained and checked for NaN/Inf, but cannot support physical calculations requiring known units.
 
@@ -113,23 +113,23 @@ edc run /path/to/dataset/episode.mcap \
   --output /path/to/results/selected
 ```
 
-`run` preserves the specified order; without a selection, it attempts fully and partly available quality methods and records missing requirements. `batch` runs the quality collection on one recording, several recordings, or a directory. `edc algorithms` only lists registered algorithms. [Selection and Python API](docs/how-to/RUN_AND_SELECT.md#selection)
+`run` preserves the specified order; without a selection, it attempts fully and partly available quality methods and records missing requirements. `batch` runs the quality collection on one recording, several recordings, or a directory. `edc algorithms` only lists registered algorithms. [Selection and Python API](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-selection)
 
-The example writes `/path/to/results/selected/report.html`, using the same four sections as batch. `--no-html` disables single-run HTML while preserving JSON and evidence. Batch produces one combined HTML report and a `report.json` for export; `--keep` retains full per-recording results. [Reports and evidence](docs/how-to/RUN_AND_SELECT.md#results)
+The example writes `/path/to/results/selected/report.html`, using the same four sections as batch. `--no-html` disables single-run HTML while preserving JSON and evidence. Batch produces one combined HTML report and a `report.json` for export; `--keep` retains full per-recording results. [Reports and evidence](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-results)
 
 | Algorithm | Checks | Minimum input | Details |
 |---|---|---|---|
-| `Structure_Check` | Channels, cameras, and duration | Channel list and structural requirements | [Structure](docs/reference/ALGORITHMS.md#structure-check) |
-| `Numeric_Check` | Finite values and configured physical limits | Numeric fields; physical checks also need units and limits | [Numeric validity](docs/reference/ALGORITHMS.md#numeric-check) |
-| `Action_Smoothness` | End-effector vibration while holding still and stuck readings | XYZ feedback and a usable timeline | [Smoothness](docs/reference/ALGORITHMS.md#action-smoothness) |
-| `Check_Timestamp` | Timing correspondence between images and other data, and sampling regularity per stream | Valid timestamps with known units | [Timestamps](docs/reference/ALGORITHMS.md#check-timestamp) |
-| `Sync_Check` | Recording span coverage and clock offsets across streams | Independent acquisition times and comparable clocks; differences also need record times | [Synchronization](docs/reference/ALGORITHMS.md#sync-check) |
-| `Root_Cause` | Single-stream gaps, simultaneous interruptions, and periodic anomalies | Comparable timelines and source groups | [Timing attribution](docs/reference/ALGORITHMS.md#root-cause) |
-| `Dedup_Check` | Repeated timestamps or sequence numbers | Original times or sequence information | [Duplicates](docs/reference/ALGORITHMS.md#dedup-check) |
-| `Reset_Detection` | Distance from Home at the start and end | Position feedback, Home, and tolerances | [Reset](docs/reference/ALGORITHMS.md#reset-detection) |
-| `Video_Integrity` | Image content and video integrity | Decodable frames or video | [Images and video](docs/reference/ALGORITHMS.md#video-integrity) |
+| `Structure_Check` | Channels, cameras, and duration | Channel list and structural requirements | [Structure](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-structure-check) |
+| `Numeric_Check` | Finite values and configured physical limits | Numeric fields; physical checks also need units and limits | [Numeric validity](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-numeric-check) |
+| `Action_Smoothness` | End-effector vibration while holding still and stuck readings | XYZ feedback and a usable timeline | [Smoothness](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-action-smoothness) |
+| `Check_Timestamp` | Timing correspondence between images and other data, and sampling regularity per stream | Valid timestamps with known units | [Timestamps](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-check-timestamp) |
+| `Sync_Check` | Recording span coverage and clock offsets across streams | Independent acquisition times and comparable clocks; differences also need record times | [Synchronization](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-sync-check) |
+| `Root_Cause` | Single-stream gaps, simultaneous interruptions, and periodic anomalies | Comparable timelines and source groups | [Timing attribution](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-root-cause) |
+| `Dedup_Check` | Repeated timestamps or sequence numbers | Original times or sequence information | [Duplicates](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-dedup-check) |
+| `Reset_Detection` | Distance from Home at the start and end | Position feedback, Home, and tolerances | [Reset](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-reset-detection) |
+| `Video_Integrity` | Image content and video integrity | Decodable frames or video | [Images and video](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-video-integrity) |
 
-Each algorithm retains its own metrics and evidence, without a combined score. [Check rationale and research directions](docs/explanation/QUALITY_VALIDATION.md)
+Each algorithm retains its own metrics and evidence, without a combined score. [Check rationale and research directions](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html)
 
 ## Developers and Project Structure
 
@@ -137,7 +137,7 @@ New quality algorithms can reuse unified data reading, input validation, and rep
 
 Quality algorithms can inherit `QualityAlgorithm` and return a list of `Item` objects containing reasons, metrics, and evidence. They can also return `AlgorithmResult` with an optional one-line summary for the report. General plugins use `AlgorithmSpec + run(context, params)`.
 
-[Output classes and adding a new algorithm](docs/how-to/ALGORITHM_PLUGIN.md) · [Reader plugins](docs/how-to/READER_PLUGIN.md) · [Contributing (Chinese)](CONTRIBUTING.md)
+[Output classes and adding a new algorithm](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html) · [Reader plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.html) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
 src/edc/
@@ -157,10 +157,10 @@ tests/             # Contract and implementation tests
 
 ### Roadmap
 
-These are planned integrations or research directions. See the [quality guide](docs/explanation/QUALITY_VALIDATION.md#layers) for methods and foundations:
+These are planned integrations or research directions. See the [quality guide](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-layers) for methods and foundations:
 
 1. Task segmentation, progress assessment, and useful segment discovery: STEAM and MGT-QV.
 2. Automatic annotation against task criteria and multimodal review: drawing on external work such as FLORA.
 3. Data editing, demonstration resampling, and quality rechecks: directions such as DemoTempo.
 4. Selection for target policies: RoboDrop and VLA as a judge.
-5. Feedback-driven rules and algorithm combinations, then new algorithm generation, validation, and integration toward [autonomous curation](docs/explanation/QUALITY_VALIDATION.md#autonomous).
+5. Feedback-driven rules and algorithm combinations, then new algorithm generation, validation, and integration toward [autonomous curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-autonomous).
