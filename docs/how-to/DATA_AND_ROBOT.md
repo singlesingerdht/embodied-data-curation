@@ -4,6 +4,7 @@
 
 Datasets define episode boundaries. Robot YAML defines channel semantics, units, and parts. This workflow covers source inspection, configuration, validation, and quality checks.
 
+<a id="dataset"></a>
 ## 1. Prepare the data
 
 Run the inspection script from the repository root to list actual topics, columns, fields, and dimensions:
@@ -27,7 +28,6 @@ episodes:
 
 Place `take_001.mcap` in the same directory and pass the directory path when opening the dataset. Specify `format` explicitly. Use reader-supported selectors, such as `{group: data/demo_0}` for HDF5. Each episode needs a unique ID.
 
-<a id="dataset"></a>
 <a id="robot"></a>
 ## 2. Create robot YAML
 
@@ -72,18 +72,10 @@ arms:
 
 Use `main` for one arm and `left`/`right` for two arms. Split combined arrays with distinct indices. Add end-effector, camera, gripper, and IMU entries for recorded signals. Set algorithm parameters under `checks.<algorithm_id>`. `Reset_Detection` requires a confirmed Home reference and is skipped here. See the [configuration reference](../reference/DATA_AND_ROBOTS.md) for fields and units.
 
-## 3. Validate the mapping
-
-```bash
-edc robot check --robot /path/to/robot.yaml --data /path/to/data
-```
-
-This command reads declared channels and checks numeric ranges in the first episode. Confirm source fields, component order, and units before running quality checks.
-
 <a id="urdf"></a>
-### URDF
+### Generate a configuration fragment from URDF
 
-If you have a URDF, the command can generate a YAML fragment for its joint chain. First inspect the link tree and choose the arm's base and tip:
+An existing URDF can generate a YAML fragment for its joint chain. First inspect the link tree and choose the arm's base and tip:
 
 ```bash
 edc robot urdf --urdf /path/to/robot.urdf
@@ -105,7 +97,19 @@ urdf:
   tip_link: tool_link
 ```
 
-EDC reads joint limits, velocity limits, and kinematics from the URDF. The command prints the joint-chain fragment; complete the YAML with data fields, units, time, and cameras. Order `urdf.joints` to match the recorded columns. `urdf.file` resolves relative to the robot YAML. With two episodes and measured end-effector positions, validate the chain and frame relation:
+EDC reads joint limits, velocity limits, and kinematics from the URDF. The command prints the joint-chain fragment; complete the YAML with data fields, units, time, and cameras. Order `urdf.joints` to match the recorded columns. `urdf.file` resolves relative to the robot YAML.
+
+## 3. Validate the mapping
+
+```bash
+edc robot check --robot /path/to/robot.yaml --data /path/to/data
+```
+
+This command reads declared channels and checks numeric ranges in the first episode. Confirm source fields, component order, and units before running quality checks.
+
+### Validate the URDF configuration
+
+With two episodes and measured end-effector positions, validate the chain and frame relation:
 
 ```bash
 edc robot urdf --robot /path/to/robot.yaml \

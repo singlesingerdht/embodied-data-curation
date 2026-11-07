@@ -2,7 +2,7 @@
 
 **EDC = Embodied Data Curation**. A data curation framework for robot data users and algorithm developers.
 
-[简体中文](README.zh-CN.md) · [Documentation](https://singlesingerdht.github.io/embodied-data-curation/index.en.html) · [Quick start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html) · [Data integration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html) · [Algorithms](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html) · [Development](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html)
+[简体中文](README.zh-CN.md) · [EDC · Embodied Data Curation](https://singlesingerdht.github.io/embodied-data-curation/index.en.html) · [Quick Start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html) · [Data and Robot Configuration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html) · [Built-in Quality Algorithm Reference](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html) · [Algorithm Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html)
 
 ## Overview
 
@@ -38,7 +38,7 @@ See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.gi
 - **Data users**: provide data and robot configuration → review recommendations and select algorithms → run, inspect reports, and export data.
 - **Algorithm developers**: write algorithms and declare inputs/outputs → register and validate → join the same recommendation and execution flow.
 
-Both paths share input checks, execution, and result recording. [Modules and extensions](https://singlesingerdht.github.io/embodied-data-curation/reference/OUTPUTS.html#outputs-interfaces)
+Both paths share input checks, execution, and result recording. [Interface types](https://singlesingerdht.github.io/embodied-data-curation/reference/OUTPUTS.html#outputs-interfaces)
 
 ## Installation and Quick Start
 
@@ -65,7 +65,7 @@ edc batch /path/to/dataset/episode.mcap \
   --output /path/to/results/report.html --jobs 1
 ```
 
-Open `/path/to/results/report.html` in a browser; `report.json` is saved alongside it. Successful execution does not mean all data passed. [Full quick start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html)
+Open `/path/to/results/report.html` in a browser; `report.json` is saved alongside it. Successful execution does not mean all data passed. [Quick Start](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.html)
 
 **4. Export selected data (optional)**
 
@@ -79,7 +79,7 @@ edc regenerate /path/to/results/report.json --output /path/to/selected --mode co
 edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
 ```
 
-Output includes copies or links and a source manifest, `manifest.json`. Originals stay unchanged; links require the sources to remain available. [Export and limitations](https://singlesingerdht.github.io/embodied-data-curation/how-to/SELECTION.en.html)
+Output includes copies or links and a source manifest, `manifest.json`. Originals stay unchanged; links require the sources to remain available. [Selection and Export](https://singlesingerdht.github.io/embodied-data-curation/how-to/SELECTION.en.html)
 
 ## Data and Configuration
 
@@ -89,11 +89,11 @@ Dataset information describes file locations, tasks, and operation boundaries; r
 
 | Task | Documentation |
 |---|---|
-| Inspect fields, formats, and operation boundaries | [Dataset integration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-dataset) |
-| Map source fields and configure one or two arms | [Robot configuration](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-robot) |
+| Inspect fields, formats, and operation boundaries | [Prepare the data](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-dataset) |
+| Map source fields and configure one or two arms | [Create robot YAML](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-robot) |
 | Confirm units, time sources, and clocks | [Units and time](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.html#data-and-robots-units-time) |
-| Inspect URDF joints and validate configuration | [URDF usage and limits](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-urdf) |
-| Set algorithm inputs, scope, and parameters | [Algorithm configuration](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-selection) |
+| Generate joint-chain YAML from URDF and validate configuration | [Generate a configuration fragment from URDF](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.html#data-and-robot-urdf) |
+| Set algorithm inputs, scope, and parameters | [Inspect recommendations](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-selection) |
 
 Values with unknown units can be retained and checked for NaN/Inf, but cannot support physical calculations requiring known units.
 
@@ -113,7 +113,7 @@ edc run /path/to/dataset/episode.mcap \
   --output /path/to/results/selected
 ```
 
-`run` preserves the specified order; without a selection, it attempts fully and partly available quality methods and records missing requirements. `batch` runs the quality collection on one recording, several recordings, or a directory. `edc algorithms` only lists registered algorithms. [Selection and Python API](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-selection)
+`run` preserves the specified order; without a selection, it attempts fully and partly available quality methods and records missing requirements. `batch` runs the quality collection on one recording, several recordings, or a directory. `edc algorithms` only lists registered algorithms. [Python API](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-python-api)
 
 The example writes `/path/to/results/selected/report.html`, using the same four sections as batch. `--no-html` disables single-run HTML while preserving JSON and evidence. Batch produces one combined HTML report and a `report.json` for export; `--keep` retains full per-recording results. [Reports and evidence](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.html#run-and-select-results)
 
@@ -129,7 +129,7 @@ The example writes `/path/to/results/selected/report.html`, using the same four 
 | `Reset_Detection` | Distance from Home at the start and end | Position feedback, Home, and tolerances | [Reset](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-reset-detection) |
 | `Video_Integrity` | Image content and video integrity | Decodable frames or video | [Images and video](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.html#algorithms-video-integrity) |
 
-Each algorithm retains its own metrics and evidence, without a combined score. [Check rationale and research directions](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html)
+Each algorithm retains its own metrics and evidence, without a combined score. [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html)
 
 ## Developers and Project Structure
 
@@ -137,7 +137,7 @@ New quality algorithms can reuse unified data reading, input validation, and rep
 
 Quality algorithms can inherit `QualityAlgorithm` and return a list of `Item` objects containing reasons, metrics, and evidence. They can also return `AlgorithmResult` with an optional one-line summary for the report. General plugins use `AlgorithmSpec + run(context, params)`.
 
-[Output classes and adding a new algorithm](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html) · [Reader plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.html) · [Contributing (Chinese)](CONTRIBUTING.md)
+[Algorithm Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html) · [Reader Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.html) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
 src/edc/

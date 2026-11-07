@@ -22,7 +22,7 @@ html_theme.sidebar_secondary.remove: true
 :::
 
 当前可完成数据质量检查与筛选导出；任务价值和策略价值方法将逐步接入。
-[了解研究依据与验证安排](explanation/QUALITY_VALIDATION.zh-CN.md)。
+[从质量检查到自主数据整理](explanation/QUALITY_VALIDATION.zh-CN.md)。
 
 ## 从这里开始
 
@@ -33,9 +33,9 @@ html_theme.sidebar_secondary.remove: true
 
 检查数据、查看问题与证据，并导出选中的记录。
 
-[快速开始](tutorial/QUICKSTART.zh-CN.md) · [配置数据与机器人](how-to/DATA_AND_ROBOT.zh-CN.md)
+[快速开始](tutorial/QUICKSTART.zh-CN.md) · [数据与机器人配置](how-to/DATA_AND_ROBOT.zh-CN.md)
 
-[运行算法](how-to/RUN_AND_SELECT.zh-CN.md) · [筛选与导出](how-to/SELECTION.md)
+[算法运行](how-to/RUN_AND_SELECT.zh-CN.md) · [筛选与导出](how-to/SELECTION.md)
 :::
 
 :::{grid-item-card} 算法开发者
@@ -44,7 +44,7 @@ html_theme.sidebar_secondary.remove: true
 
 [算法扩展](how-to/ALGORITHM_PLUGIN.zh-CN.md) · [读取器扩展](how-to/READER_PLUGIN.zh-CN.md)
 
-[输出对象与接口](reference/OUTPUTS.zh-CN.md)
+[接口与输出参考](reference/OUTPUTS.zh-CN.md)
 :::
 
 ::::

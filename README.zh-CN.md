@@ -2,7 +2,7 @@
 
 **EDC = Embodied Data Curation**。面向具身数据使用者与算法开发者的数据整理框架。
 
-[English](README.md) · [文档](https://singlesingerdht.github.io/embodied-data-curation/index.html) · [快速开始](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.zh-CN.html) · [数据接入](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html) · [算法指南](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.zh-CN.html) · [开发指南](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html)
+[English](README.md) · [EDC · 具身数据整理框架](https://singlesingerdht.github.io/embodied-data-curation/index.html) · [快速开始](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.zh-CN.html) · [数据与机器人配置](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html) · [内置质量算法参考](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.zh-CN.html) · [算法扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html)
 
 ## 框架概览
 
@@ -38,7 +38,7 @@
 - **数据使用者**：提供数据与机器人配置 → 查看推荐并选择算法 → 运行、查看报告及导出数据。
 - **算法开发者**：编写算法并声明输入输出 → 注册与验证 → 接入同一套推荐和执行流程。
 
-两类入口共用输入预检、执行与结果记录。[模块和扩展说明](https://singlesingerdht.github.io/embodied-data-curation/reference/OUTPUTS.zh-CN.html#outputs-zh-cn-interfaces)
+两类入口共用输入预检、执行与结果记录。[接口类型](https://singlesingerdht.github.io/embodied-data-curation/reference/OUTPUTS.zh-CN.html#outputs-zh-cn-interfaces)
 
 ## 安装与快速开始
 
@@ -65,7 +65,7 @@ edc batch /path/to/dataset/episode.mcap \
   --output /path/to/results/report.html --jobs 1
 ```
 
-用浏览器打开 `/path/to/results/report.html`；同目录保存 `report.json`。运行成功不表示数据全部通过。[完整快速开始](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.zh-CN.html)
+用浏览器打开 `/path/to/results/report.html`；同目录保存 `report.json`。运行成功不表示数据全部通过。[快速开始](https://singlesingerdht.github.io/embodied-data-curation/tutorial/QUICKSTART.zh-CN.html)
 
 **4. 导出选中数据（可选）**
 
@@ -79,7 +79,7 @@ edc regenerate /path/to/results/report.json --output /path/to/selected --mode co
 edc regenerate /path/to/results/report.json --output /path/to/selected-links --mode link
 ```
 
-输出包含数据副本或链接及来源清单 `manifest.json`。原始数据不变；软链接依赖原数据持续存在。[筛选导出与限制](https://singlesingerdht.github.io/embodied-data-curation/how-to/SELECTION.html)
+输出包含数据副本或链接及来源清单 `manifest.json`。原始数据不变；软链接依赖原数据持续存在。[筛选与导出](https://singlesingerdht.github.io/embodied-data-curation/how-to/SELECTION.html)
 
 ## 数据与配置
 
@@ -89,11 +89,11 @@ edc regenerate /path/to/results/report.json --output /path/to/selected-links --m
 
 | 需要做什么 | 文档入口 |
 |---|---|
-| 查看数据字段、选择格式、说明每次操作的起止位置 | [数据集接入](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-dataset) |
-| 编写机器人 YAML、映射源字段与单／双臂 | [机器人配置](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-robot) |
+| 查看数据字段、选择格式、说明每次操作的起止位置 | [准备数据](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-dataset) |
+| 编写机器人 YAML、映射源字段与单／双臂 | [创建机器人 YAML](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-robot) |
 | 确认源单位、时间来源及 clock | [单位与时间](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.zh-CN.html#data-and-robots-zh-cn-units-time) |
-| 使用 URDF 获取关节信息并核对配置 | [URDF 使用与限制](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-urdf) |
-| 配置算法输入、范围和参数 | [算法配置](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.zh-CN.html#run-and-select-zh-cn-selection) |
+| 从 URDF 生成关节链 YAML 并核对配置 | [从 URDF 生成配置片段](https://singlesingerdht.github.io/embodied-data-curation/how-to/DATA_AND_ROBOT.zh-CN.html#data-and-robot-zh-cn-urdf) |
+| 配置算法输入、范围和参数 | [查看推荐](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.zh-CN.html#run-and-select-zh-cn-selection) |
 
 未知单位可保留并检查 NaN／Inf，但不能据此进行需要已知单位的物理计算。
 
@@ -113,7 +113,7 @@ edc run /path/to/dataset/episode.mcap \
   --output /path/to/results/selected
 ```
 
-`run` 保留指定顺序；未选择算法时尝试完整及部分可运行的质量项，并记录缺失条件。`batch` 对单条、多条或目录运行质量集合；`edc algorithms` 仅列登记清单。[选择规则与 Python API](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.zh-CN.html#run-and-select-zh-cn-selection)
+`run` 保留指定顺序；未选择算法时尝试完整及部分可运行的质量项，并记录缺失条件。`batch` 对单条、多条或目录运行质量集合；`edc algorithms` 仅列登记清单。[Python 接口](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.zh-CN.html#run-and-select-zh-cn-python-api)
 
 上例生成 `/path/to/results/selected/report.html`，与 batch 使用相同四栏布局；`--no-html` 可关闭单次 HTML，JSON 和证据仍保留。batch 只生成一份汇总 HTML，其 `report.json` 用于筛选导出；`--keep` 可保留各条完整结果。[报告与证据](https://singlesingerdht.github.io/embodied-data-curation/how-to/RUN_AND_SELECT.zh-CN.html#run-and-select-zh-cn-results)
 
@@ -129,7 +129,7 @@ edc run /path/to/dataset/episode.mcap \
 | `Reset_Detection` | 开头、结尾与 Home 的距离 | 反馈位置、Home 及容差 | [复位检测](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.zh-CN.html#algorithms-zh-cn-reset-detection) |
 | `Video_Integrity` | 图像内容与视频完整性 | 可解码图像帧或视频 | [图像／视频检查](https://singlesingerdht.github.io/embodied-data-curation/reference/ALGORITHMS.zh-CN.html#algorithms-zh-cn-video-integrity) |
 
-每项保留自身指标与证据，不生成跨算法总分。[检查依据与研究路线](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html)
+每项保留自身指标与证据，不生成跨算法总分。[从质量检查到自主数据整理](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html)
 
 ## 开发者与组织结构
 
@@ -137,7 +137,7 @@ edc run /path/to/dataset/episode.mcap \
 
 质量算法可继承 `QualityAlgorithm`，返回包含原因、指标和证据的 `Item` 列表；也可返回 `AlgorithmResult`，附一行简短摘要用于报告展示。通用插件使用 `AlgorithmSpec + run(context, params)`。
 
-[输出基类与接入新算法](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html) · [读取器插件](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.zh-CN.html) · [贡献指南](CONTRIBUTING.md)
+[算法扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html) · [读取器扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.zh-CN.html) · [贡献指南](CONTRIBUTING.md)
 
 ```text
 src/edc/

@@ -2,7 +2,7 @@
 
 [English](SELECTION.en.md)
 
-`edc regenerate` 已提供按批量报告复制／链接数据的入口。它保留原判断，不重算算法，不修复数据。
+`edc regenerate` 提供按批量报告复制／链接数据的入口。
 
 ## 命令
 
@@ -51,7 +51,7 @@ selected/
 └── ...             # 数据副本或链接
 ```
 
-`manifest.json`（`dqs_regenerate_manifest_v1`）保存报告来源、筛选条件、选中条数、原判断、源→目标映射、轨迹 ID、格式（`format`）与选择器（`selector`）、操作和失败原因。复制后通过框架回读，核对轨迹集合与预期一致。批量报告的保留建议不代替完整检查或工作流放行。
+`manifest.json`（`dqs_regenerate_manifest_v1`）保存报告来源、筛选条件、选中条数、原判断、源→目标映射、轨迹 ID、格式（`format`）与选择器（`selector`）、操作和失败原因。复制后通过框架回读，核对轨迹集合与预期一致。
 
 ## 使用边界与退出码
 

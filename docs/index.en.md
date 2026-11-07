@@ -23,7 +23,7 @@ Click the image to view it at full size.
 :::
 
 Data quality checks and selection/export are available today; task-value and policy-value methods will be integrated progressively.
-[Research foundations and validation](explanation/QUALITY_VALIDATION.md).
+[From Quality Checks to Autonomous Data Curation](explanation/QUALITY_VALIDATION.md).
 
 ## Start here
 
@@ -34,18 +34,18 @@ Data quality checks and selection/export are available today; task-value and pol
 
 Check data, inspect issues and evidence, and export selected recordings.
 
-[Quick start](tutorial/QUICKSTART.md) · [Configure data and robots](how-to/DATA_AND_ROBOT.md)
+[Quick Start](tutorial/QUICKSTART.md) · [Data and Robot Configuration](how-to/DATA_AND_ROBOT.md)
 
-[Run algorithms](how-to/RUN_AND_SELECT.md) · [Select and export](how-to/SELECTION.en.md)
+[Run Algorithms](how-to/RUN_AND_SELECT.md) · [Selection and Export](how-to/SELECTION.en.md)
 :::
 
 :::{grid-item-card} Algorithm developers
 
 Reuse data reading, checks, and reports to add algorithms or data formats.
 
-[Algorithm plugins](how-to/ALGORITHM_PLUGIN.md) · [Reader plugins](how-to/READER_PLUGIN.md)
+[Algorithm Plugins](how-to/ALGORITHM_PLUGIN.md) · [Reader Plugins](how-to/READER_PLUGIN.md)
 
-[Output objects and interfaces](reference/OUTPUTS.md)
+[Interfaces and Outputs](reference/OUTPUTS.md)
 :::
 
 ::::

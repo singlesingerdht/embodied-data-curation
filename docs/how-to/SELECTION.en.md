@@ -2,7 +2,7 @@
 
 [简体中文](SELECTION.md)
 
-`edc regenerate` copies or links data selected from a batch report. It preserves original decisions without recomputing checks or repairing data.
+`edc regenerate` copies or links data selected from a batch report.
 
 ## Command
 
@@ -51,7 +51,7 @@ selected/
 └── ...             # Copied data or links
 ```
 
-`manifest.json` (`dqs_regenerate_manifest_v1`) records report provenance, selection criteria/counts, original decisions, source-to-output mappings, episode IDs/formats/selectors, operations and errors. Copied data is reopened to verify the expected episode set. A batch keep suggestion does not substitute for full checks or workflow release requirements.
+`manifest.json` (`dqs_regenerate_manifest_v1`) records report provenance, selection criteria/counts, original decisions, source-to-output mappings, episode IDs/formats/selectors, operations and errors. Copied data is reopened to verify the expected episode set.
 
 ## Boundaries and exit codes
 

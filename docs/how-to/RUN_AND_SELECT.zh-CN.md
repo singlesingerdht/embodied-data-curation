@@ -7,14 +7,14 @@
 <a id="selection"></a>
 ## 1. 查看推荐
 
-推荐以当前输入、单位资格、语义、时间、参数及依赖为依据。`available` 表示预检满足；`partial` 表示可检查明确子集，同时列出未覆盖范围；`unavailable` 表示缺少必需条件。预检不等于实际读取全部内容，也不等于数据质量通过。
+推荐以当前输入、单位资格、语义、时间、参数及依赖为依据。`available` 表示预检满足；`partial` 表示可检查明确子集，同时列出未覆盖范围；`unavailable` 表示缺少必需条件。
 
 ```bash
 python examples/quickstart/recommend.py /path/to/dataset/episode.mcap \
   --robot configs/robots/x1pro_mcap.yaml
 ```
 
-脚本输出 `edc.recommend()` 的完整 JSON：每条轨迹的 `algorithms` 中有 `algorithm.id`、`availability`、`reason`、`channel_bindings` 与 `parameters`；多实例还保留 `instances`。不要仅看算法名称而忽略原因和范围。
+脚本输出 `edc.recommend()` 的完整 JSON：每条轨迹的 `algorithms` 中有 `algorithm.id`、`availability`、`reason`、`channel_bindings` 与 `parameters`；多实例还保留 `instances`。
 
 ## 2. 选择并执行
 
@@ -37,6 +37,7 @@ edc batch /path/to/dataset \
 
 `--keep` 保存每条轨迹的完整结果与证据；目录须新建。`--jobs` 控制轨迹并发，默认16，首次使用建议1。`--tmp` 可指定临时目录。只列注册算法用 `edc algorithms`；没有独立的推荐命令行入口或 `edc config export` 命令。完整命令行参数见[命令行参考](../reference/CLI.md)。
 
+<a id="python-api"></a>
 ### 使用同一套参数（Python 接口）
 
 推荐与执行应传入同一套生效参数。机器人卡片需先编译；完整配置直接读取。下面例子与主页 MCAP 配置一致：
@@ -68,7 +69,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
 
 HTML 提供整体结论、逐条一览、按算法看问题和逐条详情。先定位有问题的轨迹与算法，再看本项原因；需要完整指标和证据时打开 JSON 或使用 `--keep` 保留的输出。真实 MCAP 的参考结果见[快速开始](../tutorial/QUICKSTART.zh-CN.md#results)。
 
-单项判断为通过、复核、可救或排除；没有检查条件和执行失败与质量判断分开。表格汇总不代替完整评估或工作流放行，未检查不能解释为通过。
+单项判断为通过、复核、可救或排除；没有检查条件和执行失败与质量判断分开。
 
 `run` 通过 `catalog.json` 发现 `_runs/<run_id>` 下的配置、`records.jsonl`、`quality.json`、错误与证据。保留原方法指标，不生成跨算法或跨臂总分。输出对象说明见[输出对象与接口参考](../reference/OUTPUTS.zh-CN.md)。
 

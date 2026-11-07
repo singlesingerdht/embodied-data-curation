@@ -37,7 +37,7 @@ python examples/quickstart/list_inputs.py /path/to/dataset/episode.mcap
 | Configuration | [`configs/robots/x1pro_mcap.yaml`](../../configs/robots/x1pro_mcap.yaml) |
 | Source SHA-256 | `95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2` |
 
-Confirmed joint positions in rad, velocities in rad/s, and end-effector XYZ in m are retained. Unknown physical quantities, some physical-parameter confirmations, and the common clock remain unresolved. This robot card describes the MCAP layout. [`x1pro.yaml`](../../configs/robots/x1pro.yaml) targets a different JSON/MP4 layout and is not interchangeable. The episode boundary follows the data owner's existing declaration, not file counting.
+Confirmed joint positions in rad, velocities in rad/s, and end-effector XYZ in m are retained. Unknown physical quantities, some physical-parameter confirmations, and the common clock remain unresolved.
 
 The file is used for local validation. Redistribution of a real example still needs license confirmation; copying preserves source bytes.
 
@@ -59,12 +59,12 @@ edc batch /path/to/dataset/episode.mcap \
   --keep /path/to/results/details --jobs 1
 ```
 
-`--keep` is optional and requires a new directory. Select individual methods with `edc run --algorithm ...`; see [Run Algorithms](../how-to/RUN_AND_SELECT.md#selection). No algorithm-code changes are needed.
+`--keep` is optional and requires a new directory. Select individual methods with `edc run --algorithm ...`; see [Run Algorithms](../how-to/RUN_AND_SELECT.md#selection).
 
 <a id="results"></a>
 ## 4. View results
 
-Open `/path/to/results/report.html` in a browser. `report.json` contains summary decisions; `details` retains complete outputs, with `catalog.json` locating run records and evidence. Keep outputs separate from original data.
+Open `/path/to/results/report.html` in a browser. `report.json` contains summary decisions; `details` retains complete outputs, with `catalog.json` locating run records and evidence.
 
 The reference aggregate decision is **review recommended**. These results apply to this recording/configuration, not robot-wide health or other capture batches:
 
@@ -80,7 +80,7 @@ The reference aggregate decision is **review recommended**. These results apply 
 | Reset_Detection | REVIEW | Existing Home calibration yields review; the short summary does not expand deviations, so inspect retained outputs |
 | Video_Integrity | PASS | Frame sampling; left/right wrists have 3 and 2 blurred frames respectively out of 290 sampled frames each |
 
-Recommendation, successful execution, and quality passing are distinct. Local reports retain complete records; the guide shows only the necessary summary. [Run Algorithms](../how-to/RUN_AND_SELECT.md#results)
+Recommendation, successful execution, and quality passing are distinct. This guide presents a summary; complete records are available in the locally generated report. [Run Algorithms](../how-to/RUN_AND_SELECT.md#results)
 
 ## Next steps
 

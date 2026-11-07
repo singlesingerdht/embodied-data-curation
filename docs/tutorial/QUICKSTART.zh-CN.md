@@ -37,7 +37,7 @@ python examples/quickstart/list_inputs.py /path/to/dataset/episode.mcap
 | 配置 | [`configs/robots/x1pro_mcap.yaml`](../../configs/robots/x1pro_mcap.yaml) |
 | 源文件 SHA-256 | `95993aab130d1ffa2ea9cb9367911f8216f90b2268b076136908f7130053b6d2` |
 
-关节位置单位为 `rad`、角速度单位为 `rad/s`、末端位置三轴坐标单位为 `m`，沿用已确认信息；未知物理量、部分物理参数确认及共同时钟继续保留未知。该机器人卡片描述这份 MCAP 的字段布局；[`x1pro.yaml`](../../configs/robots/x1pro.yaml) 对应另一种 JSON＋MP4 布局，不能互换使用。单文件轨迹边界来自数据提供者的既有说明，不通过文件数量推断。
+关节位置单位为 `rad`、角速度单位为 `rad/s`、末端位置三轴坐标单位为 `m`，沿用已确认信息；未知物理量、部分物理参数确认及共同时钟继续保留未知。
 
 该文件用于本地示例验证；可分发的真实样例仍需确认数据许可。复制操作保持原始文件内容不变。
 
@@ -59,12 +59,12 @@ edc batch /path/to/dataset/episode.mcap \
   --keep /path/to/results/details --jobs 1
 ```
 
-`--keep` 可省略；保留时使用尚不存在的目录。只选部分算法改用 `edc run --algorithm ...`，见[算法运行](../how-to/RUN_AND_SELECT.zh-CN.md#selection)。不需要修改算法代码。
+`--keep` 可省略；保留时使用尚不存在的目录。只选部分算法改用 `edc run --algorithm ...`，见[算法运行](../how-to/RUN_AND_SELECT.zh-CN.md#selection)。
 
 <a id="results"></a>
 ## 4. 查看结果
 
-用浏览器打开 `/path/to/results/report.html`。`report.json` 是汇总结论，`details` 保存各算法完整输出；`catalog.json` 定位运行记录与证据。输出目录须与原始数据分开。
+用浏览器打开 `/path/to/results/report.html`。`report.json` 是汇总结论，`details` 保存各算法完整输出；`catalog.json` 定位运行记录与证据。
 
 这份 MCAP 的参考汇总结论为**建议复核**。以下结果对应本例配置，不表示整机健康认证或其他采集批次的结论：
 
@@ -80,7 +80,7 @@ edc batch /path/to/dataset/episode.mcap \
 | Reset_Detection | 复核 | 按已有归位参考位置标定产生复核结果；当前短摘要未展开具体偏差，需查看保留输出 |
 | Video_Integrity | 通过 | 图片抽检；左右腕部各290帧中分别3帧、2帧模糊 |
 
-推荐、执行成功与质量通过是三个不同概念。完整记录见本地生成的报告；文档只展示必要摘要。[算法运行](../how-to/RUN_AND_SELECT.zh-CN.md#results)
+推荐、执行成功与质量通过是三个不同概念。本文档只展示必要摘要，完整记录可以见本地生成的报告。[算法运行](../how-to/RUN_AND_SELECT.zh-CN.md#results)
 
 ## 下一步
 

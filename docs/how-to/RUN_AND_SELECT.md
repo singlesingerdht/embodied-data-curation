@@ -7,14 +7,14 @@ Inspect recommendations, select algorithms, and run quality checks. See the [alg
 <a id="selection"></a>
 ## 1. Inspect recommendations
 
-Recommendations use inputs, unit eligibility, semantics, time, parameters, and dependencies. `available` means preflight requirements are met; `partial` identifies a runnable subset and missing scope; `unavailable` gives missing conditions. Preflight neither reads every payload nor certifies data quality.
+Recommendations use inputs, unit eligibility, semantics, time, parameters, and dependencies. `available` means preflight requirements are met; `partial` identifies a runnable subset and missing scope; `unavailable` gives missing conditions.
 
 ```bash
 python examples/quickstart/recommend.py /path/to/dataset/episode.mcap \
   --robot configs/robots/x1pro_mcap.yaml
 ```
 
-The script prints the full `edc.recommend()` JSON. Each episode's `algorithms` includes `algorithm.id`, `availability`, `reason`, `channel_bindings`, and `parameters`; multi-instance methods also retain `instances`. Read the reason and scope, not just the algorithm name.
+The script prints the full `edc.recommend()` JSON. Each episode's `algorithms` includes `algorithm.id`, `availability`, `reason`, `channel_bindings`, and `parameters`; multi-instance methods also retain `instances`.
 
 ## 2. Select and execute
 
@@ -37,6 +37,7 @@ edc batch /path/to/dataset \
 
 `--keep` retains per-episode outputs and evidence in a new directory. `--jobs` controls episode concurrency (default 16; start with 1); `--tmp` sets temporary storage. `edc algorithms` lists registered algorithms. There is no standalone recommendation CLI or `edc config export` command. All options are listed in the [command-line reference](../reference/CLI.en.md).
 
+<a id="python-api"></a>
 ### Use the same parameters (Python API)
 
 Pass the same effective parameters to recommendation and execution. Compile a robot card; read a complete profile directly. The example below uses the same MCAP configuration as the home page:
@@ -68,7 +69,7 @@ Card parameters belong only under `checks.<algorithm_id>`; no separate parameter
 
 HTML provides an overall decision, episode overview, problems by algorithm, and episode details. Locate the affected episode and method, then inspect its reason. Full metrics and evidence are in JSON and outputs retained with `--keep`. See the [Quick Start](../tutorial/QUICKSTART.md#results).
 
-Item verdicts are PASS, REVIEW, SALVAGE, or EXCLUDE. Inapplicability and execution failure are distinct from quality judgments. A summary decision does not replace complete evaluation or workflow release conditions; unchecked inputs are not passes.
+Item verdicts are PASS, REVIEW, SALVAGE, or EXCLUDE. Inapplicability and execution failure are distinct from quality judgments.
 
 `run` exposes configuration, `records.jsonl`, `quality.json`, errors, and evidence under `_runs/<run_id>` through `catalog.json`. Native method metrics remain separate, with no combined algorithm/arm score. [Output objects](../reference/OUTPUTS.md)
 
