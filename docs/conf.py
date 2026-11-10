@@ -15,7 +15,12 @@ language = "zh_CN"
 root_doc = "index"
 extensions = ["myst_parser", "sphinx_design", "sphinxcontrib.mermaid", "site_support", "site_navigation", "site_redirects"]
 source_suffix = {".md": "markdown"}
-exclude_patterns = ["_build", "_templates", "presentations", "STATUS.md", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build", "_templates", "presentations", "Thumbs.db", ".DS_Store",
+    "STATUS.md", "**/STATUS.md", "**/*_INTEGRATION_PLAN_*.md",
+    "**/*_MIGRATION_PLAN_*.md", "**/*_VALIDATION_*.md",
+    "internal/**", "audits/**", "evidence/**",
+]
 myst_enable_extensions = ["colon_fence", "deflist"]
 myst_fence_as_directive = ["mermaid"]
 myst_heading_anchors = 5

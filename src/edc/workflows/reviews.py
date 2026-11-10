@@ -1,4 +1,6 @@
 """Append-only review decisions refer to exact immutable algorithm reports."""
+
+from edc.schemas import CATALOG, RECORD, REVIEW, require_schema
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,7 +24,7 @@ def read_reviews(path):
         if not line.strip():
             continue
         row = json.loads(line)
-        if (row.get('schema_version') != 'dqs_review_v1' or
+        if (row.get('schema_version') != REVIEW or
                 row.get('action') not in {'confirmed', 'dismissed'} or
                 any(not row.get(k) for k in ('run_id', 'subject_id', 'reviewer', 'reason', 'evidence', 'timestamp'))):
             raise ValueError('Invalid review record')
@@ -36,7 +38,7 @@ def review(output, *, run_id, algorithm, object_id, report_index=0,
     if action not in {'confirmed', 'dismissed'} or any(not isinstance(v, str) or not v.strip()
             for v in (reviewer, reason, evidence)):
         raise ValueError('Review requires action, reviewer, reason and evidence')
-    catalog = json.loads((output / 'catalog.json').read_text())
+    catalog = require_schema(json.loads((output / 'catalog.json').read_text()), CATALOG)
     matches = [r for r in catalog['runs'] if r['run_id'] == run_id]
     if len(matches) != 1:
         raise ValueError('Review must reference one existing run')
@@ -45,7 +47,8 @@ def review(output, *, run_id, algorithm, object_id, report_index=0,
         path = (output / ref).resolve()
         if not path.is_relative_to(output):
             raise ValueError('Record reference escapes output')
-        records.extend(json.loads(line) for line in path.read_text().splitlines() if line.strip())
+        records.extend(require_schema(json.loads(line), RECORD)
+                       for line in path.read_text().splitlines() if line.strip())
     matches = [r for r in records if r['algorithm']['id'] == algorithm and r['object']['id'] == object_id]
     if instance_id is not None:
         matches = [r for r in matches if r.get('instance_id') == instance_id]
@@ -60,7 +63,7 @@ def review(output, *, run_id, algorithm, object_id, report_index=0,
     from .gates import has_review_candidate
     if not has_review_candidate(report):
         raise ValueError('Report has no review candidate; review cannot override automatic failure')
-    row = {'schema_version': 'dqs_review_v1', 'run_id': run_id,
+    row = {'schema_version': REVIEW, 'run_id': run_id,
            'subject_id': subject_id(record, report_index), 'algorithm': algorithm,
            'object_id': object_id, 'report_index': report_index, 'action': action,
            'reviewer': reviewer, 'reason': reason, 'evidence': evidence,

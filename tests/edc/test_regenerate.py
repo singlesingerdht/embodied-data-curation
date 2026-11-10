@@ -55,7 +55,7 @@ def test_copy_mode_default_keep_writes_manifest_and_dataset_yaml(tmp_path):
     assert (out / "good_ep").is_dir()
     assert not (out / "bad_ep").exists() and not (out / "review_ep").exists()
     m = json.loads((out / "manifest.json").read_text())
-    assert m["schema_version"] == "dqs_regenerate_manifest_v1"
+    assert m["schema_version"] == "edc_regenerate_manifest_v1"
     assert m["report_source"] == str(rep)
     assert m["filter"] == {"include": ["keep"], "mode": "copy"}
     assert m["episodes"] == [{

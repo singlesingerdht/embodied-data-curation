@@ -1,4 +1,6 @@
 """Describe executed subchecks without changing or rescoring the detector."""
+
+from edc.schemas import NUMERIC_COVERAGE
 import numpy as np
 
 
@@ -89,7 +91,7 @@ def coverage(values, eligibility, settings, result, physical, unit_reason=None, 
             'status': 'pending_confirmation' if blockers else 'unsupported', 'outcome': None,
             'reason': blockers or '现有 Numeric_Check 未实现此字段的物理检查，仅查有限值。'})
     rows.extend(extra_checks)
-    return {'schema_version': 'dqs_numeric_coverage_v1', 'checks': rows,
+    return {'schema_version': NUMERIC_COVERAGE, 'checks': rows,
         'coverage_complete': all(row['status'] in {'evaluated', 'not_applicable'} for row in rows),
         'legacy_completeness_scope': 'assessment_complete retains the existing configured-detector eligibility rule; use checks for actual subcheck coverage',
         'changes_score_or_thresholds': False}

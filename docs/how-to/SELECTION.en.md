@@ -51,7 +51,7 @@ selected/
 └── ...             # Copied data or links
 ```
 
-`manifest.json` (`dqs_regenerate_manifest_v1`) records report provenance, selection criteria/counts, original decisions, source-to-output mappings, episode IDs/formats/selectors, operations and errors. Copied data is reopened to verify the expected episode set.
+`manifest.json` (`edc_regenerate_manifest_v1`) records report provenance, selection criteria/counts, original decisions, source-to-output mappings, episode IDs/formats/selectors, operations and errors. Copied data is reopened to verify the expected episode set.
 
 ## Boundaries and exit codes
 

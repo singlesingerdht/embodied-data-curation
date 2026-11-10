@@ -1,4 +1,6 @@
 """Run-local materialization shared by adapters, without altering model inputs."""
+
+from edc.schemas import MEDIA_CACHE
 from dataclasses import asdict
 import hashlib
 import json
@@ -39,7 +41,7 @@ class MediaCache:
             raise ValueError('Materialization did not produce a video')
         self.entries[key] = {'video': str(path), 'contract': contract,
             'evidence': episode.video_evidence(channel, inspection_input=path)}
-        write_json(self.root / 'manifest.json', {'schema_version': 'dqs_media_cache_v1',
+        write_json(self.root / 'manifest.json', {'schema_version': MEDIA_CACHE,
             'reuse_scope': 'single_run', 'entries': self.entries})
         return str(path), key, False
 

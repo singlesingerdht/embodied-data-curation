@@ -5,6 +5,7 @@ recursive-include examples *.py *.toml
 recursive-include tests *.yaml
 recursive-include tests *.py
 recursive-include .github *.yml
+include scripts/check_release_contents.py
 global-exclude *.pyc *.pyo
 prune build
 prune dist
@@ -21,3 +22,13 @@ recursive-include docs/_tools *.py
 recursive-include docs/presentations *.pptx
 prune docs/_build
 prune examples/plugins/quality_base/build
+# The local value plugin is not part of the framework distribution.
+prune plugins/value_assessment
+
+# Internal work records and audit material are not distribution content.
+global-exclude STATUS.md *_INTEGRATION_PLAN_*.md *_MIGRATION_PLAN_*.md *_VALIDATION_*.md
+prune internal
+prune audits
+prune docs/internal
+prune docs/audits
+prune docs/evidence

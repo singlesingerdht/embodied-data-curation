@@ -1,4 +1,6 @@
 """Shared Python/CLI executor with isolated episode and algorithm failures."""
+
+from edc.schemas import CATALOG, RECOMMENDATIONS, RECOMMENDATION_POOL, RECORD, RUN
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -10,6 +12,14 @@ import uuid
 from edc.algorithms.registry import algorithms
 from edc.reporting.results import write_json, append_record
 from edc.algorithms.recommendations import recommend_episode, recommend_dataset
+
+
+def framework_version():
+    """Record the installed distribution identity, including source checkouts."""
+    try:
+        return version("embodied-data-curation")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 @dataclass
@@ -73,17 +83,17 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
     try:
         started = perf_counter()
         catalog_path = output / "catalog.json"
-        catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {"schema_version": "dqs_catalog_v1", "runs": []}
-        if catalog.get("schema_version") != "dqs_catalog_v1":
+        catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {"schema_version": CATALOG, "runs": []}
+        if catalog.get("schema_version") != CATALOG:
             raise ValueError("Existing legacy catalog: select a separate output directory")
         run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:10]
         root = output / "_runs" / run_id
         root.mkdir(parents=True)
         inventory = [{"id": ep.id, "source": str(ep.path), "selector": ep.selector, "metadata": getattr(ep, "metadata", {}), "source_stat": source_stat(ep.path)} for ep in dataset.iter_episodes()]
         from edc.data.channel_registry import load_channel_registry
-        write_json(root / "run.json", {"schema_version": "dqs_run_v1", "run_id": run_id,
+        write_json(root / "run.json", {"schema_version": RUN, "run_id": run_id,
             "channel_registry": load_channel_registry(dataset.profile.get('channel_registry')),
-            "framework_version": "0.2.0a2", "config_snapshot": config_snapshot, "selection_policy": selection_policy, "dependencies": dependency_versions(selected), "dataset": {"id": dataset.id, "version": dataset.version,
+            "framework_version": framework_version(), "config_snapshot": config_snapshot, "selection_policy": selection_policy, "dependencies": dependency_versions(selected), "dataset": {"id": dataset.id, "version": dataset.version,
                 "source": str(dataset.path), "tasks": getattr(dataset, "tasks", []), "metadata": getattr(dataset, "metadata", {}), "episodes": inventory}, "profile": dataset.profile,
             "algorithms": [asdict(p.spec) for p in selected], "params": params,
             "discovery_errors": registry.discovery_errors,
@@ -122,7 +132,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                     checks = {e['algorithm']['id']: (e['status'], e['reason']) for e in pool['algorithms']
                               if e['algorithm']['id'] in ids}
                 else:
-                    recommendations.append({'schema_version': 'dqs_recommendations_v1',
+                    recommendations.append({'schema_version': RECOMMENDATIONS,
                         'episode_id': episode.id, 'error': str(open_error), 'algorithms': []})
                     checks = {p.spec.id: ("missing_dependency" if isinstance(open_error, ImportError) or type(open_error).__name__ == "DependencyMissing" else "processing_error", str(open_error)) for p in episode_plugins}
                 if on_preflight:
@@ -141,7 +151,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                     episode._clock_evidence = []
                     ident = plugin.spec.id
                     status, reason = (instance["status"], instance["reason"]) if instance else checks[ident]
-                    record = {"schema_version": "dqs_record_v1", "algorithm": {"id": ident, "version": plugin.spec.version},
+                    record = {"schema_version": RECORD, "algorithm": {"id": ident, "version": plugin.spec.version},
                         "object": {"type": "episode", "id": episode.id, "source": str(episode.path)},
                         "status": status, "reason": reason, "result": None, "artifacts": [],
                         "instance_id": instance.get('instance_id', 'episode') if instance else 'episode',
@@ -233,7 +243,7 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
             for episode in execution_dataset.iter_episodes():
                 episode.close()
         write_json(root / "selection.json", selection)
-        write_json(root / "recommendations.json", {'schema_version': 'dqs_recommendation_pool_v1',
+        write_json(root / "recommendations.json", {'schema_version': RECOMMENDATION_POOL,
             'episodes': recommendations, 'dataset_algorithms': dataset_checks,
             'discovery_errors': registry.discovery_errors})
         summary = {"run_id": run_id, "episodes": len(selection), "status_counts": counts,
@@ -268,7 +278,7 @@ def run_dataset_plugin(plugin, dataset, root, output, check, media_cache, upstre
     work = root / plugin.spec.id
     artifact_dir = work / 'artifacts' / 'dataset'
     artifact_dir.mkdir()
-    record = {'schema_version': 'dqs_record_v1', 'algorithm': check['algorithm'],
+    record = {'schema_version': RECORD, 'algorithm': check['algorithm'],
         'object': {'type': 'dataset', 'id': dataset.id, 'source': str(dataset.path)},
         'status': check['status'], 'reason': check['reason'], 'result': None,
         'effective_params': check['effective_params'], 'artifacts': [],

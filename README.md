@@ -10,7 +10,7 @@
 
 ![EDC vision: let user goals drive how data evolves, through cross-robot reuse, automation, and verifiable choices](docs/assets/framework-overview.png)
 
-**User needs** include the task and success criteria, target policy, quality requirements, and data/computing budget, with expert demonstrations or reliable references where applicable. Today, users receive quality reports, issue evidence, selected data copies or symlinks, and source manifests. Planned outputs add task annotations and data subsets or improved versions suited to the target policy. [Needs and deliverables](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-needs)
+**User needs** include the task and success criteria, target policy, quality requirements, and data/computing budget, with expert demonstrations or reliable references where applicable. Users receive quality reports, issue evidence, selected data copies or symlinks, and source manifests. [Needs and deliverables](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-needs)
 
 - **Data quality | Different robots. One approach to quality checks.** Make data from different robots readable and interpretable by machines, with reusable quality checks.
 - **Task value | Turn human understanding into machine learning signals.** Draw on expert demonstrations and task requirements to identify key actions and corrective experience worth learning.
@@ -21,15 +21,16 @@ Across these three levels, the framework pursues two further advantages:
 - **Automation | Learn to assess from experience; improve choices through feedback.** Learn assessment criteria from expert demonstrations and use data and training feedback to guide selection, progressively reducing manual assessment, rule adjustment, and method selection. [Mechanisms and research evidence](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-automation)
 - **Evidence | Trace the basis of each choice and test its effects.** Connect selection to quality evidence, task progress, and model learning signals; record processing steps and validate choices with independent feedback. [Verifying choices](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-evidence)
 
-> Data quality checks are available today. Task-value and policy-value methods have research foundations and will be integrated progressively.
+> Nine quality algorithms are built in. Value, augmentation, and editing methods use plugin interfaces; available functionality depends on installed plugins, input configuration, and dependencies. Task value, policy value, and autonomous curation describe the framework vision, not capabilities supplied by the default installation.
 
 > **Long-term goal: you set the objective; the framework keeps exploring autonomously—which data to keep, which experience to learn from, and what to improve next.**
 
-See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html) for the three levels, research foundations, and validation plans, or the [presentation (Chinese)](docs/presentations/edc-framework.zh-CN.pptx). Readers cover LeRobot, HDF5, Parquet, ROS bags, MCAP, and more; see [supported formats](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.html#data-and-robots-formats) for conditions.
+See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html) for the three levels, research foundations, and capability boundaries, or the [presentation (Chinese)](docs/presentations/edc-framework.zh-CN.pptx). Readers cover LeRobot, HDF5, Parquet, ROS bags, MCAP, and more; see [supported formats](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.html#data-and-robots-formats) for conditions.
 
 ## What's New
 
-> 🚀 The Embodied Data Curation Framework repository is coming soon. Stay tuned!
+> 🎉 We have released the first version of the EDC repository, featuring 9 data quality algorithms!<br>
+> 🚀 Value assessment algorithms are coming soon. Stay tuned!
 
 ## Architecture and Modules
 
@@ -137,7 +138,7 @@ New quality algorithms can reuse unified data reading, input validation, and rep
 
 Quality algorithms can inherit `QualityAlgorithm` and return a list of `Item` objects containing reasons, metrics, and evidence. They can also return `AlgorithmResult` with an optional one-line summary for the report. General plugins use `AlgorithmSpec + run(context, params)`.
 
-[Algorithm Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html) · [Reader Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.html) · [Contributing (Chinese)](CONTRIBUTING.md)
+[Algorithm Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.html) · [Reader Plugins](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.html) · [Algorithm integration](docs/how-to/ALGORITHM_INTEGRATION.md) · [Contributing (Chinese)](CONTRIBUTING.md)
 
 ```text
 src/edc/
@@ -154,13 +155,3 @@ examples/          # Usage and plugin examples
 docs/              # Topic guides
 tests/             # Contract and implementation tests
 ```
-
-### Roadmap
-
-These are planned integrations or research directions. See the [quality guide](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-layers) for methods and foundations:
-
-1. Task segmentation, progress assessment, and useful segment discovery: STEAM and MGT-QV.
-2. Automatic annotation against task criteria and multimodal review: drawing on external work such as FLORA.
-3. Data editing, demonstration resampling, and quality rechecks: directions such as DemoTempo.
-4. Selection for target policies: RoboDrop and VLA as a judge.
-5. Feedback-driven rules and algorithm combinations, then new algorithm generation, validation, and integration toward [autonomous curation](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-autonomous).

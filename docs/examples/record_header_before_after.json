@@ -18,7 +18,7 @@
           "threshold_ms": null,
           "basis": "raw container minus raw header; before clock mapping",
           "source_row_mapping": "identity",
-          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "source": "/data/examples/single_record_spike.mcap",
           "status": "available",
           "paired_count": 300,
           "invalid_pair_count": 0,
@@ -55,7 +55,7 @@
           "threshold_ms": null,
           "basis": "raw container minus raw header; before clock mapping",
           "source_row_mapping": "identity",
-          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "source": "/data/examples/single_record_spike.mcap",
           "status": "available",
           "paired_count": 300,
           "invalid_pair_count": 0,
@@ -92,7 +92,7 @@
           "threshold_ms": null,
           "basis": "raw container minus raw header; before clock mapping",
           "source_row_mapping": "identity",
-          "source": "/root/edc-audits/leju-kuavo-81dff8e-20261103/four-items-installed-record-header/single_record_spike.mcap",
+          "source": "/data/examples/single_record_spike.mcap",
           "status": "available",
           "paired_count": 300,
           "invalid_pair_count": 0,
@@ -113,5 +113,6 @@
         "readable_note": "/head 第1条：通常差值20 ms，本条差值20 ms，偏离通常水平+0 ms。；差值范围 [20, 20] ms；最大绝对偏离 0 ms。；/arm 第151条：通常差值20 ms，本条差值500 ms，偏离通常水平+480 ms。；差值范围 [20, 500] ms；最大绝对偏离 480 ms。"
       }
     }
-  ]
+  ],
+  "example_note": "Documentation example based on controlled synthetic data; source paths are illustrative placeholders, not original evidence locations."
 }

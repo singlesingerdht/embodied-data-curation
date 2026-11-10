@@ -9,7 +9,8 @@
 | 接入记录并配置机器人 | [数据与机器人配置](DATA_AND_ROBOT.zh-CN.md) | 已安装环境；已确认格式与字段语义 |
 | 选择并执行适用的检查 | [算法运行](RUN_AND_SELECT.zh-CN.md) | 机器人 YAML 已通过 `edc robot check` |
 | 复制或链接选中的数据 | [筛选与导出](SELECTION.md) | 已有 `report.json`；输出目录独立于源数据 |
-| 接入外部质量算法 | [算法扩展](ALGORITHM_PLUGIN.zh-CN.md) | 已安装 `edc`；已准备样例数据 |
+| 接入外部算法 | [算法扩展](ALGORITHM_PLUGIN.zh-CN.md) | 已安装 `edc`；已准备样例数据 |
+| 接入或内化算法 | [算法接入与内化](ALGORITHM_INTEGRATION.zh-CN.md) | 已明确类别、来源和验证范围 |
 | 接入数据格式 | [读取器扩展](READER_PLUGIN.zh-CN.md) | 已明确字段、时间来源与轨迹边界 |
 
 ## 相关文档
@@ -27,5 +28,6 @@
 算法运行 <RUN_AND_SELECT.zh-CN>
 筛选与导出 <SELECTION>
 算法扩展 <ALGORITHM_PLUGIN.zh-CN>
+算法接入与内化 <ALGORITHM_INTEGRATION.zh-CN>
 读取器扩展 <READER_PLUGIN.zh-CN>
 ```

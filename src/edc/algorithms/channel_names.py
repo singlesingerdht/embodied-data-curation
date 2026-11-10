@@ -1,4 +1,6 @@
 """Logical channel names are references, never destructive source renames."""
+
+from edc.schemas import CHANNEL_CATALOG
 import copy
 
 from edc.data.channel_registry import NAME_PATTERN, load_channel_registry
@@ -88,7 +90,7 @@ def channel_catalog(episode):
     storage = getattr(episode, 'image_storage', None)
     declared = getattr(episode, 'profile', {}).get('channels', {})
     logical = {c.logical_name for c in episode.channels.values() if c.logical_name}
-    return {'schema_version': 'dqs_channel_catalog_v1', 'episode_id': episode.id,
+    return {'schema_version': CHANNEL_CATALOG, 'episode_id': episode.id,
         'channel_registry': load_channel_registry(getattr(episode, 'profile', {}).get('channel_registry')),
         'binding_coverage': {
             'source_channel_count': len(episode.channels),

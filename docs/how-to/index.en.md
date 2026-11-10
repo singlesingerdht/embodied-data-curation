@@ -9,7 +9,8 @@ Procedures for data integration, quality checks, selection, and plugins.
 | Connect a recording and configure its robot | [Data and Robot Configuration](DATA_AND_ROBOT.md) | Installed environment; known format and field semantics |
 | Select and execute applicable checks | [Run Algorithms](RUN_AND_SELECT.md) | Robot YAML validated with `edc robot check` |
 | Copy or link selected data | [Selection and Export](SELECTION.en.md) | `report.json`; output directory outside source data |
-| Add an external quality algorithm | [Algorithm Plugins](ALGORITHM_PLUGIN.md) | Installed `edc`; sample data |
+| Add an external algorithm | [Algorithm Plugins](ALGORITHM_PLUGIN.md) | Installed `edc`; sample data |
+| Integrate or internalize an algorithm | [Algorithm Integration and Internalization](ALGORITHM_INTEGRATION.md) | Defined category, provenance and validation scope |
 | Add a data format | [Reader Plugins](READER_PLUGIN.md) | Defined fields, time sources, and episode boundaries |
 
 ## Related documentation
@@ -27,5 +28,6 @@ Data and Robot Configuration <DATA_AND_ROBOT>
 Run Algorithms <RUN_AND_SELECT>
 Selection and Export <SELECTION.en>
 Algorithm Plugins <ALGORITHM_PLUGIN>
+Algorithm Integration and Internalization <ALGORITHM_INTEGRATION>
 Reader Plugins <READER_PLUGIN>
 ```

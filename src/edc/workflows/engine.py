@@ -1,4 +1,6 @@
 """Finite stage execution with immutable upstream references and content-checked resume."""
+
+from edc.schemas import CATALOG, RECORD, require_schema
 import inspect
 import json
 import operator
@@ -27,7 +29,8 @@ def read_records(output, entry):
         path = (output / reference).resolve()
         if not path.is_relative_to(output):
             raise ValueError('Run reference escapes output')
-        rows.extend(json.loads(line) for line in path.read_text().splitlines() if line.strip())
+        rows.extend(require_schema(json.loads(line), RECORD)
+                    for line in path.read_text().splitlines() if line.strip())
     return rows
 
 
@@ -134,8 +137,8 @@ def run_workflow(config, output='results', *, resume=False):
     try:
         catalog_path = output / 'catalog.json'
         catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {
-            'schema_version': 'dqs_catalog_v1', 'runs': []}
-        if catalog.get('schema_version') != 'dqs_catalog_v1':
+            'schema_version': CATALOG, 'runs': []}
+        if catalog.get('schema_version') != CATALOG:
             raise ValueError('Unsupported output catalog')
         if resume:
             for item in reversed(catalog.get('workflows', [])):

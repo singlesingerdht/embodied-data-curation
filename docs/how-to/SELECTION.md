@@ -51,7 +51,7 @@ selected/
 └── ...             # 数据副本或链接
 ```
 
-`manifest.json`（`dqs_regenerate_manifest_v1`）保存报告来源、筛选条件、选中条数、原判断、源→目标映射、轨迹 ID、格式（`format`）与选择器（`selector`）、操作和失败原因。复制后通过框架回读，核对轨迹集合与预期一致。
+`manifest.json`（`edc_regenerate_manifest_v1`）保存报告来源、筛选条件、选中条数、原判断、源→目标映射、轨迹 ID、格式（`format`）与选择器（`selector`）、操作和失败原因。复制后通过框架回读，核对轨迹集合与预期一致。
 
 ## 使用边界与退出码
 

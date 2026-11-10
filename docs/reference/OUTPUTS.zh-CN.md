@@ -49,7 +49,7 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 - `status='checked'` 必须给出 `PASS`／`REVIEW`／`SALVAGE`／`EXCLUDE` 之一。
 - `status='not_applicable'` 或 `'failed'` 时不填 `verdict`，必须写原因；未执行不能返回通过。未捕获的运行异常由执行器记录为处理错误。
 - 非通过项须有 `reason`；`SALVAGE` 还须有 `remedy`。原因用短句指出对象与问题，指标和源行放入各自字段。
-- 不手工生成跨算法总分。统一运行记录使用 `dqs_record_v1` schema。
+- 不手工生成跨算法总分。统一运行记录使用 `edc_record_v1` schema。
 
 <a id="plugins"></a>
 ## 通用插件与运行上下文
@@ -65,6 +65,26 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 ## 运行产物
 
 `catalog.json` 索引输出。每个 `_runs/<run_id>` 保存配置、版本、记录、错误与证据；工作流另存完整生效配置与来源指纹。历史证据不可改写，原始数据只读，派生输出使用独立路径。
+
+### 输出格式与兼容范围
+
+EDC 使用 `edc_*_v1` 标识输出格式，读取时校验受支持的版本。
+不提供旧 DQS 结果兼容或转换。请为新运行指定新输出目录；旧 catalog、record、数据引用、
+复核与旧来源映射明确拒绝，不能恢复旧运行。新 EDC 工作流可正常恢复。
+`run.json` 的 `framework_version` 记录实际安装包版本；未安装发行包时为 `unknown`。
+
+| 产物 | schema |
+|---|---|
+| 算法记录、目录、运行 | `edc_record_v1`、`edc_catalog_v1`、`edc_run_v1` |
+| 单集推荐、推荐池 | `edc_recommendations_v1`、`edc_recommendation_pool_v1` |
+| 数据引用、复核 | `edc_dataset_ref_v1`、`edc_review_v1` |
+| 媒体缓存、通道目录、单位证据 | `edc_media_cache_v1`、`edc_channel_catalog_v1`、`edc_units_v1` |
+| 数值覆盖、重新导出、来源映射 | `edc_numeric_coverage_v1`、`edc_regenerate_manifest_v1`、`edc_source_mapping_v1` |
+
+来源映射文件名为 `edc-source-mapping.json`，读取器的配置元数据键为 `edc_profile`。
+名称常量集中于 `edc.schemas`。
+自定义价值算法的接入方式见[插件开发](../how-to/ALGORITHM_PLUGIN.zh-CN.md)
+与[算法接入与内化](../how-to/ALGORITHM_INTEGRATION.zh-CN.md)。
 
 <a id="readers"></a>
 ## 读取器接口

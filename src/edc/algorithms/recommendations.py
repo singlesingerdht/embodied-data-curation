@@ -1,4 +1,6 @@
 """Metadata/dependency preflight, not execution or a data quality judgment."""
+
+from edc.schemas import RECOMMENDATIONS, RECOMMENDATION_POOL
 from edc.algorithms.quality.adapters.cpu import preflight
 from edc.data.ir.units import SIDataset
 from edc.algorithms.registry import algorithms
@@ -68,7 +70,7 @@ def _recommend_episode(episode, plugins, params=None, selected=None):
             'example': plugin.spec.example, 'selected': ident in selected if selected is not None else None,
             'fields': details.get('fields', []), 'inputs': details.get('inputs', []),
             'unavailable_inputs': details.get('unavailable_inputs', [])})
-    return {'schema_version': 'dqs_recommendations_v1', 'episode_id': episode.id,
+    return {'schema_version': RECOMMENDATIONS, 'episode_id': episode.id,
         'unit_policy': episode.unit_policy, 'basis': 'metadata_and_dependency_preflight',
         'quality_judgment': None, 'payload_validated': False,
         'notice': '仅表示当前配置与环境满足声明的前置条件；未执行算法，不表示数据合格或完整物理适配。未声明的输入约束不能据此视为已验证。',
@@ -116,7 +118,7 @@ def recommend_episode(episode, plugins, params=None, selected=None):
             entry['reason'] = '; '.join(dict.fromkeys(r['reason'] for r in rows if r.get('reason')))
         entry['selected'] = ident in selected if selected is not None else None
         entries.append(entry)
-    return {'schema_version': 'dqs_recommendations_v1', 'episode_id': episode.id,
+    return {'schema_version': RECOMMENDATIONS, 'episode_id': episode.id,
         'unit_policy': episode.unit_policy, 'basis': 'metadata_and_dependency_preflight',
         'quality_judgment': None, 'payload_validated': False,
         'recommended_algorithms': [e['algorithm']['id'] for e in entries if e['availability'] == 'available'],
@@ -206,12 +208,12 @@ def recommend(dataset, params=None, unit_policy='auto', *, method_select=None):
             with episode.opened():
                 result.append(recommend_episode(episode, registry.plugins, params))
         except Exception as exc:
-            result.append({'schema_version': 'dqs_recommendations_v1', 'episode_id': episode.id,
+            result.append({'schema_version': RECOMMENDATIONS, 'episode_id': episode.id,
                            'error': f'{type(exc).__name__}: {exc}', 'algorithms': []})
     try:
         datasets = recommend_dataset(execution, registry.plugins, params, method_select=method_select)
     finally:
         for episode in execution.iter_episodes():
             episode.close()
-    return {'schema_version': 'dqs_recommendation_pool_v1', 'episodes': result,
+    return {'schema_version': RECOMMENDATION_POOL, 'episodes': result,
             'dataset_algorithms': datasets, 'discovery_errors': registry.discovery_errors}

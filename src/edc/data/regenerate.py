@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from edc.schemas import REGENERATE_MANIFEST
+
 import copy
 import json
 import os
@@ -16,7 +18,7 @@ import re
 import shutil
 from pathlib import Path
 
-MANIFEST_SCHEMA = "dqs_regenerate_manifest_v1"
+MANIFEST_SCHEMA = REGENERATE_MANIFEST
 # 决策状态与 reporting.batch.DECISION 一致（keep/salvage/review/unassessed/exclude/failed）；
 # 未知状态按字面值处理，绝不改写。
 DEFAULT_INCLUDE = ("keep",)

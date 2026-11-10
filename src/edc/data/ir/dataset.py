@@ -1,4 +1,6 @@
 """Dataset -> Episode -> Channel contract, with explicit episode boundaries."""
+
+from edc.schemas import SOURCE_MAPPING
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -214,7 +216,7 @@ class Episode:
                 topic.timestamps_synthetic = c.time_source not in {'acquisition', 'container'}
             from edc.algorithms.channel_names import validate_channel_index
             validate_channel_index(channels, self.profile.get('channel_registry'))
-            info.extra["dqs_profile"] = self.profile
+            info.extra["edc_profile"] = self.profile
             self._reader, self._info, self.channels = reader, info, channels
             if self.selector.get('edc_channels') is not None:
                 from edc.algorithms.channel_names import resolve_channel_parameters
@@ -469,6 +471,9 @@ def open_dataset(path, profile=None, *, backend="auto"):
         raise ValueError("backend must be auto, official or compat")
     if not path.exists():
         raise FileNotFoundError(path)
+    # Never lose stable IDs by silently ignoring an old provenance sidecar.
+    if path.is_dir() and (path / "dqs-source-mapping.json").exists():
+        raise ValueError("Legacy source mapping is unsupported; use a new EDC input with edc-source-mapping.json")
     acceptance = path / 'acceptance.json' if path.is_dir() else None
     if acceptance is not None and acceptance.is_file():
         import json
@@ -506,11 +511,11 @@ def open_dataset(path, profile=None, *, backend="auto"):
         if profile.get('time_declared') is False and ep.format in {'hdf5', 'parquet', 'lerobot', 'episode'}:
             raise ValueError('表格数据（JSON、HDF5、Parquet、LeRobot）要在 yaml 的 data 里写 time（采集时间列）'
                              '或 time_note（没有采集时间的原因）')
-    mapping_path = path / "dqs-source-mapping.json" if path.is_dir() else None
+    mapping_path = path / "edc-source-mapping.json" if path.is_dir() else None
     if mapping_path is not None and mapping_path.is_file():
         import json
         provenance = json.loads(mapping_path.read_text())
-        if provenance.get("schema_version") != "dqs_source_mapping_v1":
+        if provenance.get("schema_version") != SOURCE_MAPPING:
             raise ValueError("Unsupported source mapping schema")
         items = provenance.get("episodes", [])
         by_index = {item["episode_index"]: item for item in items}

@@ -2,7 +2,9 @@
 
 [English](ALGORITHM_PLUGIN.md) · [接口参考](../reference/OUTPUTS.zh-CN.md)
 
-质量算法通过 `edc.algorithms` 插件接口扩展。独立 Python 包安装后，由 EDC 自动发现，与内置算法共用数据读取、参数配置、执行和报告。
+质量、价值、编辑与增强算法均可通过 `edc.algorithms` 插件接口扩展。独立 Python 包安装后，由 EDC 自动发现，与内置算法共用数据读取、参数配置、执行和结果保存。
+
+外部插件与内置算法的目录、接口和验证步骤见[算法接入与内化](ALGORITHM_INTEGRATION.zh-CN.md)。本页以质量算法演示报告接口，其他类别保留各自的结果含义。
 
 本例实现关节跳变检查：读取关节反馈，计算相邻样本的最大角度变化，输出逐通道检查结果。
 

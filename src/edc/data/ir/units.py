@@ -1,4 +1,6 @@
 """SI-only algorithm inputs over an unchanged, read-only source Episode."""
+
+from edc.schemas import UNITS
 import copy
 from contextlib import contextmanager
 
@@ -118,7 +120,7 @@ class SIEpisode:
         for rule in fields:
             rule["si_read_count"] = self._read_counts.get((rule["channel"], rule["field"]), 0)
             rule["conversion_applied"] = rule["status"] == "conversion_required" and rule["si_read_count"] > 0
-        return {"schema_version": "dqs_units_v1", "unit_policy": self.unit_policy,
+        return {"schema_version": UNITS, "unit_policy": self.unit_policy,
                 "algorithm_unit_system": "SI", "source_unchanged": True,
                 "timeline_unit": "s", "timeline_conversion": "already performed by reader; no second scaling",
                 "fields": fields, "orientation_normalization": self.orientation_evidence()}

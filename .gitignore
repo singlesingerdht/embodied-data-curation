@@ -35,3 +35,17 @@ _workflows/
 # Local Sphinx environment and generated documentation
 .venv-docs/
 /docs/_build/
+
+# Keep internal work records and audit material outside the repository.
+STATUS.md
+*_INTEGRATION_PLAN_*.md
+*_MIGRATION_PLAN_*.md
+*_VALIDATION_*.md
+/internal/
+/audits/
+/docs/internal/
+/docs/audits/
+/docs/evidence/
+
+# Local value plugin is distributed separately from the framework.
+/plugins/value_assessment/

@@ -10,7 +10,7 @@
 
 ![EDC 框架愿景：让需求决定数据如何进化；跨机器人复用、自动化、有理有据](docs/assets/framework-overview.zh-CN.png)
 
-**用户需求**包括任务与成功条件、目标策略、质量要求和数据／计算预算，适用时提供专家示教或可靠参考数据。当前可获得质检报告、问题证据、筛选数据副本或软链接及来源清单；后续将扩展到任务标注和适合目标策略的数据及改进版本。[需求与交付](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-needs)
+**用户需求**包括任务与成功条件、目标策略、质量要求和数据／计算预算，适用时提供专家示教或可靠参考数据。框架提供质检报告、问题证据、筛选数据副本或软链接及来源清单。[需求与交付](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-needs)
 
 - **数据质量｜多种机器人，一套质检方法。** 让不同机器人的数据可被机器正确读取与解释，让质量检查跨设备复用。
 - **任务价值｜把人类理解，变成机器的学习信号。** 从专家示范和任务要求中，提炼值得学习的关键动作与纠错经验。
@@ -21,15 +21,16 @@
 - **自动化｜让经验形成判断，让反馈改进选择。** 从专家示教中学习评估依据，用数据与训练反馈支持筛选决策，逐步减少人工评估、规则调整和方法选择。[机制与论文依据](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-automation)
 - **有理有据｜每次取舍，都能追溯依据、检验效果。** 将选择关联到质量证据、任务进展与模型学习信号，记录处理过程，并用独立反馈验证选择。[如何核验选择](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-evidence)
 
-> 当前提供数据质量检查；任务价值和策略价值已有研究基础，相关方法将逐步接入框架。
+> 内置九项数据质量算法。价值、增强与编辑使用插件接口扩展，实际可运行的功能取决于已安装插件、输入配置与依赖。任务价值、策略价值和自主整理描述框架愿景，不代表默认安装已具备这些能力。
 
 > **长期目标：你提出目标，框架持续自主探索——什么数据值得留，什么经验值得学，下一步该如何改进。**
 
-三个层次、研究支撑与验证安排见[从质量检查到自主数据整理](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html) · [演示文稿](docs/presentations/edc-framework.zh-CN.pptx)。读取器覆盖 LeRobot、HDF5、Parquet、ROS bag、MCAP 等，具体条件见[支持范围](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.zh-CN.html#data-and-robots-zh-cn-formats)。
+三个层次、研究支撑与能力边界见[从质量检查到自主数据整理](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html) · [演示文稿](docs/presentations/edc-framework.zh-CN.pptx)。读取器覆盖 LeRobot、HDF5、Parquet、ROS bag、MCAP 等，具体条件见[支持范围](https://singlesingerdht.github.io/embodied-data-curation/reference/DATA_AND_ROBOTS.zh-CN.html#data-and-robots-zh-cn-formats)。
 
 ## 最新动态
 
-> 🚀 我们即将发布 Embodied Data Curation Framework 仓库，敬请期待！
+> 🎉 我们发布了 EDC 仓库首个版本，包含 9 项数据质量算法！<br>
+> 🚀 价值算法即将发布，敬请期待！
 
 ## 架构与模块关系
 
@@ -137,7 +138,7 @@ edc run /path/to/dataset/episode.mcap \
 
 质量算法可继承 `QualityAlgorithm`，返回包含原因、指标和证据的 `Item` 列表；也可返回 `AlgorithmResult`，附一行简短摘要用于报告展示。通用插件使用 `AlgorithmSpec + run(context, params)`。
 
-[算法扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html) · [读取器扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.zh-CN.html) · [贡献指南](CONTRIBUTING.md)
+[算法扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/ALGORITHM_PLUGIN.zh-CN.html) · [读取器扩展](https://singlesingerdht.github.io/embodied-data-curation/how-to/READER_PLUGIN.zh-CN.html) · [算法接入与内化](docs/how-to/ALGORITHM_INTEGRATION.zh-CN.md) · [贡献指南](CONTRIBUTING.md)
 
 ```text
 src/edc/
@@ -154,13 +155,3 @@ examples/          # 使用与插件示例
 docs/              # 专题文档
 tests/             # 契约与实现测试
 ```
-
-### 待办
-
-以下均为待接入或研究方向，具体方法与依据见[质量专题](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-layers)：
-
-1. 任务分段、进度判断与有效片段发现：STEAM、MGT-QV。
-2. 按任务准则自动标注与多模态核验：参考 FLORA 等研究。
-3. 数据编辑、演示重采样与变换后质量复检：DemoTempo 等方向。
-4. 面向目标策略的数据选择：RoboDrop、VLA as a judge。
-5. 根据反馈调整规则与算法组合，探索新算法生成、验证及接入，走向[自主数据整理](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-autonomous)。

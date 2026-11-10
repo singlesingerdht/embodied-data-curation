@@ -20,6 +20,7 @@ PAIRS = {
     'how-to/DATA_AND_ROBOT.zh-CN': 'how-to/DATA_AND_ROBOT',
     'how-to/RUN_AND_SELECT.zh-CN': 'how-to/RUN_AND_SELECT',
     'how-to/ALGORITHM_PLUGIN.zh-CN': 'how-to/ALGORITHM_PLUGIN',
+    'how-to/ALGORITHM_INTEGRATION.zh-CN': 'how-to/ALGORITHM_INTEGRATION',
     'how-to/READER_PLUGIN.zh-CN': 'how-to/READER_PLUGIN',
     'reference/DATA_AND_ROBOTS.zh-CN': 'reference/DATA_AND_ROBOTS',
     'reference/ALGORITHMS.zh-CN': 'reference/ALGORITHMS',
@@ -56,6 +57,7 @@ NAVIGATION = {
             ('how-to/RUN_AND_SELECT.zh-CN', '算法运行'),
             ('how-to/SELECTION', '筛选与导出'),
             ('how-to/ALGORITHM_PLUGIN.zh-CN', '算法扩展'),
+            ('how-to/ALGORITHM_INTEGRATION.zh-CN', '算法接入与内化'),
             ('how-to/READER_PLUGIN.zh-CN', '读取器扩展'),
         ]},
         {'title': '参考', 'index': 'reference/index', 'items': [
@@ -82,6 +84,7 @@ NAVIGATION = {
             ('how-to/RUN_AND_SELECT', 'Run Algorithms'),
             ('how-to/SELECTION.en', 'Select and export data'),
             ('how-to/ALGORITHM_PLUGIN', 'Algorithm Plugins'),
+            ('how-to/ALGORITHM_INTEGRATION', 'Algorithm Integration and Internalization'),
             ('how-to/READER_PLUGIN', 'Reader Plugins'),
         ]},
         {'title': 'Reference', 'index': 'reference/index.en', 'items': [

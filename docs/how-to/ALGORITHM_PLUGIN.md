@@ -2,7 +2,9 @@
 
 [简体中文](ALGORITHM_PLUGIN.zh-CN.md) · [Interface reference](../reference/OUTPUTS.md)
 
-Quality algorithms extend EDC through the `edc.algorithms` plugin interface. Installed Python packages are discovered automatically and share data loading, parameter configuration, execution, and reporting with built-in algorithms.
+Quality, value, editing and augmentation algorithms can extend EDC through the `edc.algorithms` plugin interface. Installed Python packages are discovered automatically and share data loading, parameter configuration, execution and result storage with built-in algorithms.
+
+See [Algorithm Integration and Internalization](ALGORITHM_INTEGRATION.md) for category directories, interfaces and validation steps. This page demonstrates the quality reporting interface; other categories retain their own result semantics.
 
 This example implements a joint-step check: read joint feedback, measure the largest change between adjacent samples, and return one result per channel.
 

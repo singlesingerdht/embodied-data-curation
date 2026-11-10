@@ -16,6 +16,8 @@ jobs:
       - run: pip install '.[formats,test]' ./examples/plugins/algorithm
       - run: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/edc -q
       - run: python -m build
+      - name: Check framework release contents
+        run: python scripts/check_release_contents.py --dist dist
       - name: Base wheel lists the nine built-in algorithms
         run: |
           python -m venv /tmp/edc-base

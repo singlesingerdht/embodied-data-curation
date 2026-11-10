@@ -1,6 +1,6 @@
 """EDC: Embodied Data Curation. Public API with lazy dependencies."""
 from importlib import import_module
-__version__ = "0.3.0a1"
+__version__ = "0.3.0a2"
 _EXPORTS = {'open_dataset': 'edc.data.ir.canonical', 'run': 'edc.execution.runner', 'Context': 'edc.execution.runner',
             'AlgorithmSpec': 'edc.algorithms.registry', 'Registry': 'edc.algorithms.registry',
             'QualityAlgorithm': 'edc.algorithms.base', 'Item': 'edc.algorithms.base',

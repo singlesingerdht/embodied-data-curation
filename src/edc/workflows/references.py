@@ -1,4 +1,6 @@
 """Dataset references are metadata over existing storage, not a data format."""
+
+from edc.schemas import DATASET_REFERENCE
 import copy
 import hashlib
 import json
@@ -70,7 +72,7 @@ def dataset_reference(dataset):
         path = dataset.path / name
         if path.is_file() and str(path.resolve()) not in files:
             files[str(path.resolve())] = {'path': str(path.resolve()), 'size': path.stat().st_size, 'sha256': file_digest(path)}
-    result = {'schema_version': 'dqs_dataset_ref_v1', 'id': dataset.id,
+    result = {'schema_version': DATASET_REFERENCE, 'id': dataset.id,
               'version': dataset.version, 'path': str(dataset.path.resolve()),
               'profile': copy.deepcopy(dataset.profile), 'tasks': copy.deepcopy(dataset.tasks),
               'metadata': copy.deepcopy(dataset.metadata), 'episodes': rows,
@@ -80,14 +82,14 @@ def dataset_reference(dataset):
 
 
 def open_dataset_reference(reference):
-    if reference.get('schema_version') != 'dqs_dataset_ref_v1':
+    if reference.get('schema_version') != DATASET_REFERENCE:
         raise ValueError('Unsupported dataset reference')
     expected = {k: v for k, v in reference.items() if k != 'fingerprint'}
     if digest(expected) != reference.get('fingerprint'):
         raise ValueError('Dataset reference metadata was modified')
     from edc.data.ir.dataset import Episode
     from edc.robots.profiles import load_profile
-    profile = load_profile(reference['profile'])
+    profile = load_profile(reference['profile'] or None)
     episodes = [Episode(e['id'], Path(e['source']), e['format'], profile,
                         copy.deepcopy(e['selector']), copy.deepcopy(e['metadata']), e['backend'])
                 for e in reference['episodes']]

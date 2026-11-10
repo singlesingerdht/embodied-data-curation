@@ -38,7 +38,7 @@ def prepare_source(app, docname, source):
             raise ValueError(f"Documentation link leaves repository: {docname}: {match[2]}")
         if target.is_relative_to(docs):
             # Existing guide Markdown is parsed by Sphinx; assets are copied by it.
-            if target.suffix == ".md" and target.name != "STATUS.md":
+            if target.suffix == ".md":
                 fragment = url.fragment
                 if fragment and target.exists():
                     anchors = ANCHOR.findall(target.read_text(encoding="utf-8"))

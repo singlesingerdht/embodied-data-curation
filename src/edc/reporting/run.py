@@ -8,7 +8,8 @@ from edc.reporting.batch import page
 
 def write_run_report(output, run_dir, quality, *, seconds, episode_seconds):
     output, run_dir = Path(output), Path(run_dir)
-    metadata = json.loads((run_dir / 'run.json').read_text(encoding='utf-8'))
+    from edc.schemas import RUN, require_schema
+    metadata = require_schema(json.loads((run_dir / 'run.json').read_text(encoding='utf-8')), RUN)
     algorithm_ids = [a['id'] for a in metadata['algorithms'] if a['category'] == 'quality']
     if not algorithm_ids:
         return None
