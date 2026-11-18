@@ -24,6 +24,8 @@ PAIRS = {
     'how-to/READER_PLUGIN.zh-CN': 'how-to/READER_PLUGIN',
     'reference/DATA_AND_ROBOTS.zh-CN': 'reference/DATA_AND_ROBOTS',
     'reference/ALGORITHMS.zh-CN': 'reference/ALGORITHMS',
+    'reference/VALUE_ALGORITHMS.zh-CN': 'reference/VALUE_ALGORITHMS',
+    'reference/MODEL_ENVIRONMENTS.zh-CN': 'reference/MODEL_ENVIRONMENTS',
     'reference/OUTPUTS.zh-CN': 'reference/OUTPUTS',
     'explanation/ARCHITECTURE.zh-CN': 'explanation/ARCHITECTURE',
     'explanation/QUALITY_VALIDATION.zh-CN': 'explanation/QUALITY_VALIDATION',
@@ -63,6 +65,8 @@ NAVIGATION = {
         {'title': '参考', 'index': 'reference/index', 'items': [
             ('reference/DATA_AND_ROBOTS.zh-CN', '数据格式与机器人配置'),
             ('reference/ALGORITHMS.zh-CN', '内置质量算法'),
+            ('reference/VALUE_ALGORITHMS.zh-CN', '内置价值算法'),
+            ('reference/MODEL_ENVIRONMENTS.zh-CN', '模型环境与依赖'),
             ('reference/OUTPUTS.zh-CN', '输出对象与接口'),
             ('reference/CLI', '命令行'),
             ('reference/EVIDENCE_AND_SCOPE', '检查范围与证据参数'),
@@ -90,6 +94,8 @@ NAVIGATION = {
         {'title': 'Reference', 'index': 'reference/index.en', 'items': [
             ('reference/DATA_AND_ROBOTS', 'Data formats and robot configuration'),
             ('reference/ALGORITHMS', 'Built-in quality algorithms'),
+            ('reference/VALUE_ALGORITHMS', 'Built-in value algorithms'),
+            ('reference/MODEL_ENVIRONMENTS', 'Model environments'),
             ('reference/OUTPUTS', 'Output objects and interfaces'),
             ('reference/CLI.en', 'Command line'),
             ('reference/EVIDENCE_AND_SCOPE.en', 'Scope and evidence'),

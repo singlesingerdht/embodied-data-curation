@@ -21,7 +21,7 @@
 - **自动化｜让经验形成判断，让反馈改进选择。** 从专家示教中学习评估依据，用数据与训练反馈支持筛选决策，逐步减少人工评估、规则调整和方法选择。[机制与论文依据](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-automation)
 - **有理有据｜每次取舍，都能追溯依据、检验效果。** 将选择关联到质量证据、任务进展与模型学习信号，记录处理过程，并用独立反馈验证选择。[如何核验选择](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-evidence)
 
-> 内置九项数据质量算法。价值、增强与编辑使用插件接口扩展，实际可运行的功能取决于已安装插件、输入配置与依赖。任务价值、策略价值和自主整理描述框架愿景，不代表默认安装已具备这些能力。
+> 内置九项数据质量算法，并提供显式选择的初始状态分布和任务进度归因价值算法；模型环境与权重另行准备。其他价值方法、增强和编辑可使用插件扩展，实际可运行范围取决于输入、依赖与标定。自主整理描述框架愿景，不代表默认安装已具备全部能力。
 
 > **长期目标：你提出目标，框架持续自主探索——什么数据值得留，什么经验值得学，下一步该如何改进。**
 
@@ -30,7 +30,20 @@
 ## 最新动态
 
 > 🎉 我们发布了 EDC 仓库首个版本，包含 9 项数据质量算法！<br>
-> 🚀 价值算法即将发布，敬请期待！
+> 🚀 初始状态分布与任务进度归因已提供接入入口，更多价值算法敬请期待！
+
+## 价值算法
+
+除九项质量算法外，提供两个显式选择的价值算法入口。模型环境、权重和任务所需标定另行准备；`edc algorithms` 列出入口，`records.jsonl` 说明每次实际完成的评估。
+
+| 算法 | 输入与输出 | 使用边界 |
+|---|---|---|
+| [初始状态分布](src/edc/algorithms/value/algorithms/Initial_State_Distribution/README.zh-CN.md) | 初始 RGB 帧、目标类别、SAM3 → 检测、网格分布、熵、有效比例与热力图 | 明确相机／场景分组；深度可选，不参与二维评分 |
+| [任务进度归因](src/edc/algorithms/value/algorithms/Progress_Stagnation_Attribution/README.zh-CN.md) | 三视角图片／视频、子任务、GRM 与物理反馈 → 进度曲线、回退／停滞归因与证据 | 不要求固定 FPS；物理证据不足时保留视觉结果，但完整归因未完成；复核视频默认关闭 |
+
+[安装与调用](docs/reference/VALUE_ALGORITHMS.zh-CN.md) · [独立模型环境](docs/reference/MODEL_ENVIRONMENTS.zh-CN.md)。请按各算法说明准备输入、模型依赖和适用标定。
+
+请区分数据读取失败、算法缺输入／依赖与完成后无事件。`catalog.json` 索引记录和证据；命令成功退出不等于完整评估。更多价值算法即将发布。
 
 ## 架构与模块关系
 

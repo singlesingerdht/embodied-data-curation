@@ -13,7 +13,10 @@ dependencies = ["numpy>=1.24", "PyYAML>=6"]
 [project.optional-dependencies]
 lerobot = ["lerobot[dataset]==0.6.1; python_version >= '3.12'", "h5py>=3.8; python_version >= '3.12'"]
 formats = ["h5py>=3.8", "pyarrow>=14", "rosbags>=0.10", "mcap>=1.1", "protobuf>=4.25", "av>=12", "opencv-python-headless>=4.8", "scipy>=1.10", "xxhash>=3"]
-test = ["pytest>=7", "build>=1"]
+test = ["pytest>=7", "build>=1", "matplotlib>=3.7", "pydantic>=2", "Pillow>=10", "tqdm>=4"]
+
+initial-state = ["Pillow>=10"]
+value-inputs = ["Pillow>=10", "av>=12", "opencv-python-headless>=4.8", "scipy>=1.10"]
 
 [project.scripts]
 edc = "edc.execution.cli:main"
@@ -26,3 +29,7 @@ namespaces = true
 
 [tool.setuptools.package-data]
 "edc.data" = ["channel_registry.yaml"]
+"edc.environments" = ["profiles.json"]
+
+"edc.algorithms.value.algorithms.Initial_State_Distribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]
+"edc.algorithms.value.algorithms.Progress_Stagnation_Attribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]

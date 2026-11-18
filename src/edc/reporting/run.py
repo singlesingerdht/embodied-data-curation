@@ -11,7 +11,8 @@ def write_run_report(output, run_dir, quality, *, seconds, episode_seconds):
     from edc.schemas import RUN, require_schema
     metadata = require_schema(json.loads((run_dir / 'run.json').read_text(encoding='utf-8')), RUN)
     algorithm_ids = [a['id'] for a in metadata['algorithms'] if a['category'] == 'quality']
-    if not algorithm_ids:
+    value_specs = [a for a in metadata['algorithms'] if a['category'] == 'value']
+    if not algorithm_ids and not value_specs:
         return None
     sources = {e['id']: e['source'] for e in metadata['dataset']['episodes']}
     bags = [{'name': row['episode'], 'source': sources[row['episode']],
@@ -22,8 +23,17 @@ def write_run_report(output, run_dir, quality, *, seconds, episode_seconds):
     info = {'robot': metadata['profile'].get('id', '未指定'),
             'inputs': metadata['dataset']['source'], 'profile': str(run_dir / 'run.json'),
             'finished': f'{datetime.now():%Y-%m-%d %H:%M}', 'seconds': seconds, 'jobs': 1}
-    html = page(bags, info, algorithm_ids=algorithm_ids, title='质检报告')
+    html = page(bags, info, algorithm_ids=algorithm_ids, title='质检报告') if algorithm_ids else None
     report = run_dir / 'report.html'
-    report.write_text(html, encoding='utf-8')
-    (output / 'report.html').write_text(html, encoding='utf-8')
+    if value_specs:
+        from edc.reporting import value
+        loaded = value.load_records(output, run_dir, value_specs)
+        for destination in (report, output / 'report.html'):
+            content = value.sections(output, run_dir, destination.parent, loaded)
+            rendered = (html.replace('</style>', value.STYLE + '</style>', 1)
+                        .replace('</main>', content + '</main>', 1) if html else value.page(content, metadata))
+            destination.write_text(rendered, encoding='utf-8')
+    else:
+        report.write_text(html, encoding='utf-8')
+        (output / 'report.html').write_text(html, encoding='utf-8')
     return report.relative_to(output).as_posix()

@@ -92,3 +92,7 @@ EDC_PLUGINS=examples/plugins/algorithm/joint_jump edc algorithms
 ## 已知限制
 
 - 没有独立的推荐 CLI，也没有 `edc config export` 命令。
+
+## edc env
+
+`edc env list`, `edc env plan`, `edc env create`, `edc env check`: [模型环境与依赖](MODEL_ENVIRONMENTS.zh-CN.md).

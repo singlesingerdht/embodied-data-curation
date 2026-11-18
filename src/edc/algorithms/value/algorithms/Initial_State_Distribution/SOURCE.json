@@ -1,0 +1,15 @@
+{
+  "source_repository": "Datasets_quality_and_value_assessment",
+  "source_directory": "Value_Assessment/Initial_State_Distribution",
+  "license_status": "unresolved; local integration only, not cleared for public release",
+  "files": {
+    "metrics.py": "71f542b49430a2304900c707c1a8bab996535205375ecac67b1778b7fe9781f0",
+    "extractor.py": "7d9da4e18d32016d1ae9e337e1ba2eba65b1bd9bd2de2c5748907c6658dc4e1c",
+    "spatial_geometry.py": "42da483f59edd52fd3d99e7b208bfa2dd4712135e0c9b3ece28ec8d082476f93"
+  },
+  "adaptations": [
+    "EDC supplies explicit RGB frames, local SAM3 checkpoints and dictionary parameters; statistical formulas, per-image detection and geometry are retained.",
+    "SAM3 executes in inference_mode, either in-process or in an optional isolated Python worker. Both paths share native metrics, source mappings and failure denominators.",
+    "No legacy input discovery, research-repository imports, environment aliases or automatic model downloads; missing dependencies fail explicitly."
+  ]
+}

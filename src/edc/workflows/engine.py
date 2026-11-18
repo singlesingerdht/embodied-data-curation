@@ -16,6 +16,7 @@ from edc.data.ir.dataset import Dataset
 from edc.data.ir.canonical import open_dataset
 from edc.algorithms.registry import algorithms
 from edc.reporting.results import write_json
+from edc.execution.completeness import record_complete
 from .references import DatasetView, dataset_reference, digest, file_digest
 from .validation import validate_workflow
 from .reviews import read_reviews
@@ -279,7 +280,7 @@ def run_workflow(config, output='results', *, resume=False):
                             ident in r.get('eligible_episodes', selected)) or r['object']['id'] == ident]
                         expected = {name for name, subset in row['method_subsets'].items() if ident in subset}
                         if (expected and expected == {r['algorithm']['id'] for r in relevant} and
-                                all(r['status'] == 'completed' and (r.get('result') or {}).get('reports') for r in relevant)):
+                                all(record_complete(r) for r in relevant)):
                             state['valued_ids'].append(ident)
                     row['value_completed_episodes'] = state['valued_ids']
                     # Hand off only successfully valued episodes, preserving

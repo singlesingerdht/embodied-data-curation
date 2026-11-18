@@ -4,6 +4,9 @@
 
 Supported formats, configuration fields, algorithms, public interfaces, and commands.
 
+
+[Built-in value algorithms](VALUE_ALGORITHMS.md)
+
 ## Choose by question
 
 | Topic | Page | Main content |
@@ -26,7 +29,9 @@ Supported formats, configuration fields, algorithms, public interfaces, and comm
 
 Data formats and robot configurations <DATA_AND_ROBOTS>
 Built-in quality algorithms <ALGORITHMS>
+Built-in value algorithms <VALUE_ALGORITHMS>
 Output objects and interfaces <OUTPUTS>
 Command-line reference <CLI.en>
 Scope and evidence <EVIDENCE_AND_SCOPE.en>
+Model environments <MODEL_ENVIRONMENTS>
 ```

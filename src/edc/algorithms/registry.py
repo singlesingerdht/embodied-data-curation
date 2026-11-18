@@ -104,6 +104,9 @@ def algorithms():
     registry = Registry("edc.algorithms")
     for plugin in builtins():
         registry.register(plugin)
+    from edc.algorithms.value.discovery import builtins as value_builtins
+    for plugin in value_builtins():
+        registry.register(plugin)
     registry.discover()
     for folder in filter(None, os.environ.get('EDC_PLUGINS', '').split(os.pathsep)):
         registry.register_external(folder_plugin(folder))

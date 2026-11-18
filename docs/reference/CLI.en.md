@@ -92,3 +92,7 @@ Exit code 0 means the command completed; it does not mean the data passed qualit
 ## Known limitations
 
 - There is no standalone recommendation CLI or `edc config export` command.
+
+## edc env
+
+`edc env list`, `edc env plan`, `edc env create`, `edc env check`: [Model environments](MODEL_ENVIRONMENTS.md).

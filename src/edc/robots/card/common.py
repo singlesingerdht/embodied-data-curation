@@ -113,7 +113,7 @@ class Builder:
 
     def other(self, channel, entry, where, label, units, ownership=None):
         """Values with no physical check of their own: checked for NaN/Inf and, when declared, their range."""
-        source, field, picks = self.source_of(entry, where, ('scale', 'range', 'order'))
+        source, field, picks = self.source_of(entry, where, ('scale', 'range', 'order', 'source_kind', 'calibration_status', 'calibration_reference', 'quantity'))
         unit = entry.get('unit')
         if unit not in units:
             raise CardError(f'{where}.unit 必填：{"、".join(units)}'
@@ -133,15 +133,35 @@ class Builder:
             raise CardError(f'{where}: unit 是 {unit} 时不能写 range、scale')
         if scale and unit == 'raw':
             raise CardError(f'{where}: 写了 scale 就把 unit 写成换算后的物理单位（如 m、rad），range 按换算后的值写')
+        kind = entry.get('source_kind', (ownership or {}).get('source_kind', 'unknown'))
+        if kind not in ('feedback', 'command', 'unknown'):
+            raise CardError(f'{where}.source_kind: feedback/command/unknown')
+        if ownership and kind != ownership.get('source_kind'):
+            raise CardError(f'{where}: source_kind conflicts with the selected robot role')
+        calibration = entry.get('calibration_status', 'unknown')
+        if calibration not in ('confirmed', 'pending', 'unknown'):
+            raise CardError(f'{where}.calibration_status: confirmed/pending/unknown')
+        if calibration == 'confirmed' and not entry.get('calibration_reference'):
+            raise CardError(f'{where}: confirmed calibration requires calibration_reference')
+        quantity = entry.get('quantity', 'unknown')
+        if not isinstance(quantity, str) or not quantity.strip():
+            raise CardError(f'{where}.quantity: expected a nonempty physical quantity name')
+        metadata = {'quantity': quantity, 'unit': unit, 'source_kind': kind, 'calibration_status': calibration,
+                    'semantic_status': 'confirmed' if unit != 'unknown' else 'unknown',
+                    'confirmed_by': self.confirmed_by,
+                    'calibration_reference': entry.get('calibration_reference')}
+        if scale:
+            metadata['scale'] = scale
         if picks is None and field == 'value' and not (value_range or scale or ownership):
+            self.sources[source].setdefault('field_metadata', {})[field] = metadata
             self.names.setdefault(source, label)
             return
         spec = {'modality': 'other', 'fields': ['value'], **(ownership or {}),
+                'source_kind': kind, 'unit': unit,
+                'field_metadata': {'value': metadata},
                 'select': {'channel': source, 'field': field, 'indices': picks or [0]}}
         if picks is None:
             spec['select'] = {'channel': source, 'fields': {'value': field}}
-        if scale:
-            spec['field_metadata'] = {'value': {'scale': scale}}
         self.add(channel, spec, label)
         self.finite_only.append(f'{channel}.value')
         if value_range:

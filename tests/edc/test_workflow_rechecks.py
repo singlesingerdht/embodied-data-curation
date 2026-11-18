@@ -219,3 +219,26 @@ def test_review_isolated_between_left_and_right_instances(demo, tmp_path):
     third = run_workflow(config, output, resume=True)
     assert third['stages'][0]['gate']['episode_0']['decision'] == 'keep'
     assert third['stages'][0]['gate']['episode_1']['decision'] == 'review'
+
+
+def test_incomplete_visual_value_retains_quality_reference_without_releasing_valuation(demo,tmp_path):
+    from edc.execution.frames import inspect_frames
+    _,config,registry=demo
+    seen=[]
+    class VisualOnly:
+        spec=AlgorithmSpec('test__visual_only','1','Visual progress','Tests','Completion contract',category='value')
+        def run(self,context,params):
+            context.episode.open()
+            channel=next(n for n,c in context.episode.channels.items() if c.modality=='rgb')
+            m=inspect_frames(context.episode,{'cam_high':channel},upstream=context.upstream)
+            seen.append(m)
+            context.write_result('input-mapping.json',m)
+            return {'evaluation':{'progress':.8},'assessment_complete':False,
+                'components':{'visual':{'status':'completed'},'physical':{'status':'incomplete'}}}
+    registry.register(VisualOnly())
+    config['stages']=[config['stages'][0],{'id':'value','kind':'value','input':'quality','algorithms':['test__visual_only']}]
+    result=run_workflow(config,tmp_path/'incomplete-value')
+    assert seen and all(m['quality_evidence']=='upstream_reference' for m in seen)
+    assert all(m['quality_references'][0]['dataset_fingerprint'] for m in seen)
+    assert result['stages'][1]['value_completed_episodes']==[]
+    assert result['delivery_status']=='suspended'

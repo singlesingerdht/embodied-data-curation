@@ -70,3 +70,18 @@ def test_forbidden_archive_members_are_rejected(repo, wheel_extra, sdist_extra):
 def test_missing_archives_cannot_pass(repo):
     errors, archives = release.check_release(repo, repo / 'absent')
     assert len(errors) == 2 and not archives
+
+
+def test_internalized_methods_must_ship_source_and_usage(repo):
+    owned=repo/'src/edc/algorithms/value/algorithms/Example'
+    owned.mkdir(parents=True);(owned/'algorithm.py').write_text('owned')
+    make_archives(repo/'dist')
+    errors,_=release.check_release(repo,repo/'dist')
+    assert any('missing built-in resource Example/SOURCE.json' in x for x in errors)
+    assert any('missing built-in resource Example/algorithm.py' in x for x in errors)
+
+
+def test_model_weights_cannot_enter_framework_package(repo):
+    make_archives(repo/'dist',wheel_extra=['edc/algorithms/value/model.pt'])
+    errors,_=release.check_release(repo,repo/'dist')
+    assert any('bundled model or data' in x for x in errors)

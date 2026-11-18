@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "vision": {
+      "python": "3.12",
+      "platform": "linux-x86_64",
+      "description": "Composable vision worker recipe. Installation/import checks do not certify model accuracy or all component combinations.",
+      "requirements": [
+        "torch==2.8.0",
+        "torchvision==0.23.0",
+        "transformers==4.57.1",
+        "tokenizers==0.22.1",
+        "numpy==1.26.4",
+        "opencv-python-headless==4.11.0.86",
+        "Pillow>=11,<12",
+        "matplotlib>=3.9,<4",
+        "scipy>=1.14,<2",
+        "accelerate>=1,<2",
+        "safetensors>=0.5,<1"
+      ],
+      "components": {
+        "progress": {
+          "algorithms": [
+            "Progress_Stagnation_Attribution"
+          ],
+          "requirements": [
+            "vllm==0.11.0",
+            "moviepy==1.0.3",
+            "av>=14,<17",
+            "google-genai>=1,<2"
+          ],
+          "imports": [
+            "vllm",
+            "transformers.models.qwen3_vl",
+            "moviepy.editor",
+            "av",
+            "google.genai"
+          ],
+          "sources": []
+        },
+        "initial-state": {
+          "algorithms": [
+            "Initial_State_Distribution"
+          ],
+          "requirements": [
+            "timm>=1.0.17,<2",
+            "ftfy==6.1.1",
+            "einops>=0.8,<1",
+            "pycocotools>=2,<3",
+            "psutil>=5",
+            "setuptools>=70,<81"
+          ],
+          "imports": [
+            "sam3.model_builder"
+          ],
+          "sources": [
+            "sam3"
+          ]
+        }
+      }
+    },
+    "openpi": {
+      "python": "3.12",
+      "platform": "linux-x86_64",
+      "description": "Separate OpenPI worker, including its supplied Transformers replacement. Requires explicitly supplied source wheels; no upstream repository substitution.",
+      "requirements": [
+        "torch==2.7.1",
+        "torchvision==0.22.1",
+        "transformers==4.53.2",
+        "tokenizers==0.21.4",
+        "numpy==1.26.4",
+        "jax[cuda12]==0.5.3",
+        "flax==0.10.2",
+        "orbax-checkpoint==0.11.13",
+        "ml-dtypes==0.4.1",
+        "tensorstore==0.1.74",
+        "opencv-python==4.11.0.86"
+      ],
+      "components": {
+        "shapley": {
+          "algorithms": [
+            "OpenPI_Episode_Shapley"
+          ],
+          "requirements": [],
+          "imports": [
+            "openpi.training.config",
+            "openpi.models_pytorch.pi0_pytorch",
+            "lerobot"
+          ],
+          "sources": [
+            "openpi",
+            "openpi-client",
+            "lerobot"
+          ],
+          "limitation": "Use the matching OpenPI source and LeRobot revision 0cf864870cf29f4738d3ade893e6fd13fbd7cdb5. DINO source/weights remain explicit run inputs."
+        }
+      },
+      "transformers_patch": true
+    }
+  }
+}

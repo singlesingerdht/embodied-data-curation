@@ -44,6 +44,24 @@ def check_release(root, dist):
                 names = package.getnames()
         errors.extend(f'{archive.name}: {name} ({reason})' for name in names
                       if (reason := forbidden_reason(name)))
+    # Discover owned implementations from source; every published method must
+    # carry its callable entry, origin statement and user documentation.
+    value_root = root / 'src/edc/algorithms/value/algorithms'
+    expected = [p.parent.name for p in value_root.glob('*/algorithm.py')]
+    for archive in archives:
+        if archive.suffix == '.whl':
+            with zipfile.ZipFile(archive) as package:
+                names = package.namelist()
+        else:
+            with tarfile.open(archive, 'r:gz') as package:
+                names = package.getnames()
+        for method in expected:
+            for resource in ('algorithm.py', 'SOURCE.json', 'README.md', 'README.zh-CN.md'):
+                suffix = f'edc/algorithms/value/algorithms/{method}/{resource}'
+                if not any(name.endswith('/' + suffix) or name == suffix for name in names):
+                    errors.append(f'{archive.name}: missing built-in resource {method}/{resource}')
+        errors.extend(f'{archive.name}: bundled model or data {name}' for name in names
+                      if PurePosixPath(name).suffix in {'.pt', '.pth', '.safetensors', '.npy', '.npz', '.parquet', '.mcap', '.bag'})
     return errors, archives
 
 

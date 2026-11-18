@@ -354,6 +354,14 @@ def open_structured(episode):
                     image_available=True, source=str(video), msg_type="video/mp4",
                     timestamps=[i / fps for i in range(frames)] if fps > 0 else None,
                     timestamps_synthetic=True)
+                # Explicit export row identity does not require recorded seconds.
+                # Preserve it separately from the video's synthetic playback axis.
+                if episode.profile.get("video_frame_time") == "rows" and frames == len(rows):
+                    topics[video.stem].time_evidence = {
+                        'timeline_scope': 'shared_dataset_rows',
+                        'source_row_mapping': 'identity; profile video_frame_time: rows',
+                        'establishes_acquisition_sync': False,
+                        'limitation': 'Declared export row identity does not establish acquisition synchronization'}
                 # Profile-declared `video_frame_time: rows`: the export wrote one row per video frame,
                 # so frame i takes row i's time. Only when the counts match; otherwise FPS time stays.
                 if episode.profile.get("video_frame_time") == "rows" and timestamps is not None:

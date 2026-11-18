@@ -4,6 +4,9 @@
 
 数据格式、配置字段、算法、公共接口与命令的定义。
 
+
+[内置价值算法](VALUE_ALGORITHMS.zh-CN.md)
+
 ## 按问题选择
 
 | 想知道什么 | 页面 | 主要内容 |
@@ -26,7 +29,9 @@
 
 格式与配置参考 <DATA_AND_ROBOTS.zh-CN>
 内置质量算法参考 <ALGORITHMS.zh-CN>
+内置价值算法 <VALUE_ALGORITHMS.zh-CN>
 接口与输出参考 <OUTPUTS.zh-CN>
 命令行参考 <CLI>
 范围与证据参考 <EVIDENCE_AND_SCOPE>
+模型环境与依赖 <MODEL_ENVIRONMENTS.zh-CN>
 ```

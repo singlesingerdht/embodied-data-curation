@@ -28,6 +28,20 @@ def robot_path(name):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='edc', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest='command', required=True)
+    env = sub.add_parser('env', help='Plan, install and check isolated model workers').add_subparsers(dest='action', required=True)
+    env.add_parser('list', help='Show optional worker profiles and components')
+    for action in ('plan', 'create'):
+        p = env.add_parser(action, help='Show requirements' if action == 'plan' else 'Install into a new isolated environment')
+        p.add_argument('profile', choices=['vision', 'openpi'])
+        p.add_argument('--with', dest='components', action='append', required=True)
+        if action == 'create':
+            p.add_argument('--venv', required=True)
+            p.add_argument('--python', required=True, help='Base interpreter for this profile')
+            p.add_argument('--edc-wheel', required=True, help='Wheel matching this EDC installation')
+            p.add_argument('--source', action='append', default=[], help='NAME=/path/source.whl, as listed by env plan')
+    p = env.add_parser('check', help='Check installation consistency; does not run a model')
+    p.add_argument('--venv', required=True)
+    p.add_argument('--imports', action='store_true', help='Also import selected model libraries without loading weights')
     p = sub.add_parser('channels', help='List what the reader finds in the data')
     p.add_argument('data')
     robot = sub.add_parser('robot', help='Check a robot yaml or a URDF').add_subparsers(dest='action', required=True)
@@ -78,7 +92,20 @@ def main(argv=None):
     p.add_argument('--resume', action='store_true')
     args = parser.parse_args(argv)
     try:
-        if args.command == 'channels':
+        if args.command == 'env':
+            from edc.environments import manager
+            if args.action == 'list':
+                emit(manager.profiles())
+            elif args.action == 'plan':
+                emit(manager.plan(args.profile, args.components))
+            elif args.action == 'create':
+                emit(manager.create(args.profile, args.components, target=args.venv,
+                     python=args.python, edc_wheel=args.edc_wheel, sources=args.source))
+            else:
+                result = manager.check(args.venv, imports=args.imports)
+                emit(result)
+                return 0 if result['ok'] else 1
+        elif args.command == 'channels':
             from edc.robots.yaml_check import list_channels
             list_channels(args.data)
         elif args.command == 'robot' and args.action == 'check':

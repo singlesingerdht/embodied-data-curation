@@ -1,0 +1,27 @@
+{
+  "source_repository": "Datasets_quality_and_value_assessment",
+  "source_directory": "Value_Assessment/Progress_Stagnation_Attribution",
+  "license_status": "unresolved; local integration only, not cleared for public release",
+  "files": {
+    "evaluator.py": "d38375f59f7d5d5b9c4e9906cdf3741ea1df13e4e0d05fcadd22c6bc7d403ebf",
+    "grm_inference.py": "1800c7f721e3930846312245f21ac4d2a9ef1a581830e86782bc03129856bb27",
+    "attributor.py": "634db92e1aa239a64c70f2c0ab0b82df756912219ad1718be4c5ab0bc919dc61",
+    "physical_features.py": "c07428edebb3fefd6d4d3b187d5379f53612951173a42071ad50744c4639e8e7",
+    "segmenter.py": "3c1484e9a0a68cd0e69787ebb06030e347b6ffd1c3556aba05558c2b948e13c6",
+    "offline_v3.py": "6364090b477695cb08ea9155911a2b81d32d7fab7c4bd65f04a4b643447526dd",
+    "decision_export_v4.py": "57abb91e9b5b4a2634238c66ac514e2771b24ea60c347ff6b6ce816b91ceebfc",
+    "attempt_filter_v5.py": "dae59a96e7e2b8f517f8eeae5cf878649a2884a307f6b99d87d8be0cdba056bd",
+    "_shared/physical_signals.py": "e2556f3ef55db60b2b7f602cdaa39b552f8958308202129ad5cd9b3662bcde8c"
+  },
+  "policy_version": "training_filter_v8",
+  "adaptations": [
+    "EDC-prepared original RGB images and explicit multi-view mappings feed an isolated worker without research-repository imports or machine-specific paths. Fixed FPS, equal view counts and source/playback equality are not input gates.",
+    "GRM image prompts, progress scoring and existing attribution rules retain their method identity. Checkpoint-declared embedding/output-head sharing is respected through instance-local vLLM configuration.",
+    "Recorded source time drives duration windows, physical derivatives, segmentation mappings and the explicitly selected training_filter_v8. Sample-count rules and numerical thresholds retain their meanings.",
+    "Subtask intervals use explicit playback/source seconds or half-open reference-frame ranges. Missing reliable time permits visual progress only.",
+    "Native subtask outputs, text reports, progress plots and optional sampled review videos preserve AFTER-frame identity. Run-owned image caches may be cleaned after normal completion while source mappings and RGB hashes remain.",
+    "Physical evidence uses robot metadata and explicitly identified load proxies. Grippers support confirmed open/closed references or the native scalar relative-opening rule on declared units.",
+    "Fixed current rules use declared amperes directly; baseline, standard deviation and percentiles remain algorithm estimates. Torque requires explicit N*m thresholds and does not enable current-based proactive or v8 rules.",
+    "Explicit conditional attribution may retain documented pending assumptions, but cannot complete assessment or enable filtering. Full assessment requires segmentation, visual coverage, physical evidence and the selected filtering branch; incomplete attribution retains its visual evidence."
+  ]
+}

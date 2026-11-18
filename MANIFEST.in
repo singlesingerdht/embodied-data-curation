@@ -1,5 +1,6 @@
 include README.md README.zh-CN.md CONTRIBUTING.md AGENTS.md
-recursive-include src/edc *.py *.yaml *.md
+recursive-include src/edc *.py *.yaml *.md SOURCE.json LICENSE*
+include src/edc/environments/profiles.json
 recursive-include configs *.yaml *.json *.urdf
 recursive-include examples *.py *.toml
 recursive-include tests *.yaml

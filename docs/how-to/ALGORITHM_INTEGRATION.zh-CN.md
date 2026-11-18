@@ -29,8 +29,7 @@ src/edc/algorithms/
 └── editing/algorithms/<Algorithm_Name>/
 ```
 
-**当前加载边界：** 核心内置发现通过现有质量适配器加载九项质量算法，尚不支持上述四类目录的
-统一自动发现。其他类别可通过插件接口接入；仅创建目录不会完成注册，也不能据此宣称算法可用。
+**当前加载边界：** 九项质量算法仍由原适配器按原顺序加载。value/algorithms 各目录的 algorithm.py:plugin 通过轻量发现加载，核验目录名与 ID、value 类别。augmentation/editing 仍需插件，尚无内置目录发现。发现不代表真实方法已验收；见[价值算法](../reference/VALUE_ALGORITHMS.zh-CN.md)。
 
 内置实现以 `algorithm.py` 提供轻量声明和执行入口，计算模块按实际需要组织为
 `method.py`、`extractor.py`、`metrics.py` 等文件。附上 `README.md` 和可追溯的 `SOURCE.json`，

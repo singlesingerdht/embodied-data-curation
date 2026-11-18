@@ -81,7 +81,8 @@ def compile_card(card, base=None):
     for source, spec in build.sources.items():
         if source in channels:
             raise CardError(f'{source} 既是相机又是数值数据')
-        channels[source] = {'modality': 'other', 'fields': spec['fields'], 'time_source': 'acquisition', 'clock': clock}
+        channels[source] = {'modality': 'other', 'fields': spec['fields'], 'time_source': 'acquisition', 'clock': clock,
+                            'field_metadata': spec.get('field_metadata', {})}
         # Preserve explicit ownership on raw sources as well as their selected views.
         from edc.robots.scope import source_fields
         owners = {v.get('robot_part') for v in channels.values()
