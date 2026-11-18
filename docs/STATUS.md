@@ -3,6 +3,16 @@
 基线：`leju-kuavo` 提交 `81dff8e2f086382806fe4c1c6f4680f63d1b7cc4`。
 日期：2026-11-03。本目录为该提交的独立源码副本，保留此前工作树的未提交内容；没有提交或推送 GitHub。
 
+## 良性暂停识别与 85／75 通过线（2026-11-18）
+
+- 基线：`data-platform` 提交 `6c254f4`（与 GitHub `data-platform` 同一提交）。本轮在 `Check_Timestamp` 与 `Root_Cause` 识别 300ms～3000ms 的多通道同步停顿：前者把完整落在窗口内的间隔排除出采样节奏指标和配对覆盖率，后者对可解释停顿只降权，并只在仍有通道存在无法解释的周期性间隔时才按熔断处理。
+- 采样节奏和对齐口径同步放宽：`dt_cv` 由 0.10／0.30 调整为 1.50／3.00，配对覆盖率下限由 0.90 调整为 0.85，误差下限取彩色／深度相机最慢一路帧间隔的 0.495 倍。包级口径由「90 分 ACCEPTABLE、80 分熔断」改为「85 分 ACCEPTABLE、75 分熔断」，C 档（75～85）记为通过但需复核。
+- 本机 WSL（Ubuntu-20.04、Python 3.12，`pip install '.[formats,test]'` 加算法示例插件，系统装有 `ffmpeg`／`ffprobe`）完整回归 **755 passed，9 skipped**。缺少 `ffmpeg` 时 `Video_Integrity` 预检按既有依赖规则判为 `missing_dependency`，补装后通过；该预检不是本轮改动内容。
+- 新增 `tests/edc/test_timestamp_benign_pause.py`，覆盖窗口判定（需要过半通道、超过 3s 不算暂停）、节奏指标排除窗口内间隔、边界样本仍参与配对、85／75 分级边界，以及归因降权（良性 85 分、长空洞 60 分）。
+- 文档同步：双语 [ALGORITHMS.md](ALGORITHMS.md)／[ALGORITHMS.zh-CN.md](ALGORITHMS.zh-CN.md)、算法 README 与 docstring 里 0.3／0.6、`B>80`／`C>60`、覆盖率 90% 等旧口径全部改为新值；报告新增 `benign_pause_windows`、`pause_windows_count`、`pause_windows_filtered`、`long_gap_total_count`、`pause_excluded_long_gap_count`、`pass_threshold`、`review_threshold`。
+- 机器人卡片 `configs/robots/x1pro_mcap.yaml` 的 Home 容差按标定第二档取 0.031 m，并由 `zhangjiayan` 签名。
+- 本节记录推送前的本地验证，远端 CI 以推送后 GitHub Actions 的实际结果为准。原始数据与报告不随代码提交。
+
 ## leju-kuavo 分支提交前复核（2026-11-04）
 
 - 在远端 `43620fbd73e80b009ee08f22549c79977121258f` 上集成本地已验证版本，保留其他工作区未提交内容。远端补充的 `regenerate` 参数、输出和退出码说明迁到双语 [SELECTION.md](SELECTION.md)，首页继续使用专题导航。
