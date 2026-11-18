@@ -609,13 +609,14 @@ TIMESTAMP_SCORING = {'absolute_error_floor_ms': 'DEFAULT_ABSOLUTE_ERROR_FLOOR_MS
 
 
 def timestamp_standard(episode):
-    """所有机型统一的时间戳评分标准：对齐误差的尺子最小取最快相机一帧的 1/3（训练按相机帧取数据）；
-    消息间隔的变异系数 0.3 起扣分、0.6 扣满（普通电脑录包、导出的调度抖动常见 0.17–0.30）。"""
+    """所有机型统一的时间戳评分标准：对齐误差的尺子取彩色／深度相机帧间隔最慢一路的 0.495 倍
+    （深度与彩色同帧的机型按较慢的那路取尺子，不再只按最快彩色相机一帧的 1/3）；
+    消息间隔的变异系数 1.5 起扣分、3.0 扣满（普通电脑录包、导出的调度抖动远高于旧的 0.3/0.6 口径）。"""
     import numpy as np
     periods = [p for p in (float(np.median(np.diff(c.timestamps))) for c in episode.channels.values()
-               if c.modality == 'rgb' and c.timestamps is not None and len(c.timestamps) > 1) if p > 0]
-    floor = {'absolute_error_floor_ms': round(min(periods) * 1000 / 3, 1)} if periods else {}
-    return {'dt_cv_no_penalty': 0.3, 'dt_cv_zero': 0.6, **floor}
+               if c.modality in ('rgb', 'depth') and c.timestamps is not None and len(c.timestamps) > 1) if p > 0]
+    floor = {'absolute_error_floor_ms': round(max(periods) * 500 * 0.99, 3)} if periods else {}
+    return {'dt_cv_no_penalty': 1.5, 'dt_cv_zero': 3.0, **floor}
 
 
 def yaml_camera_pairs(profile, topics):

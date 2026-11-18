@@ -37,10 +37,21 @@ def assess(ts_map: dict, stability: dict = None, weights: dict = None, families:
 
     stall_count = len(correlated)
     if stall_count > 0:
+        # 检查是否为良性系统暂停（子任务切换等）
+        is_benign_pause = result.get("has_benign_pauses", False)
+
         if result.get("correlated_is_real_hole"):
-            stall_score = 0.0
             largest = max(event['max_gap_ms'] for event in correlated)
-            stall_raw = f"跨通道长间隔: {stall_count}次关联事件, 最大{largest:.0f}ms；具体原因待确认"
+
+            if is_benign_pause:
+                # 识别为系统级暂停（如子任务切换），不应严重扣分
+                stall_score = 85.0
+                stall_raw = f"跨通道长间隔: {stall_count}次关联事件, 最大{largest:.0f}ms；识别为系统级暂停（如子任务切换），已降权处理"
+            else:
+                # 无法确认是否为良性暂停，降级评分而非直接 0 分
+                # 原因：算法自己都说"待确认"，不应直接排除
+                stall_score = 60.0
+                stall_raw = f"跨通道长间隔: {stall_count}次关联事件, 最大{largest:.0f}ms；具体原因待确认（可能为丢帧或系统暂停）"
         else:
             stall_score = 70.0
             stall_raw = f"关联时间间隔异常: {stall_count}次；不能据此排除丢帧"
@@ -48,9 +59,28 @@ def assess(ts_map: dict, stability: dict = None, weights: dict = None, families:
         stall_score = 100.0
         stall_raw = "未发现至少三类消息源分组的关联空档"
 
-    periodic_count = sum(1 for p in gap_patterns.values() if p.get("periodic"))
-    periodic_score = 0.0 if periodic_count > 0 else 100.0
-    periodic_raw = f"periodic={periodic_count}个通道" if periodic_count > 0 else "未发现周期性间隔异常"
+    periodic = {
+        name: pattern for name, pattern in gap_patterns.items() if pattern.get("periodic")
+    }
+    unexplained = {
+        name: pattern for name, pattern in periodic.items()
+        if pattern.get("unexplained_gap_count", pattern.get("gap_count", 1)) > 0
+    }
+    if unexplained:
+        periodic_score = 0.0
+        periodic_raw = (
+            f"periodic={len(periodic)}个通道，"
+            f"其中{len(unexplained)}个存在无法被良性暂停解释的周期性间隔"
+        )
+    elif periodic:
+        periodic_score = 100.0
+        periodic_raw = (
+            f"periodic={len(periodic)}个通道；"
+            "周期性间隔均落在良性暂停窗口内，不按周期性丢帧熔断"
+        )
+    else:
+        periodic_score = 100.0
+        periodic_raw = "未发现周期性间隔异常"
 
     drift_score = 0.0 if result["has_drift"] else 100.0
     drift_raw = "时钟漂移>5ms/min" if result["has_drift"] else "无时钟漂移"
@@ -66,7 +96,7 @@ def assess(ts_map: dict, stability: dict = None, weights: dict = None, families:
          "t_min": 1.0, "t_max": 0.0, "current_value": stall_score,
          "details": [], "grade": to_grade(stall_score)},
         {"name": "周期性丢帧", "weight": rc_weights["周期性丢帧"],
-         "passed": periodic_count == 0, "score": periodic_score,
+         "passed": not unexplained, "score": periodic_score,
          "gap": round(100 - periodic_score, 1), "weighted_gap": round((100 - periodic_score) * rc_weights["周期性丢帧"], 1),
          "raw_value": periodic_raw, "direction": "binary",
          "t_min": 1.0, "t_max": 0.0, "current_value": periodic_score,

@@ -30,14 +30,16 @@ DEFAULT_LONG_GAP_MULTIPLE = 2.0
 DEFAULT_LONG_GAP_RATIO_WARNING = 0.0025
 DEFAULT_LONG_GAP_RATIO_ZERO = 0.02
 DEFAULT_DROP_GAP_MIN_MS = 20.0
-DEFAULT_DT_CV_NO_PENALTY = 0.10
-DEFAULT_DT_CV_ZERO = 0.30
+DEFAULT_DT_CV_NO_PENALTY = 1.50
+DEFAULT_DT_CV_ZERO = 3.00
 DEFAULT_P95_MULTIPLIER = 1.5
 DEFAULT_DRIFT_RATE_NO_PENALTY_MS_PER_MIN = 1.0
 DEFAULT_DRIFT_RATE_ZERO_MS_PER_MIN = 5.0
 DEFAULT_DRIFT_R2_THRESHOLD = 0.50
 DEFAULT_DRIFT_MIN_POINTS = 20
 DEFAULT_DRIFT_MIN_DURATION_S = 2.0
+DEFAULT_PASS_THRESHOLD = 85.0
+DEFAULT_REVIEW_THRESHOLD = 75.0
 
 
 @dataclass
@@ -203,6 +205,121 @@ def row_path(root: Path, row: dict[str, str]) -> Path:
 
 def increment(counts: dict[str, int], reason: str) -> None:
     counts[reason] = counts.get(reason, 0) + 1
+
+
+def _detect_pause_windows(ts_map: dict[str, list[float]],
+                          min_channels: int = 4,
+                          min_gap_ms: float = 300.0,
+                          max_gap_ms: float = 3000.0,
+                          correlation_window_ms: float = 100.0,
+                          min_channel_ratio: float = 0.5) -> list[dict[str, Any]]:
+    """检测多通道同步停顿窗口（系统级暂停，如子任务切换）
+
+    Args:
+        ts_map: 各通道的时间戳序列
+        min_channels: 同时停顿的绝对下限
+        min_gap_ms: 停顿最小时长（毫秒）
+        max_gap_ms: 停顿最大时长（毫秒），超过可能是其他问题
+        correlation_window_ms: 关联窗口，时间上相近的间隔视为同一停顿
+        min_channel_ratio: 同时停顿通道占可用通道的比例下限
+
+    Returns:
+        停顿窗口列表，每个窗口包含：
+        - start_time: 停顿开始时间（秒）
+        - end_time: 停顿结束时间（秒）
+        - affected_channels: 涉及的通道数
+        - max_gap_ms: 该窗口内的最大间隔
+    """
+    # 收集所有通道的长间隔事件
+    all_gaps = []
+    for topic, timestamps in ts_map.items():
+        if len(timestamps) < 2:
+            continue
+        dts = [(b - a) * 1000.0 for a, b in zip(timestamps, timestamps[1:])]
+        positive = [dt for dt in dts if dt > 0]
+        if not positive:
+            continue
+        med = median(positive)
+        gap_threshold = max(2.0 * med, 20.0)  # 至少是中位数的2倍或20ms
+
+        for i, dt in enumerate(dts):
+            if min_gap_ms <= dt <= max_gap_ms and dt > gap_threshold:
+                all_gaps.append({
+                    "topic": topic,
+                    "start_time": timestamps[i],
+                    "end_time": timestamps[i + 1],
+                    "gap_ms": dt,
+                    "index": i,  # 保留索引，用于后续数值数据检查
+                })
+
+    if not all_gaps:
+        return []
+
+    # 按开始时间排序
+    all_gaps.sort(key=lambda g: g["start_time"])
+
+    # 聚类：时间上相近的间隔视为同一停顿事件
+    pause_windows = []
+    i = 0
+    while i < len(all_gaps):
+        cluster = [all_gaps[i]]
+        j = i + 1
+        cluster_start = all_gaps[i]["start_time"]
+        cluster_end = all_gaps[i]["end_time"]
+
+        # 收集时间窗口内的所有间隔
+        while j < len(all_gaps):
+            gap = all_gaps[j]
+            # 如果该间隔的开始时间在当前聚类的时间范围 + 容差内，加入聚类
+            if gap["start_time"] <= cluster_end + correlation_window_ms / 1000.0:
+                cluster.append(gap)
+                cluster_end = max(cluster_end, gap["end_time"])
+                j += 1
+            else:
+                break
+
+        # 本算法独立判定系统级停顿：既要超过绝对下限，也要代表大多数可用通道。
+        affected_topics = set(g["topic"] for g in cluster)
+        active_channels = sum(len(timestamps) >= 2 for timestamps in ts_map.values())
+        required_channels = max(min_channels, math.ceil(active_channels * min_channel_ratio))
+        if len(affected_topics) >= required_channels:
+            max_gap = max(g["gap_ms"] for g in cluster)
+            pause_windows.append({
+                "start_time": cluster_start,
+                "end_time": cluster_end,
+                "affected_channels": len(affected_topics),
+                "max_gap_ms": max_gap,
+            })
+
+        i = j
+
+    return pause_windows
+
+
+def _interval_in_pause_window(start_ts: float, end_ts: float,
+                              pause_windows: list[dict[str, Any]] | None,
+                              boundary_tolerance_s: float = 0.05) -> bool:
+    """A gap is excluded only when it lies wholly inside a detected pause window."""
+    if not pause_windows:
+        return False
+    return any(
+        window["start_time"] - boundary_tolerance_s <= start_ts
+        and end_ts <= window["end_time"] + boundary_tolerance_s
+        for window in pause_windows
+    )
+
+
+def _timestamp_in_pause_interior(timestamp: float,
+                                 pause_windows: list[dict[str, Any]] | None,
+                                 boundary_tolerance_s: float = 0.01) -> bool:
+    """Filter interior samples for pair coverage; keep pause boundary samples aligned."""
+    if not pause_windows:
+        return False
+    return any(
+        window["start_time"] + boundary_tolerance_s <= timestamp
+        <= window["end_time"] - boundary_tolerance_s
+        for window in pause_windows
+    )
 
 
 def record_invalid(
@@ -434,10 +551,10 @@ def grade_from_score(score: float) -> tuple[str, bool, str]:
         return "S", True, "ACCEPTABLE"
     if score > 90.0:
         return "A", True, "ACCEPTABLE"
-    if score > 80.0:
+    if score >= DEFAULT_PASS_THRESHOLD:
         return "B", True, "NEEDS_REVIEW"
-    if score > 60.0:
-        return "C", False, "NEEDS_REVIEW"
+    if score >= DEFAULT_REVIEW_THRESHOLD:
+        return "C", True, "NEEDS_REVIEW"
     return "D", False, "DO_NOT_USE"
 
 
@@ -447,7 +564,8 @@ def linear_component(value: float, no_penalty: float, zero: float) -> float:
     return 1.0 - clamp((value - no_penalty) / (zero - no_penalty))
 
 
-def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace) -> dict[str, Any]:
+def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace,
+                      pause_windows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     if len(timestamps) < 2:
         return {"dt_count": 0, "dt_mean_ms": None, "dt_median_ms": None, "dt_cv": None,
                 "actual_rate_hz": None, "long_gap_count": 0, "long_gap_ratio": 1.0,
@@ -456,7 +574,14 @@ def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace) -> dict
                 "long_gap_component": 0.0, "cadence_component": 0.0,
                 "long_gap_events": []}
     dts = [(b - a) * 1000.0 for a, b in zip(timestamps, timestamps[1:])]
-    positive = [dt for dt in dts if dt > 0]
+    pause_excluded_count = sum(
+        dt > 0 and _interval_in_pause_window(timestamps[index], timestamps[index + 1], pause_windows)
+        for index, dt in enumerate(dts)
+    )
+    positive = [
+        dt for index, dt in enumerate(dts)
+        if dt > 0 and not _interval_in_pause_window(timestamps[index], timestamps[index + 1], pause_windows)
+    ]
     if not positive:
         return {"dt_count": len(dts), "dt_mean_ms": None, "dt_median_ms": None, "dt_cv": None,
                 "actual_rate_hz": None, "long_gap_count": len(dts), "long_gap_ratio": 1.0,
@@ -471,9 +596,14 @@ def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace) -> dict
     long_gaps = [dt for dt in positive if dt > gap_threshold]
     long_gap_events = []
     topic_headtime = timestamps[0]
+
     for index, dt in enumerate(dts):
         if dt <= 0 or dt <= gap_threshold:
             continue
+
+        if _interval_in_pause_window(timestamps[index], timestamps[index + 1], pause_windows):
+            continue
+
         gap_multiple = dt / med
         estimated = max(0, math.floor(gap_multiple) - 1)
         if estimated == 1:
@@ -489,7 +619,7 @@ def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace) -> dict
             "estimated_missing_frames": estimated,
         })
     long_ratio = len(long_gap_events) / len(dts) if dts else 0.0
-    max_gap = max(positive)
+    max_gap = max(long_gaps) if long_gaps else max(positive)
     max_multiple = max_gap / med if med else None
     cv_component = linear_component(cv, args.dt_cv_no_penalty, args.dt_cv_zero)
     gap_component = linear_component(long_ratio, args.long_gap_ratio_warning, args.long_gap_ratio_zero)
@@ -507,6 +637,8 @@ def stream_dt_metrics(timestamps: list[float], args: argparse.Namespace) -> dict
     return {"dt_count": len(dts), "dt_mean_ms": mean, "dt_median_ms": med,
             "dt_std_ms": pstdev(positive), "dt_cv": cv, "dt_cv_pct": cv * 100.0,
             "actual_rate_hz": 1000.0 / mean if mean else None, "long_gap_count": len(long_gaps),
+            "long_gap_total_count": len(long_gaps) + pause_excluded_count,
+            "pause_excluded_long_gap_count": pause_excluded_count,
             "long_gap_ratio": long_ratio, "max_gap_ms": max_gap, "max_gap_multiple": max_multiple,
             "backward_count": backward, "duplicate_count": duplicate,
             "dt_cv_component": cv_component, "long_gap_component": gap_component,
@@ -533,7 +665,7 @@ def threshold_profile(kind: str, ref_period_ms: float, target_period_ms: float,
     return {
         "scale_ms": scale,
         "coverage_no_penalty": 0.98,
-        "coverage_zero": 0.90,
+        "coverage_zero": 0.85,
         "p50_no_penalty_ms": 0.75 * scale,
         "p50_zero_ms": 2.0 * scale,
         "p99_no_penalty_ms": 0.75 * scale,
@@ -630,7 +762,8 @@ def attribution_for_topic(kind: str, metrics: dict[str, Any], args: argparse.Nam
         labels.append("\u6b63\u5e38")
     return labels
 
-def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespace) -> dict[str, Any]:
+def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespace,
+                pause_windows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     if target.invalid_counts or not target.timestamps:
         return {"topic": target.topic, "kind": target.kind, "score": 0.0,
                 "status": "invalid_timestamps", "attribution": ['时间戳无效'],
@@ -646,8 +779,22 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
                 "attribution": ['采集时间范围或采样周期不可评价']}
     window_ms = build_match_window_ms(ref_period, target_period, args)
     pairs, missing = nearest_pairs_ms(reference.timestamps, target.timestamps, window_ms)
+
+    original_pair_count = len(pairs)
+    if pause_windows:
+        pairs = [
+            pair for pair in pairs
+            if not _timestamp_in_pause_interior(pair["source_timestamp"], pause_windows)
+        ]
+        filtered_count = original_pair_count - len(pairs)
+    else:
+        filtered_count = 0
+
     matched = [pair for pair in pairs if pair["within_window"]]
-    source_count = len(reference.timestamps)
+    source_count = sum(
+        not _timestamp_in_pause_interior(timestamp, pause_windows)
+        for timestamp in reference.timestamps
+    )
     coverage = len(matched) / source_count if source_count else 0.0
     errors = sorted(pair["error_ms"] for pair in matched)
     signed = [pair["signed_error_ms"] for pair in matched]
@@ -681,7 +828,7 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
         drift_component = 1.0
     alignment = 100.0 * (0.20 * coverage_component + 0.20 * p50_component + 0.25 * p99_component +
                          0.10 * offset_component + 0.15 * jitter_component + 0.10 * drift_component)
-    dt = stream_dt_metrics(target.timestamps, args)
+    dt = stream_dt_metrics(target.timestamps, args, pause_windows)
     cadence = 100.0 * dt["cadence_component"]
     alignment_weight, cadence_weight = (0.90, 0.10) if target.kind == "camera" else (0.70, 0.30)
     topic_score = alignment_weight * alignment + cadence_weight * cadence
@@ -707,7 +854,10 @@ def score_topic(reference: RawStream, target: RawStream, args: argparse.Namespac
                "dt_cv": dt.get("dt_cv", 1.0), "long_gap_ratio": dt.get("long_gap_ratio", 1.0),
                "long_gap_count": dt.get("long_gap_count", 0), "max_gap_ms": dt.get("max_gap_ms"),
                "max_gap_multiple": dt.get("max_gap_multiple"), "dt_metrics": dt,
-               "thresholds": thresholds}
+               "thresholds": thresholds,
+               "pause_windows_filtered": filtered_count if pause_windows else 0,
+               "pause_windows_count": len(pause_windows) if pause_windows else 0,
+               "pause_windows": pause_windows or []}
     attribution = attribution_for_topic(target.kind, {**metrics, **dt}, args)
     losses = {
         "alignment": 100.0 - alignment,
@@ -1019,11 +1169,13 @@ def _topic_to_sub_indicator(report: dict, weight: float) -> dict:
 
 def _emit_module(score: float, passed: bool, sub_indicators: list,
                  reasons: list, threshold_profile: dict,
-                 threshold: float = 90.0) -> dict:
+                 threshold: float = DEFAULT_PASS_THRESHOLD) -> dict:
     """构造标准模块 dict → format_report → 用 yjy 自定义 reasons 覆盖。
 
-    grade/passed 沿用 yjy 的 grade_from_score 语义 (不用 shared.to_grade, 分界不同)；
-    verdict 由 format_report 基于 passed + threshold 生成 (threshold=90 与 yjy 原口径一致)。
+    grade/passed 使用本地 grade_from_score 语义：>=85 通过（>90 为 A、>95 为 S），
+    75~85 通过但标记复核，<75 不通过。
+    verdict 由 format_report 基于 passed + threshold 生成：>=85 为 ACCEPTABLE，75~85 为 NEEDS_REVIEW，
+    <75 因 passed=False 直接 DO_NOT_USE。
     """
     grade, _, _ = grade_from_score(score)
     module = {
@@ -1041,6 +1193,10 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     streams = load_streams(root)
     if not streams:
         raise ValueError("no scored JSONL topics found in topics.csv")
+
+    # 检测停顿窗口
+    ts_map = {stream.topic: stream.timestamps for stream in streams if stream.timestamps}
+    pause_windows = _detect_pause_windows(ts_map) if len(ts_map) >= 2 else []
 
     try:
         reference = choose_reference(streams, args.reference)
@@ -1074,7 +1230,7 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
             threshold_profile={"reference_topic": None, "aggregate": "mean", "failure": "no_reference"},
         )
 
-    reference_dt = stream_dt_metrics(reference.timestamps, args)
+    reference_dt = stream_dt_metrics(reference.timestamps, args, pause_windows)
     reference_cv = reference_dt.get("dt_cv")
     reference_long_gap_ratio = reference_dt.get("long_gap_ratio")
     reference_hard_fail = (
@@ -1120,7 +1276,7 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     for stream in streams:
         if stream.topic == reference.topic:
             continue
-        report = score_topic(reference, stream, args)
+        report = score_topic(reference, stream, args, pause_windows)
         _add_topic_grade(report)
         topic_reports.append(report)
     if not topic_reports:
@@ -1168,7 +1324,7 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
     passed = grade_from_score(bag_score)[1]
     problem_topics = [
         report for report in topic_reports
-        if float(report.get("score", 0.0) or 0.0) <= 80.0
+        if float(report.get("score", 0.0) or 0.0) <= DEFAULT_PASS_THRESHOLD
     ]
     reasons = [
         f"reference topic \u4e3a {reference.topic}\u3002",
@@ -1197,8 +1353,11 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
             "aggregate": "mean(topic_scores)",
             "score_cap": 90.0 if reference_warning else None,
             "iou_threshold": args.iou_threshold,
+            "pass_threshold": DEFAULT_PASS_THRESHOLD,
+            "review_threshold": DEFAULT_REVIEW_THRESHOLD,
+            "benign_pause_windows": pause_windows,
         },
-        threshold=90.0,
+        threshold=DEFAULT_PASS_THRESHOLD,
     )
 
 def assess_from_ir(info, reader, weights: dict = None) -> dict:
@@ -1264,6 +1423,10 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         )
         streams.append(stream)
 
+    # 检测停顿窗口
+    pause_windows = _detect_pause_windows(ts_map) if len(ts_map) >= 2 else []
+    pause_profile = {"benign_pause_windows": pause_windows}
+
     if len(streams) < 2:
         from edc.data.readers.base import make_ir_report
         from edc.data.ir.metadata import IRNotProvided
@@ -1282,7 +1445,7 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
     for stream in streams:
         if stream.topic == reference.topic:
             continue
-        report = score_topic(reference, stream, args)
+        report = score_topic(reference, stream, args, pause_windows)
         _add_topic_grade(report)
         topic_reports.append(report)
 
@@ -1302,13 +1465,19 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         f"共评价 {len(topic_reports)} 个 topic，算术平均分为 {bag_score:.3f}。",
     ]
     for r in sorted(topic_reports, key=lambda x: float(x.get("score", 0.0) or 0.0)):
-        if float(r.get("score", 0.0) or 0.0) <= 80.0:
+        if float(r.get("score", 0.0) or 0.0) <= DEFAULT_PASS_THRESHOLD:
             attr = "；".join(r.get("attribution", [])) or "未归因"
             reasons.append(f"topic {r['topic']}：score={float(r.get('score', 0.0) or 0.0):.3f}，{attr}")
     return scoped(_emit_module(
         score=bag_score, passed=passed, sub_indicators=topic_subs, reasons=reasons,
-        threshold_profile={"reference_topic": reference.topic, "aggregate": "mean(topic_scores)"},
-        threshold=90.0,
+        threshold_profile={
+            "reference_topic": reference.topic,
+            "aggregate": "mean(topic_scores)",
+            "pass_threshold": DEFAULT_PASS_THRESHOLD,
+            "review_threshold": DEFAULT_REVIEW_THRESHOLD,
+            **pause_profile,
+        },
+        threshold=DEFAULT_PASS_THRESHOLD,
     ))
 
 

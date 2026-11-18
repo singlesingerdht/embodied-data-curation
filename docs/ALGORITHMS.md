@@ -95,8 +95,8 @@ The following describes current inputs and primary behavior; implementation link
 ### Check_Timestamp
 
 - **Input:** Valid time values with known units; cross-channel pairing additionally requires comparable clocks and reference inputs.
-- **Parameters:** `shared_row_max_gap_s` defaults to three times the median row interval; scoring is the same for every robot: the error floor is 1/3 of the fastest color camera's frame interval, and interval variation is penalized from 0.3 and scores 0 at 0.6.
-- **Output/rules:** Intervals, gaps, and available pairing metrics. Single/shared-row timeline checks do not establish cross-device synchronization.
+- **Parameters:** `shared_row_max_gap_s` defaults to three times the median row interval; scoring is the same for every robot: the error floor is 0.495 of the slowest color/depth camera frame interval, interval variation is penalized from 1.5 and scores 0 at 3.0, pairing coverage scores 0 at 0.85, and package results pass at 85 while 75–85 needs review.
+- **Output/rules:** Intervals, gaps, and available pairing metrics. Multi-channel pauses of 300–3000 ms (at least four channels, or more than half of the active ones) become explained windows and are excluded from cadence and coverage penalties; they are reported in `benign_pause_windows`. Single/shared-row timeline checks do not establish cross-device synchronization.
 - **Limits:** Missing independent time, units, or clocks produces an explicitly limited recommendation.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Check_Timestamp/)
 
@@ -113,8 +113,8 @@ The following describes current inputs and primary behavior; implementation link
 ### Root_Cause
 
 - **Input:** Comparable multi-channel timelines and source groups.
-- **Parameters:** `families` declares groups of related sources.
-- **Output/rules:** Coincident gaps and correlated timing anomalies, producing review findings under existing rules.
+- **Parameters:** `families` declares groups of related sources. A correlated gap covering at least eight channels with a 300–3000 ms maximum, or more than half of ten or more channels with at least three correlated events, is treated as a benign system pause.
+- **Output/rules:** Coincident gaps and correlated timing anomalies, producing review findings under existing rules: cross-channel stall scores 85 for a benign pause, 60 for an unexplained real hole, and 70 for other correlated anomalies; periodic intervals score 0 only while channels still report `unexplained_gap_count > 0`.
 - **Limits:** Attribution provides investigation clues, not a definitive hardware diagnosis. A single shared timeline is insufficient.
 - [Implementation](../src/edc/algorithms/quality/algorithms/Root_Cause/)
 

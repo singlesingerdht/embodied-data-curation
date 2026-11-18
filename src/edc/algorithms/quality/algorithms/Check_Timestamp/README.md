@@ -262,7 +262,7 @@ JSON 输出中的数值字段与 `run_check.py` 的 `dt_cv`、`long_gap_ratio`�
 
 `check_dt.py` 没有内置的合格/不合格阈值；它只输出统计量供分析。存在回退或重复时间戳时，CV 和采样率会输出为 `n/a`。
 
-正式评分使用 `run_check.py` 中的阈值：`dt CV` 在 `10%` 以内不扣分，达到 `30%` 时该项归零；`long_gap_ratio` 在 `0.5%` 以内不扣分，达到 `5%` 时该项归零。
+正式评分使用 `run_check.py` 中的阈值：`dt CV` 在 `1.50`（150%）以内不扣分，达到 `3.00`（300%）时该项归零；`long_gap_ratio` 在 `0.5%` 以内不扣分，达到 `5%` 时该项归零。完整落在多通道同步停顿窗口内的间隔不计入 `dt CV` 和长间隔比例。
 
 ## `run_check.py`
 ### 输入
@@ -280,11 +280,11 @@ python run_check.py <导出包目录> --reference /cam_h/color/image_raw/compres
 | --- | --- |
 | `module` / `name` | `check_timestamp` / 时间戳对齐质量 |
 | `score` | 包级分数 = 各有效 topic 算术平均（参考流警告时封顶 90） |
-| `grade` / `passed` / `verdict` | 沿用 `grade_from_score`：`S>95 / A>90 / B>80 / C>60 / D≤60`；verdict：`>90 ACCEPTABLE` / `60~90 NEEDS_REVIEW` / `≤60 或熔断 DO_NOT_USE` |
+| `grade` / `passed` / `verdict` | 沿用 `grade_from_score`：`S>95 / A>90 / B>=85 / C>=75 / D<75`；verdict：`>=85 ACCEPTABLE` / `75~85 NEEDS_REVIEW` / `<75 或熔断 DO_NOT_USE` |
 | `reasons` | 包级自然语言归因（参考流 topic、平均分、低分 topic 明细） |
 | `attribution` | **标准扣分账单**：每个 topic 每个未满分子项一条，含 `sub_indicator/atom/score/gap/weighted_gap`，按 `weighted_gap` 降序，由 `format_report` 从 `sub_indicators` 自动生成 |
 | `sub_indicators` | **每个非参考 topic 一项**，含 `score/grade/passed/weight` + `details`（7 子项：匹配覆盖率/P50/P99/系统偏移/残余抖动/漂移/采样稳定性） |
-| `threshold_profile` | 参考流、聚合方式、IoU 阈值等审计信息 |
+| `threshold_profile` | 参考流、聚合方式、IoU 阈值、`pass_threshold=85`、`review_threshold=75` 以及良性暂停窗口 `benign_pause_windows` 等审计信息 |
 
 **熔断**（`verdict=DO_NOT_USE`，`score=0`）：存在非法时间戳 / 无可用参考 topic / 参考流 cadence 未过硬门控（`dt_cv≥20%` 或 `long_gap≥5%` 或有回退/重复）。
 
@@ -305,13 +305,13 @@ python run_check.py <导出包目录> --reference /cam_h/color/image_raw/compres
     {"name": "/joint_cmd", "weight": 0.5, "passed": true, "score": 94.3, "grade": "A",
      "gap": 5.7, "weighted_gap": 2.9,
      "details": [
-       {"name": "匹配覆盖率", "score": 100.0, "gap": 0.0, "val": 100.0, "t_min": 0.98, "t_max": 0.9},
+       {"name": "匹配覆盖率", "score": 100.0, "gap": 0.0, "val": 100.0, "t_min": 0.98, "t_max": 0.85},
        {"name": "P50近邻误差", "score": 100.0, "gap": 0.0, "val": 5.01, "t_min": 12.5, "t_max": 33.3},
        {"name": "P99近邻误差", "score": 99.8, "gap": 0.2, "val": 13.2, "t_min": 25.0, "t_max": 66.7},
        {"name": "系统偏移", "score": 74.1, "gap": 25.9, "val": 5.01, "t_min": 3.3, "t_max": 25.0},
        {"name": "残余抖动", "score": 84.5, "gap": 15.5, "val": 2.81, "t_min": 3.3, "t_max": 16.7},
        {"name": "漂移速率", "score": 100.0, "gap": 0.0, "val": 0.05, "t_min": 1.0, "t_max": 5.0},
-       {"name": "采样稳定性", "score": 100.0, "gap": 0.0, "val": 3.1, "t_min": 0.10, "t_max": 0.30}
+       {"name": "采样稳定性", "score": 100.0, "gap": 0.0, "val": 3.1, "t_min": 1.5, "t_max": 3.0}
      ]},
     {"name": "/sensors_data_raw", "weight": 0.5, "passed": true, "score": 99.3, "grade": "S", "...": "..."}
   ],
@@ -363,16 +363,16 @@ python run_check.py my_export --json-out result.json
 | `iou_threshold = 0.95` | 采集窗口 IoU 低于该值时，topic 得 0 分。 |
 | `alignment_scale` | `max(0.5T_reference, 0.5T_target, absolute_error_floor_ms)`。 |
 | `match_window` | `max(min_match_window_ms, 0.5*max(T_reference, T_target))`，默认最小窗口为 `8 ms`。 |
-| `source_match_coverage` | 参考帧在匹配窗口内找到目标帧的比例；评分区间为 `90%` 到 `98%`。 |
+| `source_match_coverage` | 参考帧在匹配窗口内找到目标帧的比例；评分区间为 `85%` 到 `98%`。 |
 | P50 error | 误差从 `0.75 × scale` 开始扣分，达到 `2 × scale` 时该项为 0。 |
 | P99 error | 误差从 `1.5 × scale` 开始扣分，达到 `4 × scale` 时该项为 0。 |
 | `signed_offset` | camera 从 `max(10 ms, 0.35T)` 开始扣分，达到 `max(40 ms, 1.2T)` 时为 0；action 对应为 `max(2 ms, 0.1T)` 和 `max(15 ms, 0.75T)`。 |
 | `residual_jitter` | 先去除 signed error 的线性漂移趋势，再计算残差绝对值 P95；从 `max(2 ms, 0.1T)` 开始扣分，达到 `max(8 ms, 0.5T)` 时该项为 0。 |
 | `drift_rate` | 使用 signed error 的线性拟合速率；拟合至少包含 20 个点、持续 `max(2 s, 10T_reference)` 且 `R² >= 0.5` 时才参与评分。从 `1 ms/min` 开始扣分，达到 `5 ms/min` 时该项为 0。`drift_span` 保留为累计变化诊断值。 |
-| target cadence | 由 `dt CV` 和 `long_gap_ratio` 评价；CV 的无扣分/归零阈值为 `10%` / `30%`，长间隔比例为 `0.5%` / `5%`。 |
+| target cadence | 由 `dt CV` 和 `long_gap_ratio` 评价；CV 的无扣分/归零阈值为 `150%` / `300%`，长间隔比例为 `0.5%` / `5%`。落在良性暂停窗口内的间隔不参与统计。 |
 | 指标权重 | coverage `20%`，P50 `20%`，P99 `25%`，offset `10%`，jitter `15%`，drift `10%`。 |
 | alignment / cadence | camera 为 `90% / 10%`，action 为 `70% / 30%`。 |
-| 等级 | `S > 95`、`A > 90`、`B > 80`、`C > 60`、`D <= 60`。 |
+| 等级 | `S > 95`、`A > 90`、`B >= 85`、`C >= 75`、`D < 75`；`C` 仍算通过，但 verdict 为 `NEEDS_REVIEW`。 |
 | `reasons` / `attribution` | `reasons` 是包级自然语言归因（参考流、平均分、低分 topic 明细）；`attribution` 是标准扣分账单（每个 topic 每个未满分子项一条，按 `weighted_gap` 降序），由统一契约 `format_report` 从 `sub_indicators` 自动生成。 |
 
 

@@ -50,6 +50,58 @@ def _detect_real_stall(ts_map: dict) -> tuple:
             max((row['gap_excess_s'] for row in rows), default=0.0))
 
 
+def _benign_pause_events(correlated: List[dict],
+                         channel_evidence: Dict[str, dict]) -> List[dict]:
+    """Return correlated gap events carrying benign system-pause evidence.
+
+    判断标准：
+    1. 关联事件中至少有一次涉及 ≥8 路通道同时停顿
+    2. 停顿时长在合理范围内（300ms - 3000ms）
+    3. 或者 >50% 的通道都有长间隔 + 多次关联事件（暗示全局性行为）
+
+    A direct pause affects most channels at one time; a broad global pattern is
+    accepted only when repeated correlated events cover most long-gap channels.
+    """
+    if not correlated:
+        return []
+
+    direct = []
+
+    # 阈值配置
+    BENIGN_MIN_CHANNELS = 8      # 至少 8 路通道同时停顿
+    BENIGN_MIN_GAP_MS = 300      # 最小 300ms
+    BENIGN_MAX_GAP_MS = 3000     # 最大 3s（超过 3s 可能是其他问题）
+
+    # 检查是否有大规模同步停顿
+    for event in correlated:
+        involved_channels = len(event['gaps'])
+        max_gap = event['max_gap_ms']
+
+        # 大规模同步停顿 + 停顿时长合理 → 可能是系统暂停
+        if (involved_channels >= BENIGN_MIN_CHANNELS and
+                BENIGN_MIN_GAP_MS <= max_gap <= BENIGN_MAX_GAP_MS):
+            direct.append(event)
+
+    # 进一步检查：如果全局大部分通道都有长间隔，且有多次关联事件
+    # 这暗示是系统级行为而非个别通道故障
+    long_gap_channels = sum(1 for ev in channel_evidence.values() if ev['long_gap'])
+    total_channels = len(channel_evidence)
+
+    if (total_channels >= 10 and
+                long_gap_channels > total_channels * 0.5 and
+                len(correlated) >= 3):
+        return list(correlated)
+
+    return direct
+
+
+def _detect_benign_pauses(ts_map: Dict[str, List[float]],
+                          correlated: List[dict],
+                          channel_evidence: Dict[str, dict]) -> bool:
+    """Compatibility wrapper for the previous boolean entry point."""
+    return bool(_benign_pause_events(correlated, channel_evidence))
+
+
 def analyze_root_cause(ts_map: Dict[str, List[float]],
                        stability: Optional[Dict[str, Any]] = None,
                        drop_details: Optional[Dict[str, Any]] = None,
@@ -63,8 +115,9 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
                    for name, value in families.items())):
         raise ValueError('families must map input topics to nonempty source-group names')
     channel_evidence = {name: _channel_gap_evidence(ts) for name, ts in ts_map.items()}
-    gap_patterns = _extract_gap_patterns(ts_map)
     correlated = _find_correlated_gaps(ts_map, families)
+    benign_events = _benign_pause_events(correlated, channel_evidence)
+    gap_patterns = _extract_gap_patterns(ts_map, benign_events)
     drop_summary = _summarize_drops(ts_map, drop_ratio_low, drop_ratio_high)
     is_real_hole, max_gap_s, gap_excess_s = _detect_real_stall(ts_map)
 
@@ -77,6 +130,8 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
         max(g['gap_s'] for g in gaps) >= REAL_STALL_MIN_GAP_S
         or sum(g['gap_s'] - channel_evidence[name]['typical_interval_s'] for g in gaps) >= REAL_STALL_MIN_EXCESS_S
         for name, gaps in correlated_series.items())
+
+    has_benign_pauses = bool(benign_events)
 
     rows = (stability or {}).get('stability', {})
     reference = (stability or {}).get('primary')
@@ -129,6 +184,7 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
         "max_gap_s": round(max_gap_s, 3),
         "gap_excess_s": round(gap_excess_s, 3),
         "correlated_is_real_hole": bool(correlated_long),
+        "has_benign_pauses": has_benign_pauses,
         "channel_gap_evidence": channel_evidence,
         "gap_excess_aggregation": "max_per_channel_not_sum",
         "source_groups": {name: (families or {}).get(name, _sensor_family(name)) for name in ts_map},
@@ -138,7 +194,13 @@ def analyze_root_cause(ts_map: Dict[str, List[float]],
     }
 
 
-def _extract_gap_patterns(ts_map: Dict[str, List[float]]) -> Dict[str, dict]:
+def _extract_gap_patterns(ts_map: Dict[str, List[float]],
+                          benign_events: Optional[List[dict]] = None) -> Dict[str, dict]:
+    benign_ranges = [
+        (min(gap['time'] for gap in event['gaps']),
+         max(gap['time'] + gap['gap_s'] for gap in event['gaps']))
+        for event in (benign_events or [])
+    ]
     patterns = {}
     for topic, ts in ts_map.items():
         if len(ts) < 2:
@@ -159,11 +221,17 @@ def _extract_gap_patterns(ts_map: Dict[str, List[float]]) -> Dict[str, dict]:
         if len(gap_intervals) >= PERIOD_MIN_GAPS:
             cv = float(np.std(gap_intervals)) / max(float(np.mean(gap_intervals)), 1e-9)
             periodic = cv < PERIOD_CV_MAX
+        unexplained_gap_count = sum(
+            not any(start - 0.05 <= ts[i] and ts[i + 1] <= end + 0.05
+                    for start, end in benign_ranges)
+            for i, _ in gaps
+        )
         patterns[topic] = {
             "gap_count": len(gaps),
             "max_gap_ms": round(max(g[1] for g in gaps), 2),
             "median_interval_ms": round(float(med), 2),
             "periodic": periodic,
+            "unexplained_gap_count": unexplained_gap_count,
         }
     return patterns
 
