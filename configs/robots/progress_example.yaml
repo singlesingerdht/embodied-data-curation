@@ -1,0 +1,94 @@
+# Complete binding example for a dual-arm, JSON + three-video input.
+# This describes an illustrative input contract, NOT an X1 Pro calibration.
+# Replace sources, units, confirmation references and subtask boundaries with
+# those of your recording. Do not mark unverified signals as confirmed.
+robot:
+  name: progress_example
+  confirmed_by: illustrative input contract; replace with your actual confirmation
+
+data:
+  time: {source: timestamp, unit: s}
+  # Use only when the recording explicitly pairs each video frame with a JSON row.
+  video_frame_time: rows
+
+arms:
+  left:
+    gripper:
+      source: left_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: illustrative contract; recorded opening in cm, increasing-open
+    eef_position: {source: left_xyz, index: 0-2, unit: m}
+  right:
+    gripper:
+      source: right_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: illustrative contract; recorded opening in cm, increasing-open
+    eef_position: {source: right_xyz, index: 0-2, unit: m}
+
+cameras:
+  head: {source: head_rgb, mount: head}
+  left_wrist: {source: left_rgb, mount: wrist, arm: left}
+  right_wrist: {source: right_rgb, mount: wrist, arm: right}
+
+other:
+  - source: left_effort
+    unit: A
+    quantity: current
+    source_kind: feedback
+    calibration_status: confirmed
+    calibration_reference: illustrative contract; recorded arm current in A
+  - source: right_effort
+    unit: A
+    quantity: current
+    source_kind: feedback
+    calibration_status: confirmed
+    calibration_reference: illustrative contract; recorded arm current in A
+
+checks:
+  Progress_Stagnation_Attribution:
+    model: /path/to/models/grm
+    python: /path/to/envs/progress/bin/python
+    task: pick and place
+    views: {cam_high: head_rgb, cam_left_wrist: left_rgb, cam_right_wrist: right_rgb}
+    mode: average
+    frame_interval: 10
+    subtasks:
+      - {step: 0, query: pick up the object, clip_start_frame: 0, clip_end_frame: 100}
+      - {step: 1, query: place the object, clip_start_frame: 100, clip_end_frame: 200}
+    physical_signals:
+      left:
+        hand_position:
+          channel: gripper/left
+          field: value
+          # Preserve centimetres when selecting the original scalar rule.
+          unit: cm
+          grip_mode: native_relative
+          opening_direction: increasing
+          direction_reference: illustrative contract; increasing opening in cm
+        arm_load: {channel: left_effort, field: value}
+        hand_load:
+          proxy_of: arm_load
+          reference: illustrative method explicitly selects arm-current RMS as a load proxy
+        ee_position: {channel: pose/arm/left/feedback, field: position}
+      right:
+        hand_position:
+          channel: gripper/right
+          field: value
+          unit: cm
+          grip_mode: native_relative
+          opening_direction: increasing
+          direction_reference: illustrative contract; increasing opening in cm
+        arm_load: {channel: right_effort, field: value}
+        hand_load:
+          proxy_of: arm_load
+          reference: illustrative method explicitly selects arm-current RMS as a load proxy
+        ee_position: {channel: pose/arm/right/feedback, field: position}
+    load_rules: {unit: A, close_delta: 0.3, stagnation_empty_delta: 0.2}
+    evidence_policy: confirmed_only
+    filter_policy: none
+    export_video: false
+    keep_frame_cache: false

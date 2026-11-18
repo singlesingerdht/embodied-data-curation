@@ -1,0 +1,28 @@
+# Initial RGB distribution only; no physical or cross-camera synchronization inputs.
+# Use a single user-confirmed comparable camera/workspace group per run.
+# This does not align different camera poses or infer scene calibration.
+# Replace model/interpreter paths and the camera source for your dataset.
+robot:
+  name: initial_state_example
+  confirmed_by: example input contract; replace with your camera/source confirmation
+data:
+  # The 2D example reads only RGB frame indices and makes no synchronization claim.
+  time_note: initial RGB only; no acquisition-time mapping asserted by this example
+cameras:
+  head:
+    source: faceImg
+    mount: head
+checks:
+  Initial_State_Distribution:
+    channel: faceImg
+    checkpoint: /path/to/models/sam3/sam3.pt
+    python: /path/to/envs/initial-state/bin/python
+    comparison_space: user_confirmed_comparable_head_camera_workspace
+    objects:
+    - name: cup
+      prompt: cup
+      confidence_threshold: 0.5
+    device: cuda
+    frame_index: 0
+    grid_size: 8
+    timeout_seconds: 900

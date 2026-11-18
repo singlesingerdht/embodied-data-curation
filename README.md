@@ -34,7 +34,7 @@ See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.gi
 
 ## Value algorithms
 
-Alongside nine quality algorithms, two value entries are available by explicit selection. Prepare model environments, weights and task-specific calibration separately. `edc algorithms` lists entries; `records.jsonl` records what each run actually assessed.
+Alongside nine quality algorithms, initial-state distribution and progress attribution are built in and explicitly selected through `edc run`. Implementations live in `src/edc/algorithms/value/algorithms/<algorithm>/`; each algorithm README covers model downloads, complete configuration, execution and outputs. Prepare model environments, weights and task-specific calibration separately. `edc algorithms` lists entries; `records.jsonl` records what each run actually assessed.
 
 | Algorithm | Inputs and outputs | Scope |
 |---|---|---|

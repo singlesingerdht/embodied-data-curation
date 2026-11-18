@@ -39,6 +39,130 @@ with edc.open_dataset('/path/to/dataset', profile=profile) as dataset:
 
 ## 初始状态分布
 
+### 安装环境和下载 SAM3
+
+以下命令在框架源码目录执行，所有 `/path/to/...` 都需要替换为自己的绝对路径。主环境需要 Python 3.10 或以上，模型环境需要 Linux x86_64、Python 3.12 和可用的 NVIDIA GPU。先构建同一个 EDC wheel，供主环境与模型进程安装：
+
+```bash
+python -m pip install build
+python -m build --wheel --outdir /path/to/edc-dist
+python -m pip install '/path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl[formats,initial-state]'
+```
+
+从 [SAM3 官方源码](https://github.com/facebookresearch/sam3) 构建固定修订的源码包。只构建 SAM3 wheel，不将源码或权重复制到 EDC 仓库：
+
+```bash
+git clone https://github.com/facebookresearch/sam3.git /path/to/sam3-source
+git -C /path/to/sam3-source checkout 8f0b7f4d4e7eda2ed606ebde6702c93359ad01da
+python -m pip wheel --no-deps /path/to/sam3-source --wheel-dir /path/to/source-wheels
+
+edc env create vision --with initial-state \
+  --python /path/to/python3.12 \
+  --venv /path/to/envs/initial-state \
+  --edc-wheel /path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl \
+  --source sam3=/path/to/source-wheels/sam3-0.1.0-py3-none-any.whl
+edc env check --venv /path/to/envs/initial-state --imports
+```
+
+环境配置固定 Torch 2.8.0、TorchVision 0.23.0、Transformers 4.57.1 和 NumPy 1.26.4。创建新环境时可同时指定 `--with progress --with initial-state`，让两个算法共用该模型环境；各自配置中的 `python` 应指向它。基础安装不引入模型库或权重。
+
+先在 [facebook/sam3 模型页](https://huggingface.co/facebook/sam3) 获得访问权限并接受适用条款，再登录下载。此实现使用原生 `sam3.pt`，不能用 Transformers 的 `model.safetensors` 替代：
+
+```bash
+/path/to/envs/initial-state/bin/hf auth login
+/path/to/envs/initial-state/bin/python - <<'PYTHON'
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id="facebook/sam3",
+    filename="sam3.pt",
+    revision="3c879f39826c281e95690f02c7821c4de09afae7",
+    local_dir="/path/to/models/sam3",
+)
+PYTHON
+```
+
+需要 Hugging Face Mirror 时，在下载终端先设置 `export HF_ENDPOINT=https://hf-mirror.com`；模型权限要求仍然适用。已有完整本地权重可直接复用。所选 `sam3.pt` 的 SHA-256 为 `9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e`，可以用 `sha256sum /path/to/models/sam3/sam3.pt` 核对。
+
+使用 CUDA 执行 SAM3；上游部分版本的 CPU 路径仍会创建 CUDA 张量。可选空间几何另外需要真实标定；二维运行不需要深度。
+
+### 输入与参数
+
+EDC 通过 `Episode.iter_frames()` 读取每条轨迹指定的初始 RGB 帧，图片和可解码视频均可作为来源；二维分布不要求固定 FPS、三视角同步或物理信号。输入应属于用户确认的同一相机／场景分组。
+
+将以下 `checks` 合并到适用于这批数据的机器人 YAML，保留已有数据和相机映射。所有 `/path/to/...` 均为示例路径，`faceImg` 须替换为实际通道名。
+
+```yaml
+checks:
+  Initial_State_Distribution:
+    channel: faceImg
+    checkpoint: /path/to/sam3.pt
+    comparison_space: fixed_camera_same_workspace
+    objects:
+      - name: cup
+        prompt: cup
+        confidence_threshold: 0.5
+    python: /path/to/sam3-env/bin/python
+    device: cuda
+    frame_index: 0
+    grid_size: 8
+```
+
+模型环境需要 SAM3、Torch、TorchVision、Pillow 以及与调用环境完全相同的 EDC 方法源码。省略 `python` 时使用当前 Python 环境。
+
+```bash
+edc algorithms
+edc run /path/to/dataset \
+  --robot /path/to/robot-initial-state.yaml \
+  --algorithm Initial_State_Distribution \
+  --output /path/to/results/initial-state
+```
+
+默认统计输入数据集的全部轨迹；`--episode 0` 仅选第一条，用于单条验证。单条轨迹可以验证检测和输出流程，不能据此判断整批数据的覆盖充分性。同一帧内的多个目标实例也参与分布统计。
+
+### 完整示例：一组轨迹的杯子初始分布
+
+从源码仓库复制[初始状态配置](../../configs/robots/initial_state_example.yaml)，填写 `checkpoint`、`python` 和相机通道。选取具有可比较机位和工作区域的轨迹，在数据集根目录用 `dataset.yaml` 明确列出它们：
+
+```yaml
+schema_version: 1
+id: initial_cup_example
+episodes:
+  - {id: episode_a, path: episode_a, format: episode}
+  - {id: episode_b, path: episode_b, format: episode}
+```
+
+这是目录结构范例，`episode_a`／`episode_b` 替换为数据的稳定 ID 和相对路径。每个轨迹目录内保存原 JSON 记录与 `faceImg.mp4`；视频第 0 帧作为输入。原始数据由使用者提供，仓库只提供配置和步骤。若已有框架支持的集合元数据，直接沿用，不重写轨迹边界。
+
+```bash
+cp configs/robots/initial_state_example.yaml /path/to/robot-initial-state.yaml
+# 编辑上面的配置，填写模型路径、Python 路径和场景分组，然后执行：
+edc robot check --robot /path/to/robot-initial-state.yaml --data /path/to/dataset
+edc run /path/to/dataset \
+  --robot /path/to/robot-initial-state.yaml \
+  --algorithm Initial_State_Distribution \
+  --output /path/to/results/initial-state
+```
+
+打开 `report.html` 查看原生分数，通过 `catalog.json` 找到检测、热力图及统计。核对原始轨迹数、读取错误数、每类有效比例和检测框；记录 `status: completed` 且原生 `assessment_complete: true` 才表示所选二维评估完整。模型无检测时有效比例可为 0，不应把它当成读取成功且覆盖充分。
+
+分数为 `100 × normalized_entropy × valid_episode_ratio`，**没有默认通过线**。小样本只说明所选样本的分布，不能证明整体覆盖充分或不足；机位变化也会改变图像网格位置。多个实例分别计数，`cup` 不会自动区分第一、第二只杯子。先检查检测框：例如宽泛的 `teapot` 可能同时选中茶壶和烧水壶，应明确目标提示词后重新评估，不能直接把混合类别分数用于采集决策。
+
+### 输出与失败说明
+
+从输出目录的 `catalog.json` 查找本次运行。`_runs/<run_id>/Initial_State_Distribution/records.jsonl` 保存 `edc_record_v1`；原生证据在该算法的 `artifacts/dataset/` 中：
+
+| 文件 | 内容 |
+|---|---|
+| `initial_state_detections.json` | 逐轨迹目标框、置信度、中心位置和帧来源 |
+| `distribution_summary.json` | 网格分布、熵、有效轨迹比例与原生评分 |
+| `*-initial.png`、`*-probability.png` | 输入初始帧与各类别概率热力图 |
+| `input-mapping.json` | 独立进程模式下的轨迹、通道与帧映射 |
+| `provenance.json`、`config.json` | 模型／方法来源和生效参数 |
+| `domain-errors.json`、`spatial-errors.json` | 已进入计算阶段的提取与空间计算错误 |
+
+先查看记录中的 `status` 和错误原因：缺模型／依赖、缺通道或帧号越界属于预检诊断；解码或检测过程异常会保留已有证据并记录失败。没有检测到目标不等于读取失败，原始轨迹总数仍参与分母。预检尚未启动模型时，不保证存在模型来源文件；进入执行后，来源文件先于模型初始化写入。
+
+
 最小参数：
 
 ~~~yaml
@@ -77,6 +201,107 @@ spatial:
 
 内参数字仅示意格式，必须替换真实标定。二维深度图严格对应 RGB 像素，不猜单位、不缩放配准。输出相机坐标、支撑面质量、物体高度和深度来源。单目估计记录模型指纹，不称为传感器测量。深度／平面失败保留二维结果，标记空间未完成。几何测试不证明具体标定或单目尺度准确。Sobol 补覆盖为独立本地插件，不进入此评分或框架安装包。
 
+## 从准备模型到完整归因
+
+完整运行需要三视角画面、子任务区间、可对齐的真实时间，以及左右臂的夹爪开合、负载和末端运动反馈。下面按已有子任务标注运行 GRM 和物理归因，不使用远程自动分段，也不启用 v8 筛选。模型下载完成不等于输入已准备完整。
+
+### 1. 安装同一版本的框架与模型环境
+
+使用包含本算法的 EDC 源码。以下均为示例路径，输出目录应为新目录。主环境使用 Python 3.10 或以上；模型环境需要 Linux x86_64、Python 3.12 和可供 Torch/vLLM 使用的 NVIDIA GPU。模型显存需求取决于图片尺寸和运行参数，这里不承诺最低显存。
+
+```bash
+python -m pip install build
+python -m build --wheel --outdir /path/to/edc-dist
+python -m pip install '/path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl[formats,value-inputs]'
+
+edc env create vision --with progress \
+  --python /path/to/python3.12 \
+  --venv /path/to/envs/progress \
+  --edc-wheel /path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl
+edc env check --venv /path/to/envs/progress --imports
+edc algorithms
+```
+
+列表应包含 `Progress_Stagnation_Attribution`。模型环境固定 Torch 2.8.0、Transformers 4.57.1、vLLM 0.11.0；不要用通用 Qwen 权重替代 GRM，也不要在创建环境后随意升级 Transformers。环境检查不会启动模型。
+
+### 2. 下载指定 GRM 权重
+
+使用 [Robo-Dopamine-GRM-2.0-8B-Preview](https://huggingface.co/tanhuajie2001/Robo-Dopamine-GRM-2.0-8B-Preview)，下面固定模型修订，下载整个模型目录，包含分片权重、配置、分词器和图片处理资源。下载方式见 [Hugging Face 文档](https://huggingface.co/docs/huggingface_hub/guides/download)。
+
+```bash
+/path/to/envs/progress/bin/python - <<'PY'
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id="tanhuajie2001/Robo-Dopamine-GRM-2.0-8B-Preview",
+    revision="6521e2661c265b4c5561fd21fa326a975b323718",
+    local_dir="/path/to/models/grm",
+)
+PY
+```
+
+需要使用 Hugging Face Mirror 时，在同一个下载终端先设置 `export HF_ENDPOINT=https://hf-mirror.com`，模型 ID 和修订保持一致。示例使用独立模型目录；已有完整本地权重可以直接复用。模型来源和许可按模型卡核对，框架不会将权重打入安装包。
+
+### 3. 准备数据和完整机器人配置
+
+复制[完整双臂配置示例](../../configs/robots/progress_example.yaml)，按实际数据填写后保存为 `/path/to/robot-progress.yaml`。这是输入格式范例，不是某一真实机器人的标定；不能把其中示意的确认声明当成自己的标定证据。已有机器人配置应保留原通道声明，补充相应算法参数。
+
+示例使用一个轨迹目录，包含 `trajectory.json`、`head_rgb.mp4`、`left_rgb.mp4`、`right_rgb.mp4`。JSON 为 `{"data": [...]}`；每行具有以下字段：
+
+| 字段 | 含义与形状 |
+|---|---|
+| `timestamp` | 记录的采集时间，秒；与声明的视频逐帧映射对应 |
+| `left_gripper` / `right_gripper` | 标量开口距离，cm，数值越大越张开 |
+| `left_effort` / `right_effort` | 已确认的关节电流数组，A；示例取整个数组的 RMS 作为显式负载代理 |
+| `left_xyz` / `right_xyz` | 各自固定坐标系中的末端反馈位置 `[x, y, z]`，m |
+
+仅当采集协议确实声明每帧对应一行时使用示例的 `video_frame_time: rows`；不能根据帧数相同推断这一关系。使用其他格式或不同采样率时，沿用对应数据格式与机器人配置的源时间/时钟映射。原始图片序列同样可用，无需先编码视频。
+
+配置已经写全左右臂的 `physical_signals`，包含夹爪、臂负载、显式手部负载代理和末端位置。按实际记录替换字段、单位、开合方向及确认依据；`joint_effort` 这个名字本身不能证明是电流。若实际是力矩，应将负载声明改为 `unit: N*m`、`quantity: torque`，并显式提供适用的两个力矩阈值，不能直接继承 A 阈值。
+
+示例的两个子任务是 `[0, 100)` 和 `[100, 200)`，仅说明区间格式。替换为本条轨迹真实的任务描述与标注；视角覆盖和物理信号必须覆盖需要评估的范围。当前实现会检查左右两侧，不能用伪造的全零信号补齐未记录的一侧。
+
+**当前仓库不提供可公开下载的、带完整物理信号与标定的真实演示数据。**因此上面是完整配置范例，需要搭配自己的匹配数据；它不是下载模型后即可复现某条真实演示结论的数据包。只有画面的上游 GRM 演示可以展示视觉进度，不能代替物理归因样例。
+
+### 4. 检查输入并执行
+
+```bash
+edc robot check --robot /path/to/robot-progress.yaml --data /path/to/episode
+edc run /path/to/episode \
+  --robot /path/to/robot-progress.yaml \
+  --algorithm Progress_Stagnation_Attribution \
+  --output /path/to/new-results
+```
+
+`robot check` 检查声明的通道能否读取，不能替代实际归因的完成检查。`edc run` 自动使用配置中的独立 Python 环境，不需要手工切换到模型环境。
+
+### 5. 确认得到的是完整结果
+
+先打开输出根目录的 `report.html`，通过 `catalog.json` 找到对应记录与证据。完整运行应同时满足：记录 `status: completed`，原生结果 `assessment_complete: true`，`components.segmentation`、`visual`、`physical` 均为 `completed`。本示例的 `filter` 应为 `not_requested`，因为没有选择 v8。
+
+原生输出包含每个子任务的进度及模型响应、汇总曲线 `progress_chart.png`、`evaluation_summary.json`、`attribution_result.json` 和可读的 `attribution_report.txt`。归因报告给出原始帧/时间、候选问题、物理结论和依据；“没有检测到事件”也可以是完整结果。检测到问题并非运行失败，也不应预先承诺某个标签一定出现。
+
+缺少输入或标定时保留已有结果并标记未完成；只看到 JSON、HTML 或命令退出成功不代表完成归因。视频默认关闭；需要复核视频时设置 `export_video: true`。正常结束后默认删除本次输入图片缓存，保留源映射和结果证据。
+
+
+### X1 Pro 非 G 夹爪倒茶示例
+
+[完整 X1 Pro 示例配置](../../configs/robots/x1pro_progress_example.yaml)使用 `faceImg`、`leftImg`、`rightImg` 三视角和 JSON 中的 `timestamp`、`follow_left/right_gripper`、`follow_left/right_joint_effort`、`follow_left/right_position`。夹爪为 cm、数值越大越张开；effort 按本例采集约定声明为 N·m，使用全部七维的 RMS 作为代理，固定变化阈值分别为 0.3／0.2 N·m。这些声明适用于本例，不能推广到所有 X1 Pro 夹爪或导出格式。
+
+子任务取自 `pourtea_lzy_0720@MASTER_SLAVE_MODE@2026_07_20_10_55_07` 的人工标注：原 step 1 为 `[332, 908)` 抓烧水壶，原 step 5 为 `[2808, 4337)` 抓茶壶并向第一只杯子倒茶。只评估这两个区间，不表示整条轨迹全部任务已评估。原生 `subtask_0`／`subtask_1` 按本次选中顺序编号；原标注的 step 与区间保存在 `components.segmentation.intervals`。对应的原 JSON 与三个同名 MP4 应位于轨迹目录；`video_frame_time: rows` 表示采集协议明确的一行对应一帧关系。使用其他轨迹时必须替换真实标注及适用的信号说明。
+
+```bash
+cp configs/robots/x1pro_progress_example.yaml /path/to/robot-progress.yaml
+# 编辑 model 和 python 的本地路径；其他数据还需更新信号声明及子任务。
+edc robot check --robot /path/to/robot-progress.yaml --data /path/to/pourtea-episode
+edc run /path/to/pourtea-episode \
+  --robot /path/to/robot-progress.yaml \
+  --algorithm Progress_Stagnation_Attribution \
+  --output /path/to/results/progress
+```
+
+仓库提供配置与运行步骤，不附带这条真实轨迹；需由数据持有者在本机提供。运行后按上面的完成条件检查，并对照 `attribution_report.txt` 中的原始帧／源时间查看画面。GRM 回退候选不等于已确认空抓；七维 RMS 也可能受机械臂运动影响。`assessment_complete` 表示所选分支已执行且证据满足要求，不能证明每个归因标签准确。误报和漏报应通过画面复核，不以修改阈值强行复现某个标签。
+
+
 ## 任务进度与停滞归因
 
 EDC 提供三路原始 RGB 图片，`views` 将 `cam_high`、`cam_left_wrist`、`cam_right_wrist` 绑定到实际通道。`Episode.iter_frames()` 直接读取图片或解码视频；两种存储都向 GRM 提供相同的参考图与前后图像组，仅按需缓存原始图片为 PNG。`frame_interval: 10` 始终表示每隔十个参考帧取样，与播放帧率无关。
@@ -94,7 +319,7 @@ EDC 提供三路原始 RGB 图片，`views` 将 `cam_high`、`cam_left_wrist`、
 - `clip_start_sec`／`clip_end_sec`：兼容原秒区间；可选 `subtask_time_basis: playback|source`。未填时，有原始视频播放轴则用播放秒，否则用相对首帧的源时间秒数，并保存实际选择。
 - `clip_start_frame`／`clip_end_frame`：原始参考帧的半开区间 `[start, end)`。只有图片顺序、没有可靠时间时使用；不能与秒区间混填。
 
-例如，以下参数选择前 100 个参考帧；物理绑定尚未填写时，仍可计算视觉进度：
+以下仅为视觉试跑参数，选择前 100 个参考帧。`physical_signals: {}` 不会完成物理归因；完整运行请使用上面的配置示例：
 
 ~~~yaml
 views: {cam_high: head_rgb, cam_left_wrist: left_rgb, cam_right_wrist: right_rgb}

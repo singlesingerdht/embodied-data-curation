@@ -8,24 +8,51 @@
 
 本说明适用于 `edc algorithms` 已列出 `Initial_State_Distribution` 的安装。算法清单表示入口已注册；实际执行还需要可读取的数据、SAM3 依赖和本地权重。基础安装不附带模型，也不自动下载权重。
 
-### 安装
+### 安装环境和下载 SAM3
 
-在框架源码目录执行 `python -m pip install '.[formats,initial-state]'`，安装读取依赖与初始帧缓存需要的 Pillow。模型环境独立准备；基础安装不会引入 Torch、SAM3 或模型权重。
-
-可采用 Python 3.12、Torch 2.8.0、TorchVision 0.23.0、Transformers 4.57.1、Tokenizers 0.22.1、NumPy 1.26.4 的依赖组合。SAM3 源码包和权重需另行取得；下面的 wheel 路径为占位路径，EDC wheel 须与调用环境的方法源码一致。
+以下命令在框架源码目录执行，所有 `/path/to/...` 都需要替换为自己的绝对路径。主环境需要 Python 3.10 或以上，模型环境需要 Linux x86_64、Python 3.12 和可用的 NVIDIA GPU。先构建同一个 EDC wheel，供主环境与模型进程安装：
 
 ```bash
-python3.12 -m venv /path/to/sam3-env
-/path/to/sam3-env/bin/python -m pip install \
-  /path/to/embodied_data_curation.whl /path/to/sam3.whl \
-  'torch==2.8.0' 'torchvision==0.23.0' \
-  'transformers==4.57.1' 'tokenizers==0.22.1' 'numpy==1.26.4' \
-  'Pillow>=11,<12' 'opencv-python-headless==4.11.0.86' \
-  'timm>=1.0.17,<2' 'ftfy==6.1.1' 'einops>=0.8,<1' \
-  'pycocotools>=2,<3' 'psutil>=5' 'setuptools>=70,<81'
+python -m pip install build
+python -m build --wheel --outdir /path/to/edc-dist
+python -m pip install '/path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl[formats,initial-state]'
 ```
 
-使用 CUDA 执行 SAM3；`device: cpu` 是否可用取决于上游 SAM3 版本，部分版本仍会初始化 CUDA 张量。可选空间几何另需 OpenCV 和真实标定，其合成测试不能证明某台相机的标定或单目尺度准确。
+从 [SAM3 官方源码](https://github.com/facebookresearch/sam3) 构建固定修订的源码包。只构建 SAM3 wheel，不将源码或权重复制到 EDC 仓库：
+
+```bash
+git clone https://github.com/facebookresearch/sam3.git /path/to/sam3-source
+git -C /path/to/sam3-source checkout 8f0b7f4d4e7eda2ed606ebde6702c93359ad01da
+python -m pip wheel --no-deps /path/to/sam3-source --wheel-dir /path/to/source-wheels
+
+edc env create vision --with initial-state \
+  --python /path/to/python3.12 \
+  --venv /path/to/envs/initial-state \
+  --edc-wheel /path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl \
+  --source sam3=/path/to/source-wheels/sam3-0.1.0-py3-none-any.whl
+edc env check --venv /path/to/envs/initial-state --imports
+```
+
+环境配置固定 Torch 2.8.0、TorchVision 0.23.0、Transformers 4.57.1 和 NumPy 1.26.4。创建新环境时可同时指定 `--with progress --with initial-state`，让两个算法共用该模型环境；各自配置中的 `python` 应指向它。基础安装不引入模型库或权重。
+
+先在 [facebook/sam3 模型页](https://huggingface.co/facebook/sam3) 获得访问权限并接受适用条款，再登录下载。此实现使用原生 `sam3.pt`，不能用 Transformers 的 `model.safetensors` 替代：
+
+```bash
+/path/to/envs/initial-state/bin/hf auth login
+/path/to/envs/initial-state/bin/python - <<'PYTHON'
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id="facebook/sam3",
+    filename="sam3.pt",
+    revision="3c879f39826c281e95690f02c7821c4de09afae7",
+    local_dir="/path/to/models/sam3",
+)
+PYTHON
+```
+
+需要 Hugging Face Mirror 时，在下载终端先设置 `export HF_ENDPOINT=https://hf-mirror.com`；模型权限要求仍然适用。已有完整本地权重可直接复用。所选 `sam3.pt` 的 SHA-256 为 `9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e`，可以用 `sha256sum /path/to/models/sam3/sam3.pt` 核对。
+
+使用 CUDA 执行 SAM3；上游部分版本的 CPU 路径仍会创建 CUDA 张量。可选空间几何另外需要真实标定；二维运行不需要深度。
 
 ### 输入与参数
 
@@ -60,6 +87,34 @@ edc run /path/to/dataset \
 ```
 
 默认统计输入数据集的全部轨迹；`--episode 0` 仅选第一条，用于单条验证。单条轨迹可以验证检测和输出流程，不能据此判断整批数据的覆盖充分性。同一帧内的多个目标实例也参与分布统计。
+
+### 完整示例：一组轨迹的杯子初始分布
+
+从源码仓库复制[初始状态配置](../../../../../../configs/robots/initial_state_example.yaml)，填写 `checkpoint`、`python` 和相机通道。选取具有可比较机位和工作区域的轨迹，在数据集根目录用 `dataset.yaml` 明确列出它们：
+
+```yaml
+schema_version: 1
+id: initial_cup_example
+episodes:
+  - {id: episode_a, path: episode_a, format: episode}
+  - {id: episode_b, path: episode_b, format: episode}
+```
+
+这是目录结构范例，`episode_a`／`episode_b` 替换为数据的稳定 ID 和相对路径。每个轨迹目录内保存原 JSON 记录与 `faceImg.mp4`；视频第 0 帧作为输入。原始数据由使用者提供，仓库只提供配置和步骤。若已有框架支持的集合元数据，直接沿用，不重写轨迹边界。
+
+```bash
+cp configs/robots/initial_state_example.yaml /path/to/robot-initial-state.yaml
+# 编辑上面的配置，填写模型路径、Python 路径和场景分组，然后执行：
+edc robot check --robot /path/to/robot-initial-state.yaml --data /path/to/dataset
+edc run /path/to/dataset \
+  --robot /path/to/robot-initial-state.yaml \
+  --algorithm Initial_State_Distribution \
+  --output /path/to/results/initial-state
+```
+
+打开 `report.html` 查看原生分数，通过 `catalog.json` 找到检测、热力图及统计。核对原始轨迹数、读取错误数、每类有效比例和检测框；记录 `status: completed` 且原生 `assessment_complete: true` 才表示所选二维评估完整。模型无检测时有效比例可为 0，不应把它当成读取成功且覆盖充分。
+
+分数为 `100 × normalized_entropy × valid_episode_ratio`，**没有默认通过线**。小样本只说明所选样本的分布，不能证明整体覆盖充分或不足；机位变化也会改变图像网格位置。多个实例分别计数，`cup` 不会自动区分第一、第二只杯子。先检查检测框：例如宽泛的 `teapot` 可能同时选中茶壶和烧水壶，应明确目标提示词后重新评估，不能直接把混合类别分数用于采集决策。
 
 ### 输出与失败说明
 

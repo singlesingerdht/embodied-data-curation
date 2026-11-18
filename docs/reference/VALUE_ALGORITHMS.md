@@ -39,6 +39,130 @@ Follow each AlgorithmSpec.parameter_schema; recommendation and execution must sh
 
 ## Initial-state distribution
 
+### Install the worker and download SAM3
+
+Run these commands from the framework source directory, replacing every `/path/to/...` with an absolute local path. The main environment needs Python 3.10 or later; the worker needs Linux x86_64, Python 3.12 and an available NVIDIA GPU. Build one EDC wheel for both environments:
+
+```bash
+python -m pip install build
+python -m build --wheel --outdir /path/to/edc-dist
+python -m pip install '/path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl[formats,initial-state]'
+```
+
+Build a wheel from a pinned revision of the [official SAM3 source](https://github.com/facebookresearch/sam3). Keep this source and its weights outside the EDC repository:
+
+```bash
+git clone https://github.com/facebookresearch/sam3.git /path/to/sam3-source
+git -C /path/to/sam3-source checkout 8f0b7f4d4e7eda2ed606ebde6702c93359ad01da
+python -m pip wheel --no-deps /path/to/sam3-source --wheel-dir /path/to/source-wheels
+
+edc env create vision --with initial-state \
+  --python /path/to/python3.12 \
+  --venv /path/to/envs/initial-state \
+  --edc-wheel /path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl \
+  --source sam3=/path/to/source-wheels/sam3-0.1.0-py3-none-any.whl
+edc env check --venv /path/to/envs/initial-state --imports
+```
+
+The recipe pins Torch 2.8.0, TorchVision 0.23.0, Transformers 4.57.1 and NumPy 1.26.4. A new worker can include both `--with progress --with initial-state`; point both algorithms' `python` settings at that worker. The base installation contains no model libraries or weights.
+
+Request access and accept the applicable terms on the [facebook/sam3 model page](https://huggingface.co/facebook/sam3), then log in and download the checkpoint. This implementation uses native `sam3.pt`, not the Transformers `model.safetensors` file:
+
+```bash
+/path/to/envs/initial-state/bin/hf auth login
+/path/to/envs/initial-state/bin/python - <<'PYTHON'
+from huggingface_hub import hf_hub_download
+hf_hub_download(
+    repo_id="facebook/sam3",
+    filename="sam3.pt",
+    revision="3c879f39826c281e95690f02c7821c4de09afae7",
+    local_dir="/path/to/models/sam3",
+)
+PYTHON
+```
+
+For Hugging Face Mirror, first set `export HF_ENDPOINT=https://hf-mirror.com` in the download terminal; access requirements still apply. Existing complete local weights can be reused. The selected `sam3.pt` has SHA-256 `9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e`; check it with `sha256sum /path/to/models/sam3/sam3.pt`.
+
+Use CUDA for SAM3; some upstream CPU paths still create CUDA tensors. Optional spatial geometry requires actual calibration. Depth is unnecessary for a 2D run.
+
+### Inputs and parameters
+
+EDC reads the selected initial RGB frame from each episode through `Episode.iter_frames()`. Images and decodable videos are supported sources. The 2D method requires no fixed FPS, three-view synchronization or physical signals. Confirm that the selected episodes share a comparable camera and scene.
+
+Merge this `checks` section into a robot YAML suited to the dataset, retaining its data and camera mappings. All `/path/to/...` values are placeholders; replace `faceImg` with the actual channel name.
+
+```yaml
+checks:
+  Initial_State_Distribution:
+    channel: faceImg
+    checkpoint: /path/to/sam3.pt
+    comparison_space: fixed_camera_same_workspace
+    objects:
+      - name: cup
+        prompt: cup
+        confidence_threshold: 0.5
+    python: /path/to/sam3-env/bin/python
+    device: cuda
+    frame_index: 0
+    grid_size: 8
+```
+
+The model environment needs SAM3, Torch, TorchVision, Pillow and the exact same EDC method source as the calling environment. Omit `python` to use the current interpreter.
+
+```bash
+edc algorithms
+edc run /path/to/dataset \
+  --robot /path/to/robot-initial-state.yaml \
+  --algorithm Initial_State_Distribution \
+  --output /path/to/results/initial-state
+```
+
+By default, the method aggregates all selected dataset episodes. `--episode 0` selects only the first episode for a single-episode check. This can verify detection and outputs, but cannot establish coverage of a whole dataset. Multiple object instances within one frame also contribute to the distribution.
+
+### Complete example: initial cup positions across episodes
+
+Copy the [initial-state configuration](../../configs/robots/initial_state_example.yaml) from the source repository and set `checkpoint`, `python` and the camera channel. Select episodes with comparable viewpoints and workspaces, explicitly listing them in `dataset.yaml` at the dataset root:
+
+```yaml
+schema_version: 1
+id: initial_cup_example
+episodes:
+  - {id: episode_a, path: episode_a, format: episode}
+  - {id: episode_b, path: episode_b, format: episode}
+```
+
+This illustrates the layout; replace `episode_a`/`episode_b` with stable episode IDs and relative paths. Each episode directory contains its original JSON recording and `faceImg.mp4`; video frame 0 is used. Users supply their data; the repository provides configuration and instructions. Retain existing supported collection metadata rather than redefining episode boundaries.
+
+```bash
+cp configs/robots/initial_state_example.yaml /path/to/robot-initial-state.yaml
+# Edit model/interpreter paths and the scene group in that copy, then run:
+edc robot check --robot /path/to/robot-initial-state.yaml --data /path/to/dataset
+edc run /path/to/dataset \
+  --robot /path/to/robot-initial-state.yaml \
+  --algorithm Initial_State_Distribution \
+  --output /path/to/results/initial-state
+```
+
+Open `report.html` for the native score and follow `catalog.json` to detections, heatmaps and statistics. Check source episode counts, extraction errors, per-category valid ratios and boxes. Record `status: completed` together with native `assessment_complete: true` establishes complete evaluation of the selected 2D scope. A valid ratio of zero can mean no detections; it does not establish adequate coverage.
+
+Scores are `100 × normalized_entropy × valid_episode_ratio`, with **no default pass threshold**. Small samples describe only their selected distribution, not overall coverage adequacy; viewpoint shifts also change image-grid positions. Instances count separately: `cup` does not identify individual cups across episodes. Inspect detections first: a broad `teapot` prompt may include both a ceramic teapot and a metal kettle. Clarify the target prompt and rerun before using mixed-category scores for collection decisions.
+
+### Outputs and failures
+
+Find the run through `catalog.json` in the output directory. `_runs/<run_id>/Initial_State_Distribution/records.jsonl` contains the `edc_record_v1` record; native evidence is under that algorithm's `artifacts/dataset/` directory:
+
+| File | Contents |
+|---|---|
+| `initial_state_detections.json` | Per-episode boxes, confidence, centroids and frame sources |
+| `distribution_summary.json` | Grid distribution, entropy, valid-episode ratio and native scores |
+| `*-initial.png`, `*-probability.png` | Initial input images and category probability heatmaps |
+| `input-mapping.json` | Episode, channel and frame mappings in isolated worker mode |
+| `provenance.json`, `config.json` | Model/method provenance and effective configuration |
+| `domain-errors.json`, `spatial-errors.json` | Extraction and spatial errors after computation begins |
+
+Check each record's `status` and reason. Missing models/dependencies, unavailable channels and out-of-range frame requests are preflight diagnostics. Decode or detection failures retain existing evidence and record failure. No detections is distinct from unreadable input; the original episode count remains in the denominator. A preflight failure may have no model provenance file. Once execution begins, provenance is saved before model initialization.
+
+
 ~~~yaml
 channel: head_rgb
 checkpoint: /path/to/sam3.pt
@@ -75,6 +199,107 @@ spatial:
 
 Replace illustrative intrinsics with actual calibration. The 2D depth map must match RGB pixels exactly; no guessed units or resizing. Outputs retain camera coordinates, plane quality, heights and depth origin. Monocular model fingerprints do not establish sensor measurements. Depth/plane failure preserves 2D results and marks geometry incomplete. Geometry tests do not validate a specific camera or monocular scale. Sobol remains an independent local plugin, outside this score and framework packages.
 
+## From model preparation to complete attribution
+
+A complete run needs three camera views, subtask intervals, aligned recorded time, and both arms' gripper opening, load and end-effector motion feedback. This walkthrough uses existing subtask annotations for GRM and physical attribution, without remote segmentation or v8 filtering. Downloading a model does not supply the required input evidence.
+
+### 1. Install matching framework and worker versions
+
+Start from EDC source containing this algorithm. All paths below are examples; use new output directories. The main environment needs Python 3.10 or later. The model worker needs Linux x86_64, Python 3.12 and an NVIDIA GPU usable by Torch/vLLM. Memory use depends on image sizes and execution parameters; no minimum VRAM is promised here.
+
+```bash
+python -m pip install build
+python -m build --wheel --outdir /path/to/edc-dist
+python -m pip install '/path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl[formats,value-inputs]'
+
+edc env create vision --with progress \
+  --python /path/to/python3.12 \
+  --venv /path/to/envs/progress \
+  --edc-wheel /path/to/edc-dist/embodied_data_curation-0.3.0a2-py3-none-any.whl
+edc env check --venv /path/to/envs/progress --imports
+edc algorithms
+```
+
+The list must include `Progress_Stagnation_Attribution`. The worker pins Torch 2.8.0, Transformers 4.57.1 and vLLM 0.11.0. Do not substitute generic Qwen weights for GRM or upgrade Transformers independently. The environment check does not run inference.
+
+### 2. Download the GRM checkpoint
+
+Use [Robo-Dopamine-GRM-2.0-8B-Preview](https://huggingface.co/tanhuajie2001/Robo-Dopamine-GRM-2.0-8B-Preview). The command pins a revision and downloads the complete directory, including weight shards, configuration, tokenizer and image processor resources. See the [Hugging Face download guide](https://huggingface.co/docs/huggingface_hub/guides/download).
+
+```bash
+/path/to/envs/progress/bin/python - <<'PY'
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id="tanhuajie2001/Robo-Dopamine-GRM-2.0-8B-Preview",
+    revision="6521e2661c265b4c5561fd21fa326a975b323718",
+    local_dir="/path/to/models/grm",
+)
+PY
+```
+
+To use Hugging Face Mirror, first set `export HF_ENDPOINT=https://hf-mirror.com` in the same terminal, keeping the model ID and revision unchanged. This example uses a standalone model directory; an existing complete checkpoint can also be used. Check model provenance and licensing against its model card. Framework packages do not contain weights.
+
+### 3. Prepare data and the complete robot configuration
+
+Copy the [complete dual-arm configuration example](../../configs/robots/progress_example.yaml), adapt it to your recording and save it as `/path/to/robot-progress.yaml`. It describes an illustrative input contract, not a real robot calibration; its example confirmation statements are not evidence for your hardware. When adapting an existing robot configuration, retain its channel declarations and add the relevant algorithm settings.
+
+The example expects one episode directory containing `trajectory.json`, `head_rgb.mp4`, `left_rgb.mp4` and `right_rgb.mp4`. JSON has the shape `{"data": [...]}` with these fields in each row:
+
+| Field | Meaning and shape |
+|---|---|
+| `timestamp` | Recorded acquisition seconds, paired through the declared video-frame mapping |
+| `left_gripper` / `right_gripper` | Scalar opening distance in cm, increasing as the gripper opens |
+| `left_effort` / `right_effort` | Confirmed joint-current arrays in A; the example explicitly uses whole-array RMS as a load proxy |
+| `left_xyz` / `right_xyz` | End-effector feedback `[x, y, z]` in m, each in its own fixed coordinate frame |
+
+Use `video_frame_time: rows` only when the recording protocol explicitly pairs every video frame with a row. Equal counts do not establish that relationship. For other formats or sampling rates, retain the relevant reader/robot source-time and clock mappings. Original image sequences are also supported without video encoding.
+
+The configuration provides both arms' complete `physical_signals`: gripper position, arm load, an explicit hand-load proxy and end-effector position. Replace fields, units, opening direction and confirmation references with actual recording information. A field named `joint_effort` does not establish current units. For torque, declare `unit: N*m` and `quantity: torque`, and explicitly supply both applicable torque thresholds; ampere thresholds do not transfer automatically.
+
+The two example intervals `[0, 100)` and `[100, 200)` illustrate the format only. Replace them and the task descriptions with the episode's actual annotations. Views and physical evidence must cover the evaluation range. The current implementation checks both arms; fabricated all-zero signals cannot substitute for an unrecorded side.
+
+**The repository currently provides no publicly downloadable real demonstration with complete physical signals and calibration.** This is therefore a complete configuration example for your own matching data, not a data bundle that reproduces a real demonstration after downloading the model. An upstream GRM video-only demo can demonstrate visual progress but cannot supply physical attribution evidence.
+
+### 4. Check the input and run
+
+```bash
+edc robot check --robot /path/to/robot-progress.yaml --data /path/to/episode
+edc run /path/to/episode \
+  --robot /path/to/robot-progress.yaml \
+  --algorithm Progress_Stagnation_Attribution \
+  --output /path/to/new-results
+```
+
+`robot check` checks that declared channels can be read; it does not prove attribution completeness. `edc run` uses the configured worker interpreter automatically, without manually activating that environment.
+
+### 5. Verify the complete result
+
+Open `report.html` at the output root and use `catalog.json` to locate records and evidence. A complete run requires record `status: completed`, native `assessment_complete: true`, and `components.segmentation`, `visual` and `physical` all marked `completed`. For this example, `filter` is `not_requested` because v8 was not selected.
+
+Native outputs include per-subtask progress and model responses, combined `progress_chart.png`, `evaluation_summary.json`, `attribution_result.json` and readable `attribution_report.txt`. Attribution links original frames/times, candidate issues, physical conclusions and evidence. A complete evaluation can find no events. Detecting an issue is not an execution failure, and a particular label is not guaranteed in advance.
+
+Missing inputs or calibration preserve partial results and mark assessment incomplete. JSON/HTML output or a successful command exit alone does not establish completeness. Video is disabled by default; use `export_video: true` to request review videos. Normal completion removes the run's input-image cache by default while retaining source mappings and result evidence.
+
+
+### X1 Pro pour-tea example with non-G grippers
+
+The [complete X1 Pro configuration](../../configs/robots/x1pro_progress_example.yaml) uses `faceImg`, `leftImg`, `rightImg` and JSON fields `timestamp`, `follow_left/right_gripper`, `follow_left/right_joint_effort`, `follow_left/right_position`. Both grippers record centimetres, increasing when opening. Effort is declared as N·m under this example's capture contract, using all seven values' RMS as a proxy with fixed change thresholds of 0.3/0.2 N·m. These declarations do not apply to every X1 Pro gripper or export format.
+
+Intervals come from human annotations for `pourtea_lzy_0720@MASTER_SLAVE_MODE@2026_07_20_10_55_07`: original step 1 is `[332, 908)` for grasping the kettle; original step 5 is `[2808, 4337)` for grasping the teapot and pouring into the first cup. Only these two intervals are assessed, not the entire task. Native `subtask_0`/`subtask_1` names follow the selected order; original step IDs and intervals remain in `components.segmentation.intervals`. Keep the original JSON and three named MP4s in the episode directory. `video_frame_time: rows` declares the recording protocol's explicit row/frame correspondence. For another episode, replace annotations and signal declarations with applicable information.
+
+```bash
+cp configs/robots/x1pro_progress_example.yaml /path/to/robot-progress.yaml
+# Edit local model and python paths; other recordings also need their own metadata/subtasks.
+edc robot check --robot /path/to/robot-progress.yaml --data /path/to/pourtea-episode
+edc run /path/to/pourtea-episode \
+  --robot /path/to/robot-progress.yaml \
+  --algorithm Progress_Stagnation_Attribution \
+  --output /path/to/results/progress
+```
+
+The repository supplies configuration and instructions, not this real recording; data holders supply it locally. Check the completion conditions above, then review images at the source frames/times in `attribution_report.txt`. A GRM regression candidate is not a confirmed empty grasp; seven-value RMS can also reflect arm motion. `assessment_complete` establishes execution and sufficient input evidence for the selected branches, not the accuracy of every attribution label. Review false positives and missed events against the images rather than adjusting thresholds to force a desired label.
+
+
 ## Progress and stagnation
 
 EDC supplies original RGB images from three channels: `views` binds `cam_high`, `cam_left_wrist` and `cam_right_wrist`. `Episode.iter_frames()` reads stored images or decodes video. GRM consumes the same reference and before/after image sets for either storage type; only requested original images are cached as PNG. `frame_interval: 10` samples every ten reference frames, independently of playback rate.
@@ -92,7 +317,7 @@ Required parameters are `model`, `task`, `physical_signals`, and exactly one of 
 - `clip_start_sec` / `clip_end_sec`: legacy clip seconds. Optional `subtask_time_basis: playback|source` selects the axis. Without it, native video playback seconds are used when available, otherwise recorded source seconds, relative to the first frame. The actual choice is saved.
 - `clip_start_frame` / `clip_end_frame`: a half-open original reference interval `[start, end)`. Use this when images have order but no reliable seconds. Do not combine frame bounds with seconds bounds.
 
-For example, these parameters select the first 100 reference images and infer visual progress even when physical bindings have not been configured:
+The following is a visual-only smoke example selecting the first 100 reference images. `physical_signals: {}` cannot complete physical attribution; use the complete configuration above for that:
 
 ~~~yaml
 views: {cam_high: head_rgb, cam_left_wrist: left_rgb, cam_right_wrist: right_rgb}

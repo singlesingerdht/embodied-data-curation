@@ -1,0 +1,147 @@
+# X1 Pro non-G gripper example: documented pour-tea capture only.
+# Both grippers: opening in cm, increasing-open; effort: declared torque in N*m.
+# Seven-value arm RMS is an explicit legacy proxy, not measured gripper torque.
+# Revalidate time mapping, semantics, rules and annotations for other captures.
+# Set model and python to local paths before running.
+robot:
+  name: x1pro
+  confirmed_by: capture operator; applies only to the documented non-G gripper example
+data:
+  time:
+    source: timestamp
+    unit: s
+  video_frame_time: rows
+arms:
+  left:
+    eef_position:
+      source: follow_left_position
+      index: 0-2
+      unit: m
+    gripper:
+      source: follow_left_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: 'Operator confirmed both installed non-G grippers have
+        the same cm unit and increasing-open direction; native_relative rule; scope:
+        this pour-tea capture'
+  right:
+    eef_position:
+      source: follow_right_position
+      index: 0-2
+      unit: m
+    gripper:
+      source: follow_right_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: 'Operator confirmed both installed non-G grippers have
+        the same cm unit and increasing-open direction; native_relative rule; scope:
+        this pour-tea capture'
+cameras:
+  head:
+    source: faceImg
+    mount: head
+    label: 头部相机
+  left_wrist:
+    source: leftImg
+    mount: wrist
+    arm: left
+    label: 左夹爪相机
+  right_wrist:
+    source: rightImg
+    mount: wrist
+    arm: right
+    label: 右夹爪相机
+other:
+- source: follow_left_joint_effort
+  label: follow_left_joint_effort (torque)
+  unit: N*m
+  quantity: torque
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: SDK JointState.effort contract applied to this export by
+    operator instruction; https://x2robot.com/en/docs/quantax1pro/v1/sdk/data-types/sensor-data-types;
+    original robot-bridge export implementation unavailable, no numerical conversion
+- source: follow_right_joint_effort
+  label: follow_right_joint_effort (torque)
+  unit: N*m
+  quantity: torque
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: SDK JointState.effort contract applied to this export by
+    operator instruction; https://x2robot.com/en/docs/quantax1pro/v1/sdk/data-types/sensor-data-types;
+    original robot-bridge export implementation unavailable, no numerical conversion
+checks:
+  Progress_Stagnation_Attribution:
+    evidence_policy: confirmed_only
+    views:
+      cam_high: faceImg
+      cam_left_wrist: leftImg
+      cam_right_wrist: rightImg
+    physical_signals:
+      left:
+        ee_position:
+          channel: pose/arm/left/feedback
+          field: position
+        hand_position:
+          channel: gripper/left
+          field: value
+          grip_mode: native_relative
+          opening_direction: increasing
+          direction_reference: 'Operator confirmed both installed non-G grippers have
+            the same cm unit and increasing-open direction; native_relative rule;
+            scope: this pour-tea capture'
+          unit: cm
+        arm_load:
+          channel: follow_left_joint_effort
+          field: value
+        hand_load:
+          proxy_of: arm_load
+          reference: 'Operator-selected legacy proxy: RMS of all seven recorded joint_effort
+            values; declared torque in N*m, not measured gripper current or object
+            weight'
+      right:
+        ee_position:
+          channel: pose/arm/right/feedback
+          field: position
+        hand_position:
+          channel: gripper/right
+          field: value
+          grip_mode: native_relative
+          opening_direction: increasing
+          direction_reference: 'Operator confirmed both installed non-G grippers have
+            the same cm unit and increasing-open direction; native_relative rule;
+            scope: this pour-tea capture'
+          unit: cm
+        arm_load:
+          channel: follow_right_joint_effort
+          field: value
+        hand_load:
+          proxy_of: arm_load
+          reference: 'Operator-selected legacy proxy: RMS of all seven recorded joint_effort
+            values; declared torque in N*m, not measured gripper current or object
+            weight'
+    load_rules:
+      unit: N*m
+      close_delta: 0.3
+      stagnation_empty_delta: 0.2
+    filter_policy: none
+    export_video: false
+    keep_frame_cache: false
+    task: 右臂向茶壶注水并向三只杯子倒茶，左臂保持不动
+    subtasks:
+    - step: 1
+      query: 右臂移动到烧水壶并抓住壶把
+      clip_start_frame: 332
+      clip_end_frame: 908
+    - step: 5
+      query: 右臂抓住茶壶并向第一只杯子倒茶
+      clip_start_frame: 2808
+      clip_end_frame: 4337
+    frame_interval: 10
+    mode: average
+    model: /path/to/models/grm
+    python: /path/to/envs/progress/bin/python
+    gpu_memory_utilization: 0.4
+    timeout_seconds: 10800
