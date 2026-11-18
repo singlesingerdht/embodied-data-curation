@@ -10,8 +10,10 @@ OpenPI 环境配置供另行提供的估值实现使用；准备环境本身不�
 
 | 配置 | 可选择组件 | 核心版本 | 范围 |
 |---|---|---|---|
-| `vision` | `progress`、`initial-state`，可组合 | Python 3.12、Torch 2.8.0、TorchVision 0.23.0、Transformers 4.57.1、NumPy 1.26.4 | GRM 组件另固定 vLLM 0.11.0；SAM3 使用本地 wheel |
+| `vision` | `progress`、`initial-state`、`safety`、`safety-depth`，可组合 | Python 3.12、Torch 2.8.0、TorchVision 0.23.0、Transformers 4.57.1、NumPy 1.26.4 | GRM 另固定 vLLM 0.11.0；安全检测使用 SAM3、CoTracker 源码 wheel；可选 `safety-depth` 准备 DA3 深度 |
 | `openpi` | `shapley` | Python 3.12、Torch 2.7.1、Transformers 4.53.2、JAX 0.5.3、Flax 0.10.2 | 本地 OpenPI、openpi-client、LeRobot wheel，并应用该 OpenPI 随附的 Transformers 替换文件 |
+
+`safety-depth` 是可选的深度准备组件，不是另一项算法。源码 wheel 和模型下载见[安全检测指南](VALUE_ALGORITHMS.zh-CN.md#四事件安全检测)。
 
 这些是 Linux x86_64 的安装配置，不代表每个组合都完成了真实模型验收。不能仅凭安装成功宣称算法准确率或完整归因已通过。模型权重不随安装下载。部分原生 SAM3 构建器即使指定 CPU 也会在初始化位置编码时创建 CUDA 张量；导入成功不能证明支持无 GPU 推理，需按所提供源码单独验证。
 
@@ -70,7 +72,7 @@ edc run /path/to/data --robot /path/to/robot.yaml \
   --output /path/to/new-results --no-html
 ```
 
-这两项内置价值算法均可通过 `python` 选择独立进程。初始分布未指定 `python` 时继续在当前进程运行；指定后由 EDC 保存原始 RGB 图片与样本映射，子进程复用相同检测与统计代码。主环境仍需安装数据读取和图片处理所需的格式依赖及 Pillow。各进程不会通过环境变量继承外部 Python 模块搜索路径。
+这三项内置价值算法均可通过 `python` 选择独立进程。初始分布未指定 `python` 时继续在当前进程运行；指定后由 EDC 保存原始 RGB 图片与样本映射，子进程复用相同检测与统计代码。主环境仍需安装数据读取和图片处理所需的格式依赖及 Pillow。各进程不会通过环境变量继承外部 Python 模块搜索路径。
 
 ## 检查与保留的信息
 
@@ -79,3 +81,5 @@ edc run /path/to/data --robot /path/to/robot.yaml \
 `edc env check` 检查环境隔离、依赖一致性、版本及 EDC 源码是否改变；`--imports` 额外导入所选库，不加载权重或执行推理。成功只表示安装检查通过。更新 EDC 后应从新 wheel 创建新环境并修改 `python` 参数，保留原环境用于回退。已有环境不会被覆盖；失败目录保留日志，修正条件后选择新目录重试。
 
 运行时另外核对主进程和子进程的方法源码，并在模型初始化前保存模型和配置来源。GRM 按检查点声明决定输出层是否共享权重，不修改 Transformers 全局类；已知不兼容的 vLLM 0.11／Transformers 5 组合在依赖检查时报告错误。环境安装不改变评分、时间轴、质量门槛或完整评估条件。
+
+安全检测使用 `--with safety`，提供 SAM3 和 CoTracker 源码 wheel；RGB-only 深度准备另选 `--with safety-depth` 并提供 DA3 wheel。完整步骤见[安全检测](VALUE_ALGORITHMS.zh-CN.md#四事件安全检测)。

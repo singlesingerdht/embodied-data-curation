@@ -124,3 +124,12 @@ def test_openpi_patches_only_worker_and_preserves_before_after_hashes(tmp_path, 
     assert {r['file']:r['original_sha256'] for r in evidence} == {
         'models/siglip/modeling_siglip.py':before, 'models/siglip/check.py':None}
     assert (source/'modeling_siglip.py').read_text() == 'replacement'
+
+
+def test_safety_uses_optional_source_wheels_without_vllm():
+    safety=manager.plan('vision',['safety','safety-depth'])
+    assert safety['algorithms']==['Collision_Detection_Qwen3vl']
+    assert set(safety['sources_required'])=={'sam3','cotracker','depth-anything-3'}
+    assert 'transformers==4.57.1' in safety['requirements']
+    assert not any(requirement.startswith('vllm') for requirement in safety['requirements'])
+    assert {'av', 'depth_anything_3.api'} <= set(safety['imports'])

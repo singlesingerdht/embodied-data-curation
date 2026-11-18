@@ -33,3 +33,5 @@ namespaces = true
 
 "edc.algorithms.value.algorithms.Initial_State_Distribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]
 "edc.algorithms.value.algorithms.Progress_Stagnation_Attribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]
+
+"edc.algorithms.value.algorithms.Collision_Detection_Qwen3vl" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]

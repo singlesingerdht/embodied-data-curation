@@ -1,0 +1,34 @@
+{
+  "source_repository": "Datasets_quality_and_value_assessment",
+  "source_directory": "Value_Assessment/Collision_Detection_Qwen3vl/neuro_symbolic",
+  "revision": "confirmed_hand_contact_or_change_v62",
+  "license_status": "unresolved; local integration only, not cleared for public release",
+  "files": {
+    "adjudicator.py": "c42df6f91c16f4f03696cbf1ad56cc19102791a3e68d7544ac8fd5be454ab846",
+    "appearance.py": "1e9c00677e5ecbf0f557ecbc0e4bdc28c4a0f9fc7bb6649e44252e1a59fccd8d",
+    "collision_engine.py": "1b3a9ac110128a29b6b309b4f9c42d95f2f13ddd30c7401d35c5d61ed0a0ebe4",
+    "contact_policy.py": "8637fc5687600020179e9e9a2380781b98a4d478a157e8287fa8e0309511c749",
+    "four_event_vlm.py": "582077447cbd2ea35f1ac6ea988665e9f5bf5f6983341f344836cd357cf03038",
+    "geometry.py": "e05f50fb23d3ca53baba7b470cdf754365e55c634cccb042bb37e82d41e45c17",
+    "gripper_model.py": "2e82be95c97022d3698badecd1497197519532bbac2a4e336a7f7c178239099a",
+    "grounding.py": "f1fe8610b92da3c7c85fd80422cd2a6b399dccd6121413b8aac73d590fe606ce",
+    "pipeline.py": "dbbd9131cd69e709b7984ca97679340a98ced6462ced8201f5a29a66aa18417b",
+    "run_four_event_pipeline.py": "30a726b2dc0ae13540dec2b316ccc7ce93532b9821f47f818370716adf17ce3b",
+    "safety_framework.py": "f50fecc858af26fada792c8cc0e21ff440b0568f9c1ceeb5c9c73d8f7572302b",
+    "task_graph.py": "af31d20301973c9917b35a08d08c2776e345cda7f8e429a3f74a7a51e4501cc1",
+    "tracker.py": "1ae69c65766f524a9815dcebf743b1ce17c555efde69163753de0f7ba3e8f4a7"
+  },
+  "adaptations": [
+    "Explicit EDC media/physical inputs and local model paths",
+    "No repository imports, bundled third-party models or legacy quality-score wrapper",
+    "Forward the actual first-frame image to the VLM processor; retain raw responses, grounding masks and tracking evidence",
+    "Use EDC original-frame pairing and source timestamps; derived scanner video carries explicit original-frame mapping; duration windows use seconds and sample-count windows retain their meaning",
+    "Use robot field calibration_status=confirmed; remove duplicate v62 calibration switches; convert declared distance units and align quaternions by nearest sample",
+    "Incomplete physical grounding or view coverage remains unassessed, never no events",
+    "Explicit CoTracker3 offline/window60 predictor and RGB 0..255 input as required by the official model; avoid duplicate /255 normalization",
+    "Orientations explicitly converted from wxyz, xyzw or radian rotation vectors to native xyzw; no component-wise interpolation",
+    "Grounding and adjudication share one loaded Qwen3-VL model; prompts and generation parameters retained",
+    "Gripper geometry uses metres while the frozen v62 closure rules retain their original centimetre-scale inputs",
+    "Use reduced SVD for Open3D plane refinement; retain the same right singular vectors and plane-fit equations without allocating a dense N-by-N left singular matrix"
+  ]
+}

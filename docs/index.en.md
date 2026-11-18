@@ -28,7 +28,7 @@ Click the image to view it at full size.
 
 From learning progress signals through demonstrations to guiding selection with model feedback, **STEAM** and **RoboDrop** provide research foundations for this path toward automation. See [From Quality Checks to Autonomous Data Curation](explanation/QUALITY_VALIDATION.md).
 
-Data quality checks and selection/export are available today; task-value and policy-value methods will be integrated progressively.
+Nine quality algorithms and selection/export are available, alongside initial-state distribution, progress attribution and four-event safety detection. Value methods require separate model environments, weights and applicable configuration; see the [value algorithm guide](reference/VALUE_ALGORITHMS.md).
 
 ## Start here
 

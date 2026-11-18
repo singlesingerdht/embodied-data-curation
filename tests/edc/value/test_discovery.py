@@ -5,12 +5,12 @@ from edc.algorithms.quality.adapters.cpu import builtins as quality_builtins
 from edc.algorithms.value import discovery
 
 
-def test_quality_order_and_two_unique_value_methods():
+def test_quality_order_and_three_unique_value_methods():
     expected=[p.spec.id for p in quality_builtins()]
     registry=algorithms()
     assert list(registry.plugins)[:9]==expected
     owned=[p.spec.id for p in discovery.builtins()]
-    assert owned==sorted(['Initial_State_Distribution','Progress_Stagnation_Attribution'])
+    assert owned==sorted(['Collision_Detection_Qwen3vl','Initial_State_Distribution','Progress_Stagnation_Attribution'])
     assert 'edc__Initial_State_Distribution' not in registry.plugins
 
 

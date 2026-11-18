@@ -21,7 +21,7 @@ Across these three levels, the framework pursues two further advantages:
 - **Automation | Learn to assess from experience; improve choices through feedback.** Learn assessment criteria from expert demonstrations and use data and training feedback to guide selection, progressively reducing manual assessment, rule adjustment, and method selection. [Mechanisms and research evidence](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-automation)
 - **Evidence | Trace the basis of each choice and test its effects.** Connect selection to quality evidence, task progress, and model learning signals; record processing steps and validate choices with independent feedback. [Verifying choices](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.html#quality-validation-evidence)
 
-> Nine quality algorithms and explicitly selected initial-state distribution and progress attribution value methods are built in; model environments and weights are supplied separately. Other value, augmentation and editing methods can use plugins. Availability depends on inputs, dependencies and calibration. Autonomous curation describes the framework vision, beyond default capabilities.
+> Nine quality algorithms and explicitly selected initial-state distribution, progress attribution and four-event safety value methods are built in; model environments and weights are supplied separately. Other value, augmentation and editing methods can use plugins. Availability depends on inputs, dependencies and calibration. Autonomous curation describes the framework vision, beyond default capabilities.
 
 > **Long-term goal: you set the objective; the framework keeps exploring autonomously—which data to keep, which experience to learn from, and what to improve next.**
 
@@ -30,20 +30,36 @@ See [From Quality Checks to Autonomous Data Curation](https://singlesingerdht.gi
 ## What's New
 
 > 🎉 We have released the first version of the EDC repository, featuring 9 data quality algorithms!<br>
-> 🚀 Initial-state distribution and progress attribution are available; more value algorithms are coming soon!
+> 🚀 Four-event safety detection is now available alongside initial-state distribution and progress attribution through EDC!
 
 ## Value algorithms
 
-Alongside nine quality algorithms, initial-state distribution and progress attribution are built in and explicitly selected through `edc run`. Implementations live in `src/edc/algorithms/value/algorithms/<algorithm>/`; each algorithm README covers model downloads, complete configuration, execution and outputs. Prepare model environments, weights and task-specific calibration separately. `edc algorithms` lists entries; `records.jsonl` records what each run actually assessed.
+Alongside nine quality algorithms, initial-state distribution, progress attribution and four-event safety detection are built in and explicitly selected through `edc run`. Implementations live in `src/edc/algorithms/value/algorithms/<algorithm>/`; each algorithm README covers model downloads, complete configuration, execution and outputs. Prepare model environments, weights and task-specific calibration separately. `edc algorithms` lists entries; `records.jsonl` records what each run actually assessed.
 
 | Algorithm | Inputs and outputs | Scope |
 |---|---|---|
 | [Initial-state distribution](src/edc/algorithms/value/algorithms/Initial_State_Distribution/README.md) | Initial RGB frames, object prompts, SAM3 → detections, grids, entropy, valid ratios and heatmaps | Explicit camera/scene grouping; optional depth does not change 2D scores |
 | [Progress attribution](src/edc/algorithms/value/algorithms/Progress_Stagnation_Attribution/README.md) | Three image/video views, subtasks, GRM and physical feedback → progress curves, regression/stagnation attribution and evidence | No fixed FPS requirement; missing physical evidence preserves visual results but leaves full attribution incomplete; review video is off by default |
+| [Four-event safety detection](src/edc/algorithms/value/algorithms/Collision_Detection_Qwen3vl/README.md) | RGB, depth, robot feedback and task graph → collision, spill, hand-intervention and lid-fall judgments and evidence | Original frames and variable source rates; applicable calibration required; README includes model downloads and a pour-tea configuration |
 
 [Installation and invocation](docs/reference/VALUE_ALGORITHMS.md) · [Isolated model environments](docs/reference/MODEL_ENVIRONMENTS.md). Each method requires its documented inputs, model dependencies and applicable calibration.
 
 Distinguish unreadable data, missing inputs/dependencies and completed evaluation with no events. `catalog.json` indexes records and evidence; successful command exit does not establish complete assessment. More value algorithms are coming soon.
+
+Value and quality methods have separate directories and share execution and result contracts:
+
+```text
+src/edc/algorithms/
+├── quality/algorithms/          # 9 quality methods
+├── value/algorithms/
+│   ├── Initial_State_Distribution/
+│   ├── Progress_Stagnation_Attribution/
+│   └── Collision_Detection_Qwen3vl/
+├── augmentation/algorithms/     # augmentation ownership directory
+└── editing/algorithms/          # editing ownership directory
+```
+
+Augmentation and editing directories describe ownership conventions. Use `edc algorithms` for actual callable entries.
 
 ## Architecture and Modules
 

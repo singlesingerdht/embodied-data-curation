@@ -1,0 +1,202 @@
+# X1 Pro pour-tea example: evaluates only original frames [332, 692).
+# Legacy intrinsics/transforms and axis-angle interpretation; revalidate for other captures.
+# Seventh effort component follows the frozen method as a proxy; not proven gripper torque.
+# Change paths before running. Real data is supplied separately by its holder.
+robot:
+  name: x1pro
+  confirmed_by: 'Capture operator: use legacy pour_tea_io.py intrinsics and transforms
+    for this example; geometry is not independently revalidated'
+data:
+  time:
+    source: timestamp
+    unit: s
+  video_frame_time: rows
+arms:
+  left:
+    eef_position:
+      source: follow_left_position
+      index: 0-2
+      unit: m
+    gripper:
+      source: follow_left_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: 'Operator confirmed both installed non-G grippers have
+        the same cm unit and increasing-open direction; native_relative rule; scope:
+        this pour-tea capture'
+  right:
+    eef_position:
+      source: follow_right_position
+      index: 0-2
+      unit: m
+    gripper:
+      source: follow_right_gripper
+      unit: cm
+      quantity: position
+      calibration_status: confirmed
+      calibration_reference: 'Operator confirmed both installed non-G grippers have
+        the same cm unit and increasing-open direction; native_relative rule; scope:
+        this pour-tea capture'
+cameras:
+  head:
+    source: faceImg
+    mount: head
+    label: 头部相机
+  left_wrist:
+    source: leftImg
+    mount: wrist
+    arm: left
+    label: 左夹爪相机
+  right_wrist:
+    source: rightImg
+    mount: wrist
+    arm: right
+    label: 右夹爪相机
+other:
+- source: follow_left_joint_effort
+  label: follow_left_joint_effort (torque)
+  unit: N*m
+  quantity: torque
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: SDK JointState.effort contract applied to this export by
+    operator instruction; https://x2robot.com/en/docs/quantax1pro/v1/sdk/data-types/sensor-data-types;
+    original robot-bridge export implementation unavailable, no numerical conversion
+- source: follow_right_joint_effort
+  label: follow_right_joint_effort (torque)
+  unit: N*m
+  quantity: torque
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: SDK JointState.effort contract applied to this export by
+    operator instruction; https://x2robot.com/en/docs/quantax1pro/v1/sdk/data-types/sensor-data-types;
+    original robot-bridge export implementation unavailable, no numerical conversion
+- source: follow_left_rotation
+  label: left rotation vector
+  unit: rad
+  quantity: orientation
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: Legacy pour_tea_io.py axis-angle interpretation, explicitly
+    reused for this example
+- source: follow_right_rotation
+  label: right rotation vector
+  unit: rad
+  quantity: orientation
+  source_kind: feedback
+  calibration_status: confirmed
+  calibration_reference: Legacy pour_tea_io.py axis-angle interpretation, explicitly
+    reused for this example
+checks:
+  Collision_Detection_Qwen3vl:
+    views:
+      faceImg: faceImg
+      leftImg: leftImg
+      rightImg: rightImg
+    task: 'Pour tea: open teapot lid, pour water from kettle into teapot, replace
+      lid, then pour tea into three cups.'
+    task_graph: /path/to/pour_tea_task_graph.json
+    models:
+      qwen: /path/to/models/qwen3-vl
+      sam3: /path/to/models/sam3/sam3.pt
+      cotracker: /path/to/models/cotracker3/scaled_offline.pth
+      dinov2: /path/to/models/dinov2-small
+    arms:
+      left:
+        position:
+          channel: pose/arm/left/feedback
+          field: position
+        quaternion:
+          channel: follow_left_rotation
+          field: value
+          order: rotvec
+        gripper:
+          channel: gripper/left
+          field: value
+        terminal_effort:
+          channel: follow_left_joint_effort
+          field: value
+          indices:
+          - 6
+        T_arm_to_camera:
+        - - -0.00839898743705271
+          - -0.9999629647795053
+          - -0.00187778577427139
+          - -0.287
+        - - -0.7177345655718589
+          - 0.007335976513664563
+          - -0.6962781605306647
+          - 0.114
+        - - 0.6962661491078015
+          - -0.004500279766057547
+          - -0.7177695988885432
+          - 0.333
+        - - 0.0
+          - 0.0
+          - 0.0
+          - 1.0
+      right:
+        position:
+          channel: pose/arm/right/feedback
+          field: position
+        quaternion:
+          channel: follow_right_rotation
+          field: value
+          order: rotvec
+        gripper:
+          channel: gripper/right
+          field: value
+        terminal_effort:
+          channel: follow_right_joint_effort
+          field: value
+          indices:
+          - 6
+        T_arm_to_camera:
+        - - 0.008974275740490034
+          - -0.999935077582289
+          - -0.007021609177033483
+          - 0.246
+        - - -0.7141006497235801
+          - -0.0014932156073491631
+          - -0.7000414504666921
+          - 0.116
+        - - 0.6999855173068181
+          - 0.011296500681685362
+          - -0.7140676891115116
+          - 0.334
+        - - 0.0
+          - 0.0
+          - 0.0
+          - 1.0
+    intrinsics:
+    - - 718.409
+      - 0
+      - 641.468
+    - - 0
+      - 718.311
+      - 360.887
+    - - 0
+      - 0
+      - 1
+    depth:
+      source: monocular_estimate
+      unit: m
+      registered_to_rgb: true
+      registration_id: DA3 same original RGB frame resized prediction
+      model: /path/to/models/da3
+      episodes:
+        pourtea_lzy_0720@MASTER_SLAVE_MODE@2026_07_20_10_55_07:
+          path: /path/to/depth/depth.npy
+          frame_range:
+          - 332
+          - 692
+          rgb_channel: faceImg
+          correspondence_evidence: /path/to/depth/provenance.json
+    frame_range:
+    - 332
+    - 692
+    collision_stride: 3
+    python: /path/to/envs/safety/bin/python
+    device: cuda:0
+    timeout_seconds: 7200
