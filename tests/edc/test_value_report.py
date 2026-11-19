@@ -168,3 +168,29 @@ def test_edc_cli_value_report_catalog_and_no_html(tmp_path, monkeypatch, capsys)
         record = json.loads((output / entry['records'][0]).read_text())
         assert record['result']['reports'][0]['score'] == 12
     assert hashlib.sha256(data.read_bytes()).hexdigest() == before
+
+
+@pytest.mark.parametrize('envelope_scope', [False, True])
+@pytest.mark.parametrize('verdict,label', [('PASS', '通过'), ('NEEDS_REVIEW', '需复核'), ('FAIL', '未通过')])
+def test_fragment_verdict_has_explicit_scope_and_never_completes_episode(tmp_path, envelope_scope, verdict, label):
+    from edc.execution.completeness import record_complete
+    output, root, record, records = setup_run(tmp_path, [{'assessment_complete': True,
+        'verdict': verdict, 'assessment_scope': {'whole_episode': False,
+        'original_frame_range': [332, 692], 'source_frame_count': 5899}}])
+    record['scope_complete'] = envelope_scope  # Includes historical default True.
+    records.write_text(json.dumps(record) + '\n'); before = records.read_bytes()
+    assert not record_complete(record)
+    text = render(output, root)
+    assert '片段评估完成；整轨迹未完成' in text
+    assert f'片段：{label}' in text and '[332, 692)' in text
+    assert records.read_bytes() == before
+
+
+@pytest.mark.parametrize('scope', [None, [], {'whole_episode': True},
+    {'whole_episode': True, 'original_frame_range': [2, 4], 'source_frame_count': 10}])
+def test_invalid_scope_does_not_release_or_break_the_report(tmp_path, scope):
+    from edc.execution.completeness import record_complete
+    output, root, record, _ = setup_run(tmp_path, [
+        {'assessment_complete': True, 'verdict': 'PASS', 'assessment_scope': scope}])
+    assert not record_complete(record)
+    assert '评估未完成' in render(output, root)

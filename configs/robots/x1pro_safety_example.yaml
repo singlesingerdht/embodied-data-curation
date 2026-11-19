@@ -183,7 +183,7 @@ checks:
       source: monocular_estimate
       unit: m
       registered_to_rgb: true
-      registration_id: DA3 same original RGB frame resized prediction
+      registration_id: same-original-rgb-frame-resized-prediction
       model: /path/to/models/da3
       episodes:
         pourtea_lzy_0720@MASTER_SLAVE_MODE@2026_07_20_10_55_07:

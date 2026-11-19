@@ -131,6 +131,10 @@ Preparation reads selected original RGB through EDC, estimates every frame, and 
 
 Set `depth.episodes.<episode ID>.path` to `depth.npy`, `correspondence_evidence` to its `provenance.json`, and the depth `frame_range` to the selected range. The array must match selected original RGB frame count and resolution. Missing depth is not silently filled. For a whole-episode run, remove the algorithm `frame_range`, prepare whole-episode depth and update the depth range accordingly.
 
+Set `depth.registration_id` to the value in the correspondence evidence; the generator above uses `same-original-rgb-frame-resized-prediction`. Before initializing safety models, EDC checks evidence completion, episode ID/source path/selector, channel, frame range, units and depth source. It also checks each original frame identity, RGB dimensions and SHA-256, plus the depth file SHA-256. A mismatch or incomplete evidence stops execution and retains diagnostics in `depth-validation.json`. Matching fingerprints do not establish geometric calibration accuracy.
+
+Sensor depth must provide the same evidence structure: `status: completed`, `episode_id`, `source_episode`, `selector`, `channel` (resolved EDC channel name), `frame_range`, `source: sensor_depth`, `unit`, `registered_to_rgb: true`, `registration_id`, and the depth file SHA-256 in `depth.files`. The ordered `frames` list contains `reference_index`, `source_index`, `rgb_shape: [H, W]` and `rgb_sha256` for every selected frame. RGB hashes cover contiguous RGB uint8 pixel bytes, not image-file bytes. Registration requires actual calibration, not merely a changed declaration.
+
 ## 5. Run and inspect results
 
 ```bash
@@ -146,7 +150,7 @@ The `python` parameter selects the independent worker without manual activation.
 
 Open root `report.html` for a compact pass/fail/review judgment, reason and full-result link. Pass means checks completed for the selected scope without confirmed or unresolved events; it is not safety certification. No numerical score is invented. `catalog.json` indexes records and evidence.
 
-A complete execution requires `records.jsonl` status `completed`, `native-result.json` field `assessment_complete: true`, and all four `checks` statuses `completed`. Confirmed events produce fail; unresolved events produce review. Neither is a processing failure. Check `assessment_scope.original_frame_range`: completion of the example does not establish assessment of the whole recording.
+A complete execution requires `records.jsonl` status `completed`, `native-result.json` field `assessment_complete: true`, and all four `checks` statuses `completed`. Confirmed events produce fail; unresolved events produce review. Neither is a processing failure. Check `assessment_scope.original_frame_range`: completion of the example does not establish assessment of the whole recording. Fragment runs store `input_scope.assessment_scopes` and `scope_complete: false` in the standard record. HTML labels completion and verdicts as applying to the fragment, with the whole episode incomplete. Workflows exclude the episode from `value_completed_episodes` until its full scope and required checks are complete.
 
 | Evidence | Contents |
 |---|---|
@@ -156,6 +160,7 @@ A complete execution requires `records.jsonl` status `completed`, `native-result
 | `native/safety_report.json` | Four-event native summary and scan coverage |
 | `native/events_adjudicated.json` | Candidates, confirmed/rejected/review judgments and supporting reasons |
 | `native/model-requests/`, `native/collision/` | Request images, raw responses, masks, tracks and geometry |
+| `depth-validation.json` | Depth-file and per-frame RGB correspondence checks, including mismatch reasons |
 | `native-result.json` | Completion, compact judgment and actual scope |
 
 Artifacts live under `_runs/<run_id>/Collision_Detection_Qwen3vl/artifacts/<episode-key>/`. Full review videos are not exported by default. Internal scan videos, cached frames and geometry arrays support execution and traceability; they are not original recordings. Missing inputs/dependencies, inference failures and incomplete checks retain existing evidence. Successful command exit, an HTML file or absent event files alone do not prove completion.

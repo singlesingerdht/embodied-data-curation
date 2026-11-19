@@ -4,7 +4,7 @@ import os
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
-from edc.execution.completeness import record_complete
+from edc.execution.completeness import record_complete, report_complete
 from edc.reporting.text import esc, reports
 from edc.schemas import RECORD, require_schema
 
@@ -58,9 +58,19 @@ def _number(value):
     return f'{value:.6g}' if isinstance(value, (int, float)) else '—'
 
 
+def _scope(report):
+    value = report.get('assessment_scope')
+    return value if isinstance(value, dict) else {}
+
+
 def _reason(record, native):
     reasons = [record['reason']] if record.get('reason') else []
     for report in native:
+        scope = _scope(report)
+        if scope.get('whole_episode') is False:
+            bounds = scope.get('original_frame_range')
+            reasons.append(f'仅评估原始帧 [{bounds[0]}, {bounds[1]})；整轨迹未完成'
+                           if isinstance(bounds, list) and len(bounds) == 2 else '仅评估片段；整轨迹未完成')
         distribution = report.get('distribution')
         if isinstance(distribution, dict):
             reasons.append(f"评估 {distribution.get('total_episodes', '?')} 条轨迹，"
@@ -83,7 +93,8 @@ def _reason(record, native):
                 reasons.append(label + '：' + str(explanation or STATUS.get(component.get('status'), '未完成')))
         if report.get('reason'):
             reasons.append(str(report['reason']))
-    if record.get('scope_complete') is False or record.get('withheld_episodes'):
+    if (record.get('scope_complete') is False or record.get('withheld_episodes')) and not any(
+            _scope(r).get('whole_episode') is False for r in native):
         reasons.insert(0, '所选输入未全部完成评估')
     return _short('；'.join(reasons) or '见原始结果中的指标、依据和限制')
 
@@ -126,13 +137,18 @@ def sections(output, run_dir, report_dir, loaded):
         native = reports(record)
         complete = record_complete(record)
         explicit = bool(native) and all(r.get('assessment_complete') is True for r in native)
+        fragment_complete = (record.get('status') == 'completed' and explicit and all(
+            report_complete(r, spec['id']) for r in native) and any(
+            _scope(r).get('whole_episode') is False for r in native))
         state = STATUS.get(record.get('status'), record.get('status', '未知'))
-        state += '；评估' + ('完成' if complete and explicit else '未完成' if not complete else '未声明')
+        state += ('；片段评估完成；整轨迹未完成' if fragment_complete else
+                  '；评估' + ('完成' if complete and explicit else '未完成' if not complete else '未声明'))
         scores = [_number((r.get('distribution') or {}).get('score', r.get('score'))) for r in native]
         scores = [s for s in scores if s != '—']
         # Display only method-authored judgments; completion is not a quality verdict.
         verdicts = [VERDICT.get(r.get('verdict'), r.get('verdict')) for r in native if r.get('verdict')]
-        verdict = '未完成' if not complete else ' / '.join(dict.fromkeys(verdicts)) or '未设判定'
+        native_verdict = ' / '.join(dict.fromkeys(verdicts)) or '未设判定'
+        verdict = '片段：' + native_verdict if fragment_complete else '未完成' if not complete else native_verdict
         links = [_link(record_path, report_dir, '完整结果')]
         unavailable = 0
         linked = set()
@@ -149,7 +165,7 @@ def sections(output, run_dir, report_dir, loaded):
             reason += f'；{unavailable} 个证据文件不可用，见完整结果清单'
         label = '数据集' if obj.get('type') == 'dataset' else '轨迹'
         score = ' / '.join(scores) or '—'
-        tone = 'ok' if verdict == '通过' else 'bad' if verdict == '未通过' else 'warn' if verdict in {'未完成', '需复核', '可救'} else 'na'
+        tone = 'warn' if fragment_complete else 'ok' if verdict == '通过' else 'bad' if verdict == '未通过' else 'warn' if verdict in {'未完成', '需复核', '可救'} else 'na'
         if record.get('status') == 'processing_error':
             tone = 'bad'
         chip = f'<span class="chip {tone}">{esc(verdict)}</span>'

@@ -242,3 +242,34 @@ def test_incomplete_visual_value_retains_quality_reference_without_releasing_val
     assert all(m['quality_references'][0]['dataset_fingerprint'] for m in seen)
     assert result['stages'][1]['value_completed_episodes']==[]
     assert result['delivery_status']=='suspended'
+
+
+@pytest.mark.parametrize('whole', [False, True])
+def test_fragment_scope_propagates_to_records_and_workflow_completion(demo, tmp_path, whole):
+    _, config, registry = demo
+    class ScopedValue:
+        spec = AlgorithmSpec('test__scoped_value', '1', 'Scoped value', 'Tests',
+                             'Scope contract fixture', category='value')
+        def run(self, context, params):
+            return {'assessment_complete': True, 'verdict': 'NEEDS_REVIEW',
+                'assessment_scope': {'whole_episode': whole, 'source_frame_count': 10,
+                                     'original_frame_range': [0, 10] if whole else [2, 4]}}
+    registry.register(ScopedValue())
+    config['stages'] = [config['stages'][0], {'id': 'value', 'kind': 'value',
+        'input': 'quality', 'algorithms': ['test__scoped_value']}]
+    output = tmp_path/'scoped-value'
+    result = run_workflow(config, output)
+    stage = result['stages'][1]
+    assert bool(stage['value_completed_episodes']) is whole
+    assert bool(stage['method_output_references']) is whole
+    assert result['delivery_status'] == ('ready' if whole else 'suspended')
+    path = next((output/'_runs'/stage['run_id']).glob('*/records.jsonl'))
+    for line in path.read_text().splitlines():
+        record = json.loads(line)
+        assert record['status'] == 'completed' and record['scope_complete'] is whole
+        report = record['result']['reports'][0]
+        assert report['assessment_complete'] is True and report['verdict'] == 'NEEDS_REVIEW'
+        assert record['input_scope']['assessment_scopes'] == [report['assessment_scope']]
+    # Resume must apply the same gate; it may not release the old partial result.
+    second = run_workflow(config, output, resume=True)
+    assert bool(second['stages'][1]['value_completed_episodes']) is whole

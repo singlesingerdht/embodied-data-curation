@@ -131,6 +131,10 @@ printf '%s  %s\n' 8ebe871a022ed58d2fc8fdfb2ebdb31d57b60fe39611c849095851a7b7c602
 
 配置中的 `depth.episodes.<轨迹ID>.path` 指向 `depth.npy`，`correspondence_evidence` 指向生成的 `provenance.json`，`frame_range` 与本次选择一致。数组形状必须与选中原始画面逐帧、逐像素匹配；不偷偷填充缺失深度。需要全轨迹时，同时移除算法 `frame_range`，重新准备全轨迹深度并更新深度对应范围。
 
+运行前将 `depth.registration_id` 设为对应证据中的 `registration_id`；上述生成器使用 `same-original-rgb-frame-resized-prediction`。安全模型初始化前，EDC 核对证据完成状态、轨迹 ID／源路径／selector、通道、帧范围、单位及深度来源，并逐帧核对原始帧号、RGB 尺寸与 SHA-256，同时核对深度文件 SHA-256。错配或证据不完整会停止执行，诊断保存在 `depth-validation.json`；指纹核对不代表几何标定精度已经验证。
+
+传感器深度也须提供同一对应证据结构：`status: completed`、`episode_id`、`source_episode`、`selector`、`channel`（解析后的 EDC 通道名）、`frame_range`、`source: sensor_depth`、`unit`、`registered_to_rgb: true`、`registration_id`，以及 `depth.files` 中该深度文件的 SHA-256。`frames` 按所选原始帧顺序保存 `reference_index`、`source_index`、`rgb_shape: [H, W]`、`rgb_sha256`；RGB 指纹以 RGB uint8 像素连续字节计算，不是图片文件字节。配准须来自实际标定，不能用修改声明代替。
+
 ## 5. 运行与查看结果
 
 ```bash
@@ -146,7 +150,7 @@ edc run /path/to/pourtea-episode \
 
 打开输出根目录 `report.html` 查看简洁的通过／未通过／需复核、理由和完整结果入口。通过表示所选范围完成检查且无确认或待复核事件，不是安全认证；不伪造数值分数。`catalog.json` 索引所有记录及证据。
 
-完整执行应同时满足：`records.jsonl` 的 `status: completed`、`native-result.json` 的 `assessment_complete: true`、`checks` 下四类均为 `completed`。确认事件产生“未通过”，待复核事件产生“需复核”；这不等于程序运行失败。检查 `assessment_scope.original_frame_range`，示例完成不代表整条轨迹已检查。
+完整执行应同时满足：`records.jsonl` 的 `status: completed`、`native-result.json` 的 `assessment_complete: true`、`checks` 下四类均为 `completed`。确认事件产生“未通过”，待复核事件产生“需复核”；这不等于程序运行失败。检查 `assessment_scope.original_frame_range`，示例完成不代表整条轨迹已检查。片段运行的统一记录写入 `input_scope.assessment_scopes` 和 `scope_complete: false`；HTML 显示“片段评估完成；整轨迹未完成”并保留片段判定。工作流不会将该轨迹计入 `value_completed_episodes`。整轨迹输入且全部检查完成后才可进入该集合。
 
 | 证据 | 内容 |
 |---|---|
@@ -156,6 +160,7 @@ edc run /path/to/pourtea-episode \
 | `native/safety_report.json` | 四事件原生汇总和扫描覆盖 |
 | `native/events_adjudicated.json` | 候选、确认／拒绝／需复核裁决与依据 |
 | `native/model-requests/`、`native/collision/` | 模型输入图、原始响应、分割、跟踪和几何证据 |
+| `depth-validation.json` | 深度文件及逐帧 RGB 对应校验；错配时保存原因 |
 | `native-result.json` | 完成情况、简洁判定和实际评估范围 |
 
 证据位于 `_runs/<run_id>/Collision_Detection_Qwen3vl/artifacts/<episode-key>/`。完整复核视频默认不导出；内部扫描视频、帧缓存和几何输入用于执行及追溯，不应把它们当原始视频。缺输入／依赖、推理失败或检查未完成会保留已有证据；命令退出成功、生成 HTML 或没有事件文件，都不能单独证明完成。

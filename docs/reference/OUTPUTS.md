@@ -66,6 +66,12 @@ The quality helper does not force value methods to return quality judgments or c
 
 `catalog.json` indexes outputs. Each `_runs/<run_id>` stores configuration, versions, records, errors, and evidence. Workflows also store the complete effective configuration and source fingerprints. Historical evidence is immutable; raw datasets remain read-only and derived outputs use separate paths.
 
+### Episode assessment scope
+
+Methods that assess only an episode fragment must return `assessment_scope` in the native report, with `whole_episode: false`, `original_frame_range: [start, end]` (half-open), and `source_frame_count`. `assessment_complete` describes method completion within that scope, not completion of the entire episode.
+
+The executor copies the declarations to `input_scope.assessment_scopes` and sets `scope_complete: false` for fragments. Successful execution still has `status: completed`, with native scores and verdicts preserved. Workflows exclude these episodes from completed whole-episode valuation; HTML identifies the fragment and the incomplete whole-episode scope. Whole-episode declarations use `whole_episode: true` and `[0, source_frame_count]`. Historical records are also checked against their native scope, even if their envelope previously defaulted to `scope_complete: true`.
+
 ### Output formats and compatibility
 
 EDC identifies output formats with `edc_*_v1` and validates supported versions when reading.

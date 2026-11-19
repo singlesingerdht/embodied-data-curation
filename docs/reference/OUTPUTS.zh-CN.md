@@ -66,6 +66,12 @@ payload = AlgorithmResult('team_example__joint_jump', items).to_dict()
 
 `catalog.json` 索引输出。每个 `_runs/<run_id>` 保存配置、版本、记录、错误与证据；工作流另存完整生效配置与来源指纹。历史证据不可改写，原始数据只读，派生输出使用独立路径。
 
+### 轨迹评估范围
+
+对轨迹只评估片段的方法必须在原生报告中返回 `assessment_scope`，包含 `whole_episode: false`、`original_frame_range: [start, end]`（半开区间）和 `source_frame_count`。`assessment_complete` 表示声明范围内的方法检查是否完成；它不代表整条轨迹完成。
+
+执行器将范围写入统一记录的 `input_scope.assessment_scopes`，片段记录的 `scope_complete` 为 `false`，但执行成功仍可为 `status: completed`，原生分数与判定保留。工作流不会将它计入整轨迹的已完成估值集合；HTML 标注片段范围和整轨迹未完成。声明整轨迹时使用 `whole_episode: true` 和 `[0, source_frame_count]`。读取历史记录也检查原生范围，不会仅凭旧记录的 `scope_complete: true` 将片段当作整轨迹完成。
+
 ### 输出格式与兼容范围
 
 EDC 使用 `edc_*_v1` 标识输出格式，读取时校验受支持的版本。

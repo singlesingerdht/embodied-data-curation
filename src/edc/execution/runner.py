@@ -190,6 +190,12 @@ def run(dataset, preset="quality_cpu", output="results", algorithm_ids=None, par
                             else:
                                 record["status"] = "completed"
                             record["result"] = {"reports": reports}
+                            from edc.execution.completeness import report_scope_complete
+                            scopes = [r['assessment_scope'] for r in reports if 'assessment_scope' in r]
+                            if scopes:
+                                record['input_scope'] = {**record['input_scope'], 'assessment_scopes': scopes}
+                                record['scope_complete'] = record['scope_complete'] and all(
+                                    report_scope_complete(r) for r in reports)
                         except Exception as exc:
                             record["status"] = ("missing_input" if isinstance(exc, (UnitInputError, OrientationInputError)) else
                                                 "missing_dependency" if isinstance(exc, ImportError) else "processing_error")

@@ -119,7 +119,7 @@ def depth_array(episode,params,shape,destination=None):
 
 
 class CollisionDetection:
-    spec=AlgorithmSpec(id='Collision_Detection_Qwen3vl',version='62.2.1',name='Four-event safety detection',
+    spec=AlgorithmSpec(id='Collision_Detection_Qwen3vl',version='62.2.2',name='Four-event safety detection',
         author='EDC',category='value',description='v62 collision, spill, hand intervention and lid fall.',device='optional_cuda',
         parameter_schema={'type':'object','additionalProperties':False,
         'required':['views','models','task','task_graph','arms','depth','intrinsics'], 'properties':{
@@ -168,8 +168,6 @@ class CollisionDetection:
         cache_frames(context.episode,manifest,work/'frames',range(manifest['frame_count']))
         # Only the native visual scanner needs video. Its presentation time is
         # relative source time, with every encoded frame mapped back to originals.
-        presentation=render_videos(manifest,work/'input',times,fps=30)
-        views={role:row['path'] for role,row in presentation['views'].items()}
         from PIL import Image
         from edc.execution.frames import PreparedFrames
         prepared=PreparedFrames(manifest)
@@ -182,11 +180,15 @@ class CollisionDetection:
         for i in range(len(rgb)):rgb[i]=original_rgb(i)
         rgb.flush()
         if len(rgb)!=len(times):raise ValueError('Decoded frame count differs from mapping')
+        from .depth_evidence import validate_correspondence
+        validate_correspondence(context.episode,params,manifest,rgb,work/'depth-validation.json')
+        depth_array(context.episode,params,rgb.shape[:3],work/'depth.npy')
+        presentation=render_videos(manifest,work/'input',times,fps=30)
+        views={role:row['path'] for role,row in presentation['views'].items()}
         physical_mapping={}
         arrays=physical_arrays(context.episode,params,name,physical_mapping)
         arrays={key:(value if key.endswith('_T') else value[selected]) for key,value in arrays.items()}
         context.write_result('physical-mapping.json',physical_mapping)
-        depth_array(context.episode,params,rgb.shape[:3],work/'depth.npy')
         arrays.update(K=np.asarray(params['intrinsics']),timestamps=times)
         np.savez_compressed(Path(context.workdir)/'physical-input.npz',**arrays)
         state=[]
