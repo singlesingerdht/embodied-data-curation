@@ -23,9 +23,9 @@ jobs:
           python -m venv /tmp/edc-base
           /tmp/edc-base/bin/pip install dist/*.whl
           cd /tmp && test "$(/tmp/edc-base/bin/edc algorithms | grep -c ir-adapter)" = 9
-      - name: Base wheel discovers quality and three value algorithms without model imports
+      - name: Base wheel discovers quality and four value algorithms without model imports
         run: |
           python -m venv /tmp/edc-base
           /tmp/edc-base/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/edc-base/bin/python -c "import sys; from edc.algorithms.registry import algorithms; r=algorithms(); assert not r.discovery_errors; assert sum(p.spec.category=='quality' for p in r.plugins.values())==9; assert [p.spec.id for p in r.plugins.values() if p.spec.category=='value']==['Collision_Detection_Qwen3vl','Initial_State_Distribution','Progress_Stagnation_Attribution']; assert not ({'torch','transformers','sam3','cotracker','PIL','dqs'} & set(sys.modules))"
+          /tmp/edc-base/bin/python -c "import sys; from edc.algorithms.registry import algorithms; r=algorithms(); assert not r.discovery_errors; assert sum(p.spec.category=='quality' for p in r.plugins.values())==9; assert [p.spec.id for p in r.plugins.values() if p.spec.category=='value']==['Collision_Detection_Qwen3vl','Initial_Placement_Assessment','Initial_State_Distribution','Progress_Stagnation_Attribution']; assert not ({'torch','transformers','sam3','cotracker','PIL','dqs'} & set(sys.modules))"

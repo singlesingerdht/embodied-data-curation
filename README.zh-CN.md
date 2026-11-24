@@ -21,7 +21,7 @@
 - **自动化｜让经验形成判断，让反馈改进选择。** 从专家示教中学习评估依据，用数据与训练反馈支持筛选决策，逐步减少人工评估、规则调整和方法选择。[机制与论文依据](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-automation)
 - **有理有据｜每次取舍，都能追溯依据、检验效果。** 将选择关联到质量证据、任务进展与模型学习信号，记录处理过程，并用独立反馈验证选择。[如何核验选择](https://singlesingerdht.github.io/embodied-data-curation/explanation/QUALITY_VALIDATION.zh-CN.html#quality-validation-zh-cn-evidence)
 
-> 内置九项数据质量算法，并提供显式选择的初始状态分布、任务进度归因和四事件安全检测价值算法；模型环境与权重另行准备。其他价值方法、增强和编辑可使用插件扩展，实际可运行范围取决于输入、依赖与标定。自主整理描述框架愿景，不代表默认安装已具备全部能力。
+> 内置九项数据质量算法，并提供显式选择的首帧摆放检查、初始状态分布、任务进度归因和四事件安全检测价值算法；模型环境与权重另行准备。其他价值方法、增强和编辑可使用插件扩展，实际可运行范围取决于输入、依赖与标定。自主整理描述框架愿景，不代表默认安装已具备全部能力。
 
 > **长期目标：你提出目标，框架持续自主探索——什么数据值得留，什么经验值得学，下一步该如何改进。**
 
@@ -34,13 +34,21 @@
 
 ## 价值算法
 
-除九项质量算法外，已内置初始状态分布、任务进度归因与四事件安全检测三项价值算法，通过 `edc run` 显式调用。实现统一位于 `src/edc/algorithms/value/algorithms/<算法名>/`，各算法 README 提供模型下载、完整配置、运行步骤与结果说明。模型环境、权重和任务所需标定另行准备；`edc algorithms` 列出入口，`records.jsonl` 说明每次实际完成的评估。
+除九项质量算法外，已内置首帧摆放检查、初始状态分布、任务进度归因与四事件安全检测四项价值算法，通过 `edc run` 显式调用。实现统一位于 `src/edc/algorithms/value/algorithms/<算法名>/`，各算法 README 提供模型下载、完整配置、运行步骤与结果说明。模型环境、权重和任务所需标定另行准备；`edc algorithms` 列出入口，`records.jsonl` 说明每次实际完成的评估。
 
 | 算法 | 输入与输出 | 使用边界 |
 |---|---|---|
+| [首帧摆放检查](src/edc/algorithms/value/algorithms/Initial_Placement_Assessment/README.zh-CN.md) | 首帧 RGB 与明确的摆放要求 → 逐项符合、违反或无法判断及理由 | 每条轨迹独立检查，需要可用的视觉语言模型服务 |
 | [初始状态分布](src/edc/algorithms/value/algorithms/Initial_State_Distribution/README.zh-CN.md) | 初始 RGB 帧、目标类别、SAM3 → 检测、网格分布、熵、有效比例与热力图 | 明确相机／场景分组；深度可选，不参与二维评分 |
 | [任务进度归因](src/edc/algorithms/value/algorithms/Progress_Stagnation_Attribution/README.zh-CN.md) | 三视角图片／视频、子任务、GRM 与物理反馈 → 进度曲线、回退／停滞归因与证据 | 不要求固定 FPS；物理证据不足时保留视觉结果，但完整归因未完成；复核视频默认关闭 |
 | [四事件安全检测](src/edc/algorithms/value/algorithms/Collision_Detection_Qwen3vl/README.zh-CN.md) | RGB、深度、机器人反馈与任务图 → 碰撞、洒漏、人手干预、盖子跌落的裁决与证据 | 支持原始帧和非固定帧率；需要适用标定；README 提供模型下载及倒茶配置示例 |
+
+首帧摆放检查默认使用 `qwen3.8-max`。安装依赖后，设置环境变量 `DASHSCOPE_API_KEY`，复制示例配置并填写相机通道与采集 SOP 中的摆放要求。示例会将首帧和任务文本发送到配置的模型服务。 [配置示例](configs/robots/placement_example.yaml)
+
+```bash
+python -m pip install '.[placement,formats]'
+edc run /path/to/dataset --robot /path/to/robot.yaml --algorithm Initial_Placement_Assessment --output /path/to/results
+```
 
 [安装与调用](docs/reference/VALUE_ALGORITHMS.zh-CN.md) · [独立模型环境](docs/reference/MODEL_ENVIRONMENTS.zh-CN.md)。请按各算法说明准备输入、模型依赖和适用标定。
 
@@ -52,6 +60,7 @@
 src/edc/algorithms/
 ├── quality/algorithms/          # 9 项质量算法
 ├── value/algorithms/
+│   ├── Initial_Placement_Assessment/
 │   ├── Initial_State_Distribution/
 │   ├── Progress_Stagnation_Attribution/
 │   └── Collision_Detection_Qwen3vl/

@@ -6,16 +6,18 @@ Explicitly select these entries. They retain native distributions, events and ex
 
 | ID | Scope | Computation |
 |---|---|---|
+| Initial_Placement_Assessment | Episode | Check the first RGB frame against explicit placement requirements |
 | Initial_State_Distribution | Dataset | SAM3 initial frames, 2D distribution, optional depth geometry |
 | Progress_Stagnation_Attribution | Episode | GRM progress, regression/stagnation, opt-in v8 suggestions |
 | Collision_Detection_Qwen3vl | Episode | Four safety events, candidate adjudication and image evidence |
 
 ## Installation and execution
 
-Base installation contains implementations without model libraries, downloads, weights or GPU initialization. Install the same EDC wheel in model environments. All three methods support an isolated interpreter selected with python; source fingerprints must match. Initial distribution keeps in-process execution when python is omitted. See [model environments and dependencies](MODEL_ENVIRONMENTS.md) for installation, version combinations and checks.
+Base installation contains implementations without model libraries, downloads, weights or GPU initialization. Install the same EDC wheel in model environments. Distribution, progress and safety support an isolated interpreter selected with python; source fingerprints must match. Initial distribution keeps in-process execution when python is omitted. See [model environments and dependencies](MODEL_ENVIRONMENTS.md) for installation, version combinations and checks.
 
 | Method | Separate requirements |
 |---|---|
+| Initial placement | Install the placement extra and configure a Chat Completions endpoint and API key for image input and JSON output. The default model is `qwen3.8-max`. |
 | Initial distribution | SAM3, Torch, TorchVision, Pillow, local SAM3 |
 | GRM | Torch, Transformers, vLLM, OpenCV, MoviePy, Matplotlib, local GRM; google-genai for automatic segmentation |
 | Safety | Torch, Transformers, SAM3, CoTracker3, DINOv2, Qwen3-VL; optional DA3 for RGB-only depth preparation |

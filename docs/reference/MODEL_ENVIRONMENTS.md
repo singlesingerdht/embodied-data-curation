@@ -70,7 +70,7 @@ edc run /path/to/data --robot /path/to/robot.yaml \
   --output /path/to/new-results --no-html
 ```
 
-All three built-in value methods support a separate process selected through `python`. Initial distribution keeps in-process execution when omitted. With a worker, EDC saves lossless RGB frames and original mappings; the worker uses the same detection and statistics code. The caller still needs data-format libraries and Pillow for image preparation. Worker imports do not inherit external Python search paths from environment variables.
+Initial distribution, progress attribution and safety detection support a separate process selected through `python`. Initial distribution keeps in-process execution when omitted. With a worker, EDC saves lossless RGB frames and original mappings; the worker uses the same detection and statistics code. The caller still needs data-format libraries and Pillow for image preparation. Worker imports do not inherit external Python search paths from environment variables.
 
 ## Evidence and checks
 

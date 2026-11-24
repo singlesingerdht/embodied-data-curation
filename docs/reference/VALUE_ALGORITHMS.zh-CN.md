@@ -2,20 +2,22 @@
 
 [English](VALUE_ALGORITHMS.md) · [算法运行](../how-to/RUN_AND_SELECT.zh-CN.md) · [算法接入与内化](../how-to/ALGORITHM_INTEGRATION.zh-CN.md)
 
-价值算法保留原分布、事件和实验估值，不生成跨算法总分，也不自动判为质量通过。三个入口必须显式选择，九项质量算法的默认集合和顺序不变。
+价值算法保留原分布、事件和实验估值，不生成跨算法总分，也不自动判为质量通过。各算法须显式选择，九项质量算法的默认集合和顺序不变。
 
 | ID | 粒度 | 实际计算 |
 |---|---|---|
+| Initial_Placement_Assessment | 轨迹 | 首帧 RGB 与明确的 SOP 摆放要求，输出逐项依据与结论 |
 | Initial_State_Distribution | 数据集 | SAM3 初始帧检测、二维分布；显式开启的深度几何 |
 | Progress_Stagnation_Attribution | 轨迹 | GRM 进度、回退／停滞归因，显式启用的 v8 建议 |
 | Collision_Detection_Qwen3vl | 轨迹 | 四类安全事件、候选裁决与图像证据 |
 
 ## 安装与调用
 
-基础安装不带模型库和权重，不下载模型、不初始化 GPU。模型环境中安装同一份 EDC wheel。三项均支持用 python 参数选择独立进程；执行前核对源码指纹。初始分布未指定 python 时保留当前进程执行。统一安装、版本组合和检查见[模型环境与依赖](MODEL_ENVIRONMENTS.zh-CN.md)。
+基础安装不带模型库和权重，不下载模型、不初始化 GPU。模型环境中安装同一份 EDC wheel。初始分布、进度归因和安全检测支持用 python 参数选择独立进程；执行前核对源码指纹。初始分布未指定 python 时保留当前进程执行。统一安装、版本组合和检查见[模型环境与依赖](MODEL_ENVIRONMENTS.zh-CN.md)。
 
 | 方法 | 另行准备的依赖 |
 |---|---|
+| 首帧摆放检查 | 安装 EDC 的 placement 可选依赖，默认模型为 `qwen3.8-max`。配置支持图片输入及 JSON 输出的 Chat Completions 服务和 API 密钥 |
 | 初始分布 | SAM3、Torch、TorchVision、Pillow，本地 SAM3 权重 |
 | GRM | Torch、Transformers、vLLM、OpenCV、MoviePy、Matplotlib、本地 GRM；自动分段另需 google-genai |
 | 安全检测 | Torch、Transformers、SAM3、CoTracker3、DINOv2、Qwen3-VL；纯 RGB 数据可选 DA3 深度准备 |
