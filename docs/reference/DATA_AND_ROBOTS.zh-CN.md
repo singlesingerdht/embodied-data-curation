@@ -108,6 +108,8 @@
 - 卡片编译产生的 clock 标识不是设备同步的实测证据；跨通道使用前须核实这一声明。未知或不同 clock 使用完整 profile 保留未知状态或显式映射。
 - 选择头部相机作参考，不等于确认共同 clock。算法各自的时间条件见[内置质量算法参考](ALGORITHMS.zh-CN.md)。
 
+`episode.align_signal(channel, field, reference, method="linear", reference_indices=[10, 11])` 只对齐指定参考行。索引须递增、不重复且在范围内；省略时仍对齐完整参考序列。返回的 `params` 与 `source_mapping` 保存所选参考行及源行依据。仍要求明确共同 clock 或时钟映射，不会对信号覆盖范围外的数据外推。
+
 ## 相关页面
 
 - [数据与机器人配置](../how-to/DATA_AND_ROBOT.zh-CN.md)：查看字段、编写配置、URDF 核对。

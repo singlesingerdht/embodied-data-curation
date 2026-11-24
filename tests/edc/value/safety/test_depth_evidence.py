@@ -104,8 +104,10 @@ def test_adapter_checks_depth_before_video_rendering_and_model_start(prepared, t
     monkeypatch.setattr(algorithm, 'save_provenance', provenance)
     monkeypatch.setattr(algorithm, 'render_videos', render)
     monkeypatch.setattr(algorithm, 'run_worker', worker)
-    monkeypatch.setattr(algorithm, 'physical_arrays', lambda *a: {
-        'left_gripper': np.ones((4, 1)), 'left_terminal_effort': np.zeros((4, 1))})
+    def physical(*a, reference_indices, **kw):
+        assert reference_indices == [1, 2]
+        return {'left_gripper': np.ones((2, 1)), 'left_terminal_effort': np.zeros((2, 1))}
+    monkeypatch.setattr(algorithm, 'physical_arrays', physical)
     context = Context(None, ep, work)
     if valid:
         result = algorithm.plugin.run(context, params)

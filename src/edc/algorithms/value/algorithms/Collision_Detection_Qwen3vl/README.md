@@ -71,10 +71,14 @@ The episode directory contains `faceImg.mp4`, `leftImg.mp4`, `rightImg.mp4` and 
 |---|---|
 | RGB | Original EDC images or decoded video frames; reference `faceImg`, other views paired by explicit mapping or a common clock; no fixed FPS requirement |
 | Time | Recorded acquisition/container time; playback keeps its identity; missing coverage is never padded with the last frame |
-| End effector | Position in metres and explicit orientation; `quaternion.order` accepts `xyzw`, `wxyz` or `rotvec` in rad, converted to native xyzw |
+| End effector | Position in metres; canonical EDC `orientation` is consumed as XYZW. For raw fields, `quaternion.order` accepts `xyzw`, `wxyz` or `rotvec` in rad |
 | Gripper/load | Framework-confirmed feedback and units; this example uses cm and N·m, with the seventh effort component as the frozen method's terminal-component proxy, not proven gripper torque |
-| Geometry | 3×3 intrinsics, each arm's 4×4 arm-to-camera transform, depth `[frames,height,width]` in m/mm corresponding to selected RGB |
+| Geometry | Zero-skew pinhole 3×3 intrinsics, each arm's 4×4 arm-to-camera transform, depth `[frames,height,width]` in m/mm corresponding to selected RGB |
 | Task graph | Entities, contact policies and four capabilities; disabling a check cannot establish completion of all four |
+
+For quaternion feedback, prefer the EDC `orientation` field with an explicit representation. A raw quaternion field requires dimensionless unit `1` in a full profile; the compact robot YAML example uses `rotvec` with unit `rad`.
+
+View and signal bindings accept either logical channel names or original names. Physical alignment covers the selected original frames, retaining source rows, clock mapping and unit/orientation conversions in `physical-mapping.json`; missing coverage within that selection remains an input error. Preflight reports resolved bindings and checks CUDA in the selected worker without loading model weights.
 
 This example reuses legacy `pour_tea_io.py` intrinsics, transforms and rotation-vector interpretation. The transforms retain the original approximation and are not independently recalibrated. Gripper geometry uses metres; v62 closure rules retain their original centimetre scale and thresholds. Algorithm bindings cannot promote unknown units, feedback identity or calibration to confirmed status.
 
@@ -132,6 +136,8 @@ Preparation reads selected original RGB through EDC, estimates every frame, and 
 Set `depth.episodes.<episode ID>.path` to `depth.npy`, `correspondence_evidence` to its `provenance.json`, and the depth `frame_range` to the selected range. The array must match selected original RGB frame count and resolution. Missing depth is not silently filled. For a whole-episode run, remove the algorithm `frame_range`, prepare whole-episode depth and update the depth range accordingly.
 
 Set `depth.registration_id` to the value in the correspondence evidence; the generator above uses `same-original-rgb-frame-resized-prediction`. Before initializing safety models, EDC checks evidence completion, episode ID/source path/selector, channel, frame range, units and depth source. It also checks each original frame identity, RGB dimensions and SHA-256, plus the depth file SHA-256. A mismatch or incomplete evidence stops execution and retains diagnostics in `depth-validation.json`. Matching fingerprints do not establish geometric calibration accuracy.
+
+The depth preparation command generates these fingerprints automatically. They bind depth to the images used to prepare it; ordinary changes between video frames are expected. If editing or re-encoding changes decoded RGB pixels, prepare corresponding depth and evidence again. Do not replace hashes merely to accept stale evidence.
 
 Sensor depth must provide the same evidence structure: `status: completed`, `episode_id`, `source_episode`, `selector`, `channel` (resolved EDC channel name), `frame_range`, `source: sensor_depth`, `unit`, `registered_to_rgb: true`, `registration_id`, and the depth file SHA-256 in `depth.files`. The ordered `frames` list contains `reference_index`, `source_index`, `rgb_shape: [H, W]` and `rgb_sha256` for every selected frame. RGB hashes cover contiguous RGB uint8 pixel bytes, not image-file bytes. Registration requires actual calibration, not merely a changed declaration.
 

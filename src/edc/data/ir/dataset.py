@@ -332,9 +332,10 @@ class Episode:
         check_joint_shape(c, field, result, self.profile)
         return result
 
-    def align_signal(self, channel, field, reference, *, method, max_gap=None):
+    def align_signal(self, channel, field, reference, *, method, max_gap=None, reference_indices=None):
         from edc.data.transforms.resampling import align_signal
-        return align_signal(self, channel, field, reference, method=method, max_gap=max_gap)
+        return align_signal(self, channel, field, reference, method=method, max_gap=max_gap,
+                            reference_indices=reference_indices)
 
     def transform_signal(self, channel, field, *, target_unit=None, target_frame=None, kind=None):
         from edc.data.transforms.episode import signal

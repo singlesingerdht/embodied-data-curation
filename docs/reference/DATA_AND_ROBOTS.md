@@ -108,6 +108,8 @@ Distinguish acquisition, container, playback, synthetic, and unknown time. Unit 
 - A clock name created by card compilation is not measured synchronization evidence. Verify the declaration before cross-channel comparison; preserve unknown clocks or explicit mappings in a complete profile where needed.
 - Selecting the head camera as a reference does not confirm a common clock. See [algorithm-specific requirements](ALGORITHMS.md).
 
+`episode.align_signal(channel, field, reference, method="linear", reference_indices=[10, 11])` aligns only the selected reference rows. Indices must be increasing, unique and in range; omitting them keeps the full-reference behavior. The returned `params` and `source_mapping` preserve the selection and source rows. This requires an explicit shared clock or clock mapping and never extrapolates beyond signal coverage.
+
 ## Related pages
 
 - [Data and Robot Configuration](../how-to/DATA_AND_ROBOT.md): inspect fields, write the configuration, validate with URDF.

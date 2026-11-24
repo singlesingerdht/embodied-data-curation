@@ -30,6 +30,7 @@
     "Grounding and adjudication share one loaded Qwen3-VL model; prompts and generation parameters retained",
     "Gripper geometry uses metres while the frozen v62 closure rules retain their original centimetre-scale inputs",
     "Use reduced SVD for Open3D plane refinement; retain the same right singular vectors and plane-fit equations without allocating a dense N-by-N left singular matrix",
-    "Bind prepared depth to episode identity, original RGB frame hashes and depth file hash before model startup; preserve selected-frame scope separately from whole-episode completion"
+    "Bind prepared depth to episode identity, original RGB frame hashes and depth file hash before model startup; preserve selected-frame scope separately from whole-episode completion",
+    "Resolve logical channel bindings; align physical feedback only to selected reference rows; consume framework-normalized XYZW orientations without repeating raw representation conversion"
   ]
 }

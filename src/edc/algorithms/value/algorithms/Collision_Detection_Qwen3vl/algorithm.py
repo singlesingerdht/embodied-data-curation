@@ -7,6 +7,7 @@ from edc.algorithms.channel_names import resolve_channel
 from edc.algorithms.value.runtime import save_provenance,run_worker
 from edc.execution.frames import inspect_frames,cache_frames,render_videos
 from edc.data.transforms.core import convert_units
+from .input_contract import ARM, DEPTH, selected_frames, validate_configuration, input_bindings, check_device
 
 EVENTS=('collision','spill','hand_intervention','lid_fall')
 
@@ -18,9 +19,8 @@ def inspect_safety_frames(episode, params, upstream=None):
     """
     manifest = inspect_frames(episode, params['views'], reference='faceImg', upstream=upstream)
     ref = manifest['views']['faceImg']
-    start,end=params.get('frame_range',[0,manifest['frame_count']])
-    if not 0<=start<end<=manifest['frame_count'] or end-start<2:
-        raise ValueError('frame_range must select at least two existing reference frames [start,end)')
+    selected=selected_frames(params,manifest['frame_count'])
+    start,end=selected[0],selected[-1]+1
     manifest['source_frame_count']=manifest['frame_count']
     manifest['selected_reference_indices']=list(range(start,end))
     manifest['frame_count']=end-start
@@ -38,8 +38,9 @@ def inspect_safety_frames(episode, params, upstream=None):
     return manifest
 
 
-def physical_arrays(episode,params,reference,evidence=None):
+def physical_arrays(episode,params,reference,evidence=None,reference_indices=None):
     data={};ref=episode.channels[reference]
+    count=len(reference_indices) if reference_indices is not None else ref.count
     for arm,bindings in params['arms'].items():
         if arm not in {'left','right'}: raise ValueError('Arm keys must be left/right')
         if 'v62_gripper_calibration' in bindings:
@@ -54,30 +55,45 @@ def physical_arrays(episode,params,reference,evidence=None):
                 raise ValueError('Physical inputs require source_kind=feedback and calibration_status=confirmed in the robot profile')
             if c.time_source not in {'acquisition','container'} or not c.clock:
                 raise ValueError('Physical timestamps and clock required')
-            if role=='quaternion' and spec.get('order') not in {'wxyz','xyzw','rotvec'}:
+            order=spec.get('order')
+            normalized=role=='quaternion' and meta.get('normalization_status') in {'conversion_required','validation_required'}
+            if role=='quaternion' and normalized:
+                rep=meta.get('representation',{})
+                if rep.get('kind')!='quaternion' or rep.get('order')!='xyzw':
+                    raise ValueError('Unsupported normalized orientation representation')
+                order='xyzw'  # EDC already converted source orientations; never reorder twice.
+            if role=='quaternion' and order not in {'wxyz','xyzw','rotvec'}:
                 raise ValueError('Explicit orientation order wxyz, xyzw or rotvec required')
             # Quaternion components must not be interpolated as scalar channels.
             method = 'nearest' if role == 'quaternion' else 'linear'
-            result=episode.align_signal(name,field,reference,method=method,max_gap=spec.get('max_gap_sec'))
+            result=episode.align_signal(name,field,reference,method=method,max_gap=spec.get('max_gap_sec'),
+                **({'reference_indices':reference_indices} if reference_indices is not None else {}))
             source_unit=meta['unit']
             if role=='quaternion':
-                units = {'rad'} if spec['order']=='rotvec' else {'1','quaternion'}
+                units = {'rad'} if order=='rotvec' else {'1','quaternion'}
                 if source_unit not in units: raise ValueError('Orientation unit does not match its representation')
                 converted=result.output
             else:
                 converted=convert_units(result.output,source_unit,unit).output
             values=np.asarray(converted,float)
             if values.ndim==1:values=values[:,None]
-            if 'indices' in spec:values=values[:,spec['indices']]
+            if 'indices' in spec:
+                indices=spec['indices']
+                if (not isinstance(indices,list) or not indices or len(set(indices))!=len(indices) or
+                        any(type(i) is not int or i<0 or i>=values.shape[1] for i in indices)):
+                    raise ValueError(f'{arm}.{role}: indices must select unique existing components')
+                if normalized and indices!=[0,1,2,3]:
+                    raise ValueError('Normalized orientations require all XYZW components in order')
+                values=values[:,indices]
             if role=='quaternion':
-                if spec['order']=='rotvec':
+                if order=='rotvec':
                     from scipy.spatial.transform import Rotation
-                    if values.shape!=(ref.count,3):raise ValueError('Rotation vectors require three components')
+                    if values.shape!=(count,3):raise ValueError('Rotation vectors require three components')
                     values=Rotation.from_rotvec(values).as_quat()
-                elif spec['order']=='wxyz':
-                    if values.shape!=(ref.count,4):raise ValueError('Quaternions require four components')
+                elif order=='wxyz':
+                    if values.shape!=(count,4):raise ValueError('Quaternions require four components')
                     values=values[:,[1,2,3,0]]
-            if values.shape!=(ref.count,size) or not np.isfinite(values).all():raise ValueError(f'Invalid {arm} {role} values')
+            if values.shape!=(count,size) or not np.isfinite(values).all():raise ValueError(f'Invalid {arm} {role} values')
             if role=='quaternion' and not np.allclose(np.linalg.norm(values,axis=1),1,atol=1e-3):
                 raise ValueError('Unit quaternions required')
             data[f'{arm}_{role}']=values
@@ -85,7 +101,8 @@ def physical_arrays(episode,params,reference,evidence=None):
                 evidence[f'{arm}_{role}']={'channel':name,'field':field,'metadata':meta,
                     'source_mapping':result.source_mapping,'alignment':result.params,
                     'source_unit':source_unit,'output_unit':unit,'indices':spec.get('indices'),
-                    **({'input_order':spec['order'],'output_order':'xyzw'} if role=='quaternion' else {})}
+                    **({'input_order':order,'configured_order':spec.get('order'),
+                        'framework_normalized':normalized,'output_order':'xyzw'} if role=='quaternion' else {})}
         T=np.asarray(bindings['T_arm_to_camera'],float)
         if T.shape!=(4,4) or not np.isfinite(T).all() or not np.allclose(T[3],[0,0,0,1]):raise ValueError('Explicit arm-to-camera transform required')
         if not np.allclose(T[:3,:3].T@T[:3,:3],np.eye(3),atol=1e-4) or not np.isclose(np.linalg.det(T[:3,:3]),1,atol=1e-4):
@@ -101,7 +118,8 @@ def depth_array(episode,params,shape,destination=None):
         raise ValueError('Explicit depth units and source required')
     if cfg.get('registered_to_rgb') is not True or not cfg.get('registration_id'):
         raise ValueError('Verified RGB-depth registration required')
-    if not item.get('correspondence_evidence') or item.get('rgb_channel')!=params['views']['faceImg']:
+    if (not item.get('correspondence_evidence') or resolve_channel(episode,item.get('rgb_channel'))
+            !=resolve_channel(episode,params['views']['faceImg'])):
         raise ValueError('Provide correspondence evidence for the configured RGB channel')
     x=np.load(item['path'],allow_pickle=False,mmap_mode='r')
     selected=params.get('frame_range',[0,episode.channels[resolve_channel(episode,params['views']['faceImg'])].count])
@@ -119,16 +137,23 @@ def depth_array(episode,params,shape,destination=None):
 
 
 class CollisionDetection:
-    spec=AlgorithmSpec(id='Collision_Detection_Qwen3vl',version='62.2.2',name='Four-event safety detection',
-        author='EDC',category='value',description='v62 collision, spill, hand intervention and lid fall.',device='optional_cuda',
+    input_bindings=staticmethod(input_bindings)
+    spec=AlgorithmSpec(id='Collision_Detection_Qwen3vl',version='62.2.3',name='Four-event safety detection',
+        author='EDC',category='value',description='v62 collision, spill, hand intervention and lid fall.',device='cuda',
+        input_descriptions=('EDC RGB frames with recorded time and explicit multi-view correspondence',
+            'Calibrated feedback: position, orientation, gripper distance and terminal effort in declared units',
+            'Registered per-frame depth with RGB/depth fingerprints and camera intrinsics',
+            'Task graph and local Qwen3-VL, SAM3, CoTracker3 and DINOv2 resources in an isolated CUDA worker'),
         parameter_schema={'type':'object','additionalProperties':False,
         'required':['views','models','task','task_graph','arms','depth','intrinsics'], 'properties':{
         'views':{'type':'object','additionalProperties':False,'required':['faceImg'],
                  'properties':{k:{'type':'string'} for k in ('faceImg','leftImg','rightImg')}},
-        'models':{'type':'object','required':['qwen','sam3','cotracker','dinov2'],
+        'models':{'type':'object','additionalProperties':False,'required':['qwen','sam3','cotracker','dinov2'],
                   'properties':{k:{'type':'string'} for k in ('qwen','sam3','cotracker','dinov2')}},
-        'task':{'type':'string'},'task_graph':{'type':'string'},'arms':{'type':'object'},
-        'depth':{'type':'object'},'intrinsics':{'type':'array','minItems':3},
+        'task':{'type':'string'},'task_graph':{'type':'string'},
+        'arms':{'type':'object','additionalProperties':False,'properties':{'left':ARM,'right':ARM}},
+        'depth':DEPTH,'intrinsics':{'type':'array','minItems':3,
+            'items':{'type':'array','minItems':3,'items':{'type':'number'}}},
         'collision_stride':{'type':'integer','minimum':1,'default':3},
         'frame_range':{'type':'array','minItems':2,'items':{'type':'integer','minimum':0}},
         'python':{'type':'string','default':sys.executable},
@@ -136,20 +161,22 @@ class CollisionDetection:
         'timeout_seconds':{'type':'integer','minimum':1,'default':86400}}})
 
     def preflight(self,episode,params):
-        if any(not Path(p).exists() for p in params['models'].values()):return 'missing_dependency','Provide all four local models'
         try:
+            validate_configuration(episode,params)
+            for name,path in params['models'].items():
+                resource=Path(path)
+                valid=resource.is_dir() and any(resource.iterdir()) if name in {'qwen','dinov2'} else resource.is_file() and resource.stat().st_size>0
+                if not valid:raise ImportError(f'Provide local {name} model '+('directory' if name in {'qwen','dinov2'} else 'checkpoint file'))
+            if params['depth']['source']=='monocular_estimate' and not Path(params['depth']['model']).exists():
+                raise ImportError('Depth model path missing for provenance')
             from edc.algorithms.value.runtime import check_runtime
-            check_runtime(params,__file__,['torch', 'transformers', 'sam3', 'cotracker', 'cv2'])
+            check_runtime(params,__file__,['torch', 'transformers', 'sam3', 'cotracker', 'cv2','scipy','PIL','open3d'])
+            check_device(params)
             manifest=inspect_safety_frames(episode,params)
-            physical_arrays(episode,params,manifest['views']['faceImg']['channel'])
-            if not Path(params['task_graph']).is_file():raise ValueError('TaskGraph file required')
-            if not Path(params['depth']['episodes'][episode.id]['path']).is_file():raise ValueError('Mapped depth file missing')
-            if not Path(params['depth']['episodes'][episode.id]['correspondence_evidence']).is_file():
-                raise ValueError('RGB-depth correspondence evidence file missing')
-            K=np.asarray(params['intrinsics'],float)
-            if K.shape!=(3,3) or not np.isfinite(K).all() or min(K[0,0],K[1,1])<=0:raise ValueError('Valid intrinsics required')
+            physical_arrays(episode,params,manifest['views']['faceImg']['channel'],
+                reference_indices=manifest['selected_reference_indices'])
         except ImportError as exc:return 'missing_dependency',str(exc)
-        except (ValueError,KeyError,OSError) as exc:return 'missing_input',str(exc)
+        except (ValueError,KeyError,TypeError,IndexError,OSError) as exc:return 'missing_input',str(exc)
         return 'runnable',''
 
     def run(self,context,params):
@@ -158,7 +185,7 @@ class CollisionDetection:
                 'depth_correspondence':depth_input['correspondence_evidence'],
                 'task_graph':params['task_graph']}
         if params['depth']['source']=='monocular_estimate':models['depth_model']=params['depth']['model']
-        provenance=save_provenance(context,params,__file__,models,['embodied-data-curation','torch','transformers','sam3','cotracker','numpy','scipy','opencv-python','opencv-python-headless','Pillow'],shared_modules=('edc.execution.frames',))
+        provenance=save_provenance(context,params,__file__,models,['embodied-data-curation','torch','transformers','sam3','cotracker','numpy','scipy','opencv-python','opencv-python-headless','Pillow'],shared_modules=('edc.execution.frames','edc.data.transforms.resampling','edc.data.ir.canonical','edc.data.ir.units'))
         manifest=inspect_safety_frames(context.episode,params,getattr(context,'upstream',None))
         work=Path(context.workdir)
         context.write_result('input-mapping.json',manifest)
@@ -186,8 +213,7 @@ class CollisionDetection:
         presentation=render_videos(manifest,work/'input',times,fps=30)
         views={role:row['path'] for role,row in presentation['views'].items()}
         physical_mapping={}
-        arrays=physical_arrays(context.episode,params,name,physical_mapping)
-        arrays={key:(value if key.endswith('_T') else value[selected]) for key,value in arrays.items()}
+        arrays=physical_arrays(context.episode,params,name,physical_mapping,reference_indices=selected)
         context.write_result('physical-mapping.json',physical_mapping)
         arrays.update(K=np.asarray(params['intrinsics']),timestamps=times)
         np.savez_compressed(Path(context.workdir)/'physical-input.npz',**arrays)

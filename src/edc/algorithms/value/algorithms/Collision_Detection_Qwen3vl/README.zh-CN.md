@@ -71,10 +71,14 @@ PYTHON
 |---|---|
 | RGB | EDC 原始图片或视频解码帧；`faceImg` 为参考，其他视角按显式映射或共同 clock 配对；无固定 FPS 门槛 |
 | 时间 | 记录的采集／容器时间；保留播放时间身份，缺覆盖不补末帧 |
-| 末端 | 米制位置、明确的姿态表示；`quaternion.order` 支持 `xyzw`、`wxyz` 或 `rotvec`（rad），统一转为内核所用 xyzw |
+| 末端 | 米制位置；EDC 标准 `orientation` 直接按 XYZW 使用。原始字段通过 `quaternion.order` 声明 `xyzw`、`wxyz` 或 `rotvec`（rad） |
 | 夹爪／负载 | 机器人配置声明已确认的反馈与单位；本例夹爪 cm、effort N·m，第七维沿用原方法作为末项力矩代理，不宣称已证实为夹爪力矩 |
-| 几何 | 3×3 内参、每臂 4×4 臂到相机变换；与选中 RGB 对应的米／毫米深度数组 `[帧, 高, 宽]` |
+| 几何 | 零倾斜针孔模型 3×3 内参、每臂 4×4 臂到相机变换；与选中 RGB 对应的米／毫米深度数组 `[帧, 高, 宽]` |
 | 任务图 | 实体、允许／禁止接触、四事件能力；关闭某类检查不能宣称四类全部完成 |
+
+四元数反馈优先声明为 EDC 的 `orientation` 字段，并明确其表示。原始四元数字段需要在完整 profile 中声明无量纲单位 `1`；本页便捷机器人 YAML 示例使用单位为 `rad` 的 `rotvec`。
+
+视角与信号绑定可使用逻辑通道名或原始名称。物理对齐只覆盖所选原始帧，在 `physical-mapping.json` 保留源行、clock 映射及单位／姿态转换；所选范围内缺少覆盖仍会报告输入不足。预检展示实际绑定，并在选定推理环境检查 CUDA 可用性，不加载模型权重。
 
 本例复用旧 `pour_tea_io.py` 的内参和变换、轴角解释；这些外参含旧方法的近似，不代表独立重新标定。夹爪几何计算使用米，原 v62 开合规则保留厘米数值尺度及原阈值。若字段单位、反馈身份或标定未确认，不能通过算法参数升级为已确认。
 
@@ -132,6 +136,8 @@ printf '%s  %s\n' 8ebe871a022ed58d2fc8fdfb2ebdb31d57b60fe39611c849095851a7b7c602
 配置中的 `depth.episodes.<轨迹ID>.path` 指向 `depth.npy`，`correspondence_evidence` 指向生成的 `provenance.json`，`frame_range` 与本次选择一致。数组形状必须与选中原始画面逐帧、逐像素匹配；不偷偷填充缺失深度。需要全轨迹时，同时移除算法 `frame_range`，重新准备全轨迹深度并更新深度对应范围。
 
 运行前将 `depth.registration_id` 设为对应证据中的 `registration_id`；上述生成器使用 `same-original-rgb-frame-resized-prediction`。安全模型初始化前，EDC 核对证据完成状态、轨迹 ID／源路径／selector、通道、帧范围、单位及深度来源，并逐帧核对原始帧号、RGB 尺寸与 SHA-256，同时核对深度文件 SHA-256。错配或证据不完整会停止执行，诊断保存在 `depth-validation.json`；指纹核对不代表几何标定精度已经验证。
+
+深度准备命令自动生成这些指纹，用于确认深度对应哪批图片。视频前后帧正常变化不影响检查；编辑或重新编码使解码后的 RGB 像素变化时，需要重新准备相应深度和证据，不能仅修改指纹来接受旧证据。
 
 传感器深度也须提供同一对应证据结构：`status: completed`、`episode_id`、`source_episode`、`selector`、`channel`（解析后的 EDC 通道名）、`frame_range`、`source: sensor_depth`、`unit`、`registered_to_rgb: true`、`registration_id`，以及 `depth.files` 中该深度文件的 SHA-256。`frames` 按所选原始帧顺序保存 `reference_index`、`source_index`、`rgb_shape: [H, W]`、`rgb_sha256`；RGB 指纹以 RGB uint8 像素连续字节计算，不是图片文件字节。配准须来自实际标定，不能用修改声明代替。
 

@@ -47,7 +47,7 @@ def resample(values, timestamps, target_timestamps, *, method, max_gap=None):
         {'source_timestamps': source.tolist(), 'rows': rows})
 
 
-def align_signal(episode, channel, field, reference, *, method, max_gap=None):
+def align_signal(episode, channel, field, reference, *, method, max_gap=None, reference_indices=None):
     from .core import RobotTransforms
     from .episode import provenance
     episode.open()
@@ -58,7 +58,14 @@ def align_signal(episode, channel, field, reference, *, method, max_gap=None):
         raise ValueError('Alignment timeline counts must match channels')
     clock = RobotTransforms(episode.profile).clock(source.timestamps, source.clock, target.clock,
                                                   time_source=source.time_source)
-    result = resample(episode.read_signal(channel, field), clock.output, target.timestamps,
+    target_times = target.timestamps
+    if reference_indices is not None:
+        indices = np.asarray(reference_indices)
+        if (indices.ndim != 1 or not len(indices) or indices.dtype.kind not in 'iu' or
+                np.any(indices < 0) or np.any(indices >= target.count) or np.any(indices[1:] <= indices[:-1])):
+            raise ValueError('reference_indices must select increasing, unique existing reference rows')
+        target_times = np.asarray(target_times)[indices]
+    result = resample(episode.read_signal(channel, field), clock.output, target_times,
                       method=method, max_gap=max_gap)
     result.params.update(clock_transform=clock.params, clock=target.clock,
                          source_time_source=source.time_source, reference_time_source=target.time_source,
@@ -67,4 +74,7 @@ def align_signal(episode, channel, field, reference, *, method, max_gap=None):
                                  reference=provenance(episode, reference),
                                  original_source_timestamps=list(source.timestamps),
                                  rows=result.source_mapping['rows'])
+    if reference_indices is not None:
+        result.params['reference_indices'] = indices.tolist()
+        result.source_mapping['reference_indices'] = indices.tolist()
     return result
