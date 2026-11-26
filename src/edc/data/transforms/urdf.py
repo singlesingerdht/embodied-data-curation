@@ -1,8 +1,8 @@
-"""Read a user-supplied URDF, and import one serial chain from it; no meshes or calibration.
+"""读用户提供的 URDF，并从中取出一条串联链；不读模型网格，不做标定。
 
-read_urdf() is the only place a URDF file is parsed. Everything else uses what it returns: the chain for
-forward kinematics with its joint and velocity limits (import_urdf_chain, then the robot yaml and the numeric
-checks), and `edc robot urdf` (tree listing, names, notes)."""
+read_urdf() 是唯一解析 URDF 文件的地方，其他地方都用它的返回值：正运动学用的链及关节、速度限位
+（import_urdf_chain，再给机器人 yaml 和数值检查用），以及 `edc robot urdf`（列连杆树、名字、提示）。
+"""
 import copy
 import hashlib
 from pathlib import Path

@@ -1,0 +1,293 @@
+{
+ "扫把位置": {
+  "en": "broom",
+  "flat": true
+ },
+ "撮箕位置": {
+  "en": "dustpan",
+  "flat": true
+ },
+ "汤锅位置": {
+  "en": "pot",
+  "flat": false
+ },
+ "湿布位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "魔术贴理线带位置": {
+  "en": "tape",
+  "flat": false
+ },
+ "碗位置": {
+  "en": "bowl",
+  "flat": false
+ },
+ "调料罐位置": {
+  "en": "jar",
+  "flat": false
+ },
+ "密封夹位置": {
+  "en": "clip",
+  "flat": false
+ },
+ "零食袋位置": {
+  "en": "bag",
+  "flat": true
+ },
+ "衣架初始在操作面位置": {
+  "en": "hanger",
+  "flat": true
+ },
+ "抹布位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "数据线位置": {
+  "en": "cable",
+  "flat": true
+ },
+ "文具位置": {
+  "en": "stationery",
+  "flat": false
+ },
+ "零食位置": {
+  "en": "snack",
+  "flat": false
+ },
+ "勺子在操作面位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "装有水的杯子在操作面位置": {
+  "en": "cup",
+  "flat": false
+ },
+ "装有速溶咖啡粉的碗在操作面位置": {
+  "en": "bowl",
+  "flat": false
+ },
+ "塑料勺子在操作面位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "塑料袋在操作面位置": {
+  "en": "bag",
+  "flat": true
+ },
+ "清洁刷位置": {
+  "en": "brush",
+  "flat": true
+ },
+ "湿纸巾位置": {
+  "en": "tissue",
+  "flat": true
+ },
+ "迷你蒸锅位置": {
+  "en": "pot",
+  "flat": false
+ },
+ "保鲜膜盒位置": {
+  "en": "box",
+  "flat": false
+ },
+ "不锈钢小勺位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "带盖烘焙面粉罐的位置": {
+  "en": "jar",
+  "flat": false
+ },
+ "空纸质小盒位置": {
+  "en": "box",
+  "flat": false
+ },
+ "喷壶在操作面位置": {
+  "en": "bottle",
+  "flat": false
+ },
+ "抹布在操作面位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "碗在操作面位置": {
+  "en": "bowl",
+  "flat": false
+ },
+ "电线卷盘在操作面位置": {
+  "en": "spool",
+  "flat": true
+ },
+ "电线束在操作面位置": {
+  "en": "wire",
+  "flat": true
+ },
+ "搅拌棒在操作面位置": {
+  "en": "stick",
+  "flat": false
+ },
+ "容器在操作面位置": {
+  "en": "container",
+  "flat": false
+ },
+ "托盘在操作面位置": {
+  "en": "tray",
+  "flat": true
+ },
+ "布在操作面位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "湿布在操作面位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "火腿肠包装袋在操作面位置": {
+  "en": "bag",
+  "flat": true
+ },
+ "包装盒在操作面位置": {
+  "en": "box",
+  "flat": false
+ },
+ "辣椒面容器在操作面位置": {
+  "en": "container",
+  "flat": false
+ },
+ "盘子在操作面位置": {
+  "en": "plate",
+  "flat": true
+ },
+ "木制托盘在操作面位置": {
+  "en": "tray",
+  "flat": true
+ },
+ "煎盘在操作面位置": {
+  "en": "pan",
+  "flat": true
+ },
+ "酱油瓶在操作面位置": {
+  "en": "bottle",
+  "flat": false
+ },
+ "矿泉水瓶位置": {
+  "en": "bottle",
+  "flat": false
+ },
+ "清洁工具架在操作面位置": {
+  "en": "shelf",
+  "flat": true
+ },
+ "锅铲在操作面位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "调料瓶在操作面位置": {
+  "en": "bottle",
+  "flat": false
+ },
+ "陶瓷碗在操作面位置": {
+  "en": "bowl",
+  "flat": false
+ },
+ "刷子在操作面位置": {
+  "en": "brush",
+  "flat": true
+ },
+ "压板在操作面位置": {
+  "en": "plate",
+  "flat": true
+ },
+ "豆腐模具在操作面位置": {
+  "en": "mold",
+  "flat": true
+ },
+ "喷雾器在操作面位置": {
+  "en": "sprayer",
+  "flat": false
+ },
+ "碗和碟在操作面位置": {
+  "en": [
+   "bowl",
+   "plate"
+  ],
+  "flat": true
+ },
+ "碗在操作面的位置": {
+  "en": "bowl",
+  "flat": false
+ },
+ "眼镜在操作面位置": {
+  "en": "glasses",
+  "flat": false
+ },
+ "眼镜盒在操作面位置": {
+  "en": "box",
+  "flat": true
+ },
+ "勺子在桌面的位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "盘子在桌面的位置": {
+  "en": "plate",
+  "flat": true
+ },
+ "鸡蛋在操作面的位置": {
+  "en": "egg",
+  "flat": false
+ },
+ "垃圾桶的位置": {
+  "en": "bin",
+  "flat": true
+ },
+ "猫砂铲的位置": {
+  "en": "spoon",
+  "flat": false
+ },
+ "圆形托盘位置": {
+  "en": "plate",
+  "flat": true
+ },
+ "蓝色布料位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "抹布的位置": {
+  "en": "cloth",
+  "flat": true
+ },
+ "遥控器的位置": {
+  "en": "remote",
+  "flat": false
+ },
+ "Change": {
+  "en": "Change",
+  "flat": false
+ },
+ "Version": {
+  "en": "Version",
+  "flat": false
+ },
+ "纸箱在操作面位置": {
+  "en": "box",
+  "flat": false
+ },
+ "台灯位置": {
+  "en": "lamp",
+  "flat": false
+ },
+ "折扇位置": {
+  "en": "fan",
+  "flat": true
+ },
+ "绿豆在操作面位置": {
+  "en": "bean",
+  "flat": false
+ },
+ "铲子在操作面的位置": {
+  "en": "spoon",
+  "flat": false
+ }
+}

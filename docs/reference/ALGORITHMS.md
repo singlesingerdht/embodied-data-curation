@@ -2,7 +2,7 @@
 
 [Home](../../README.md) · [简体中文](ALGORITHMS.zh-CN.md) · [Recommend, select, and run](../how-to/RUN_AND_SELECT.md)
 
-This page describes the **inputs, parameters, outputs, and limits** of the nine built-in quality algorithms. It is for lookup and does not cover running them.
+This page describes the **inputs, parameters, outputs, and limits** of the ten built-in quality algorithms. It is for lookup and does not cover running them.
 To inspect inputs, choose algorithms, execute them, and read the report, see [Run Algorithms](../how-to/RUN_AND_SELECT.md); output fields are in the [output objects and interface reference](OUTPUTS.md).
 
 Installed metadata and source define all parameters; example thresholds are not universal device calibration. Items are PASS, REVIEW, SALVAGE, or EXCLUDE; inapplicability and execution failure are distinct from quality judgments.
@@ -90,6 +90,14 @@ The three timing methods share optional `record_header_deviation_threshold_ms` e
 - **Output/rules:** Black/white, blurred, abnormal, or frozen-frame candidates and counts. Current content rules can exclude when a category affects at least 30% of sampled frames; lower proportions can pass with counts. Scores and manual-review evidence may coexist.
 - **Limits:** Evaluates sampled frames; container checks apply to video only. Joint motion evidence supports manual review. [Joint evidence parameters](EVIDENCE_AND_SCOPE.en.md)
 - [Implementation](../../src/edc/algorithms/quality/algorithms/Video_Integrity/)
+
+## View_Coverage
+
+- **Input:** Every decodable RGB camera.
+- **Parameters:** `frames` sampled evenly per camera, default 30; `min_dark` relative darkness of the spot centre, default 0.2.
+- **Output/rules:** First version checks lens smudges only: a round spot darker in at least 90% of frames, fading outward with soft edges in all eight directions. Reaching `min_dark` gives review, with position, darkness and a boxed evidence image.
+- **Limits:** The threshold was set on one chest-camera smudge (24 episodes, one task, one day). A fixed, soft-edged dark stain on the tablecloth can trigger it. Out-of-frame actions and misaimed cameras are not checked yet.
+- [Implementation](../../src/edc/algorithms/quality/algorithms/View_Coverage/)
 
 ## Related pages
 

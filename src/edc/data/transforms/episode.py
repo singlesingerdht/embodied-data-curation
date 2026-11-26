@@ -1,4 +1,4 @@
-"""Bind explicit transformations to Episode payloads without modifying source IR."""
+"""把显式写明的变换套到 episode 的数据上（单位、时钟、正运动学），不改原始读取结果。"""
 import numpy as np
 from .core import RobotTransforms, convert_units
 

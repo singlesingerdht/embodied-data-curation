@@ -1,4 +1,4 @@
-"""Canonical orientation at public reads; source values remain inspectable."""
+"""统一的姿态表示：公开读取时所有姿态都转成 N×4 的 XYZW 四元数（坐标系不变）；原始值仍可单独查看。"""
 import copy
 from contextlib import contextmanager
 

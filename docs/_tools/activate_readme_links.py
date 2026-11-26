@@ -1,7 +1,6 @@
-"""Verify published guide links before switching both README files to Pages.
+"""先核对已发布的文档网页链接都能打开，再把中英文两份 README 的链接切到文档网站（Pages）。
 
-Run in the documentation environment. Without --apply this only previews the
-change; source/configuration/image links and the README language switch stay local.
+在文档环境里运行。不加 --apply 只预览改动；源码、配置、图片链接和 README 的语言切换仍指向本地。
 """
 import argparse
 from html.parser import HTMLParser

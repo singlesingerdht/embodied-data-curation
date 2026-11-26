@@ -1,4 +1,4 @@
-"""Default quaternion IR, source audit, execution and failure isolation."""
+"""姿态默认统一成四元数：公开读取、原始值核查、执行时的包装，以及出错互不影响。"""
 import copy
 import json
 from types import SimpleNamespace

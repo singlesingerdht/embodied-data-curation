@@ -1,4 +1,4 @@
-"""Plain-language clock diagnosis attached to Sync_Check / Root_Cause; never changes times or scores."""
+"""挂在采集同步／时间异常归因上的白话时钟诊断（哪路时钟差多少、能不能平移）；从不改时间，也不改分数。"""
 import json
 from types import SimpleNamespace
 import numpy as np

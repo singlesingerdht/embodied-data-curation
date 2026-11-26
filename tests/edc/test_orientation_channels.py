@@ -1,4 +1,4 @@
-"""Representation conversions and hand/tactile IR; all fixtures synthetic."""
+"""姿态表示转换，以及手部／触觉数据的读取；数据都是合成的。"""
 import copy
 import json
 from pathlib import Path

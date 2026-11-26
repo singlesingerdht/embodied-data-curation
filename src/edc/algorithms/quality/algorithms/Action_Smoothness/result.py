@@ -1,4 +1,4 @@
-"""Action_Smoothness report -> common Item (edc.algorithms.base); shared rules in quality/shared/verdicts.py."""
+"""动作平滑度：把本算法的报告翻成统一检查项 Item（edc.algorithms.base）；各算法共用的规则在 quality/shared/verdicts.py。"""
 from edc.algorithms.base import VERDICTS, STATUSES
 from edc.algorithms.quality.shared.verdicts import SIDE
 

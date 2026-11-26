@@ -1,8 +1,8 @@
-"""The one result format every quality algorithm returns, and the base class for new algorithms.
+"""所有质检算法统一的结果格式，以及新算法的基类。
 
-Each algorithm looks at one episode and returns one Item per thing it checked (an arm, a camera, a field).
-An Item that was checked carries one of four verdicts; an Item that could not be checked says why instead.
-The episode decision follows from the verdicts alone, the same way for every algorithm.
+每个算法看一条 episode，每查一个对象（一条手臂、一个相机、一个字段）返回一个 Item。
+查了的 Item 带四种结论之一；没法查的 Item 写明原因。
+整条 episode 的结论只由各项结论决定，所有算法同一套规则。
 """
 from dataclasses import dataclass, field, asdict
 

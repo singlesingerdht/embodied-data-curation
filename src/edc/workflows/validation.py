@@ -1,4 +1,4 @@
-"""Static validation of finite workflows before creating output directories."""
+"""工作流配置的静态校验：在建输出目录之前检查阶段顺序、算法和参数。"""
 import copy
 import re
 from pathlib import Path

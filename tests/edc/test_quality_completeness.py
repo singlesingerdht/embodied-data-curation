@@ -1,4 +1,4 @@
-"""Incomplete numeric checks cannot release data, even with a legacy score of 100."""
+"""数值检查没查完就不能放行数据，即使旧的分数是 100。"""
 import copy
 import json
 from types import SimpleNamespace

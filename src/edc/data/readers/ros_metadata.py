@@ -1,4 +1,4 @@
-"""Recorded Odometry frame references; no frame transforms or calibration claims."""
+"""记下 Odometry 消息里录的坐标系名字；不做坐标变换，也不当作标定。"""
 
 
 def record_odometry_frames(topic, message, row):

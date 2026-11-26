@@ -1,3 +1,4 @@
+"""URDF 链导入、重采样、按下标拆分关节数组、时钟映射对齐等扩展功能：配置有歧义或越界时报错，原始数据不变。"""
 import copy
 import json
 from pathlib import Path

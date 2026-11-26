@@ -1,4 +1,4 @@
-"""Author review is mandatory and separate from numeric evidence."""
+"""数值检查必须有配置作者确认（确认人），这和数值证据本身分开。"""
 import csv
 import json
 from types import SimpleNamespace

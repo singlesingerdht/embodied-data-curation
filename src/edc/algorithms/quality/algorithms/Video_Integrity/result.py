@@ -1,4 +1,4 @@
-"""Video_Integrity report -> common Item (edc.algorithms.base); shared rules in quality/shared/verdicts.py."""
+"""视频完整性：把本算法的报告翻成统一检查项 Item（edc.algorithms.base）；各算法共用的规则在 quality/shared/verdicts.py。"""
 from edc.algorithms.quality.shared.verdicts import frames_only
 
 GUIDE = '每 5 帧抽 1 帧检查。某一类问题（如模糊、遮挡）占抽检帧的 30% 及以上判排除；不到 30% 判通过，格子里备注问题帧数。'  # Shown above this algorithm's problems in the report.

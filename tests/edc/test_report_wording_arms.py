@@ -1,4 +1,4 @@
-"""Report wording must distinguish missing evaluation from findings and summarize every selected arm."""
+"""报告措辞要区分“没评估”和“查出问题”，并且汇总每一条被选中的手臂。"""
 from copy import deepcopy
 import json
 
@@ -115,7 +115,7 @@ def test_machine_json_log_compact_but_original_saved_and_actual_errors_visible()
     assert '检测进程退出码：1' in html and 'status_counts' not in html
     assert 'DecoderError' in html and '/camera' in html and '怎么复核：' not in html
     assert json.loads(log)['status_counts'] == {'processing_error': 1}
-    assert html.count('<h2>') == 4 and html.count('<details') == 10
+    assert html.count('<h2>') == 4 and html.count('<details') == 11
     assert 'record_header_differences' not in html and '已检查明细' not in html
     for actual in ('Traceback: worker crash', 'edc run 异常退出（退出码 7）', '{bad json'):
         assert actual in render(results, log=actual)

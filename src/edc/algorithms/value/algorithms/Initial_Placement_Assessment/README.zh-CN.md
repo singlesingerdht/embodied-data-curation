@@ -1,37 +1,48 @@
-# 首帧摆放检查
+# 首帧摆放检查（Initial_Placement_Assessment）
 
-`Initial_Placement_Assessment` 读取每条轨迹指定 RGB 通道的第 0 帧，按采集 SOP 中的初始摆放要求逐项判断。例如，“文具盒在可见台面的左侧”需要图像中可辨认的文具盒和台面方位。精确物理距离、三维关系或无法辨认的目标可以返回“无法判断”。跨轨迹的分布、网格、熵和热力图由独立的 `Initial_State_Distribution` 计算。
+[English](README.md)
 
-## 准备和调用
+检查首帧里 SOP 写的物体是否放在 SOP 指定的桌面九宫格（对应数据质检 SOW 的 S08）。
 
-1. 从 EDC 源码目录执行 `python -m pip install '.[placement,formats]'`。
-2. 默认模型为 `qwen3.8-max`。示例使用阿里云百炼北京地域的 OpenAI 兼容接口。请在运行 EDC 的终端设置环境变量 `DASHSCOPE_API_KEY`，使用开通了该模型的账号和与端点地域匹配的密钥。[获取 API Key](https://help.aliyun.com/zh/model-studio/get-api-key/)
-3. 复制机器人配置并填写相机源和摆放要求。示例中的 `allow_remote_upload: true` 允许将所选首帧和任务文本发送给配置的服务，`enable_thinking: false` 沿用原方法的配置。若使用自己的大模型网关，可设置 `base_url`、`api_key_env` 和该服务提供的 `model`。服务须支持图片输入及 JSON 输出。[机器人配置](../../../../../../configs/robots/placement_example.yaml)
-4. 运行：
+## 方法
 
-~~~bash
-edc run /path/to/dataset --robot /path/to/robot.yaml \
-  --algorithm Initial_Placement_Assessment --output /path/to/results
-~~~
+1. **物体名**：SOP 字段名（如「装有水的杯子在操作面位置」）翻成英文类别名，并标出扁平／大件物体。先查同目录的 `object_names.json`（可人工修改），新字段名才问本地 Qwen3-VL，答上的写回该文件。
+2. **九宫格**：Grounding DINO 框出桌子，SAM2 抠出桌面，拟合桌子远边得到两个角；近边在画面外，用 `near_y`（近边纵坐标，默认 1.10）和 `spread`（近边宽度是远边的几倍，默认 1.25）描述。四个角透视后均分 3×3。
+3. **物体位置**：Grounding DINO 找物体，框底边中点（物体与桌面接触处）落在哪一格就是实际位置。
+4. **判定**：任一物体差 2 格及以上，或 2 个及以上物体各差 1 格，判 FAIL；首帧找不到桌子判 NEEDS_REVIEW。扁平／大件物体、同一条数据里英文名重复的物体不判；「正左／正右」按左中／右中算。
 
-不同轨迹采用不同 SOP 时，在数据集的 `dataset.yaml` 中填写各轨迹的 `metadata.task_requirements`，其优先级高于机器人配置中同名参数。可选的 `task_description` 仅补充任务背景。示例使用已有 RGB 通道的 HDF5 轨迹：
+SOP 要求优先取数据集 metadata 的 `diversity`，否则读源 MCAP 的 `sop_topic`（默认 `/diversity_data`）。
 
-~~~yaml
-schema_version: 1
-id: pencil_task
-episodes:
-  - id: recording_001
-    path: recording_001.h5
-    format: hdf5
-    metadata:
-      task_requirements: 文具盒在可见台面的左侧。
-      task_description: 将笔放入文具盒。
-~~~
+## 运行
 
-图片和视频均通过 EDC 的 RGB 通道读取。可以将原初始分布方法的配置合并到同一份机器人配置的 `checks` 下，并在命令中追加 `--algorithm Initial_State_Distribution`。分布检查需额外准备 SAM3、目标类别和可比较的相机／场景分组。
+```bash
+edc run /path/to/episode.mcap --robot configs/robots/x1pro_mcap.yaml --algorithm Initial_Placement_Assessment --output /path/to/results
+```
 
-## 输出
+机器人 yaml 的 `checks.Initial_Placement_Assessment`：
 
-`catalog.json` 索引每条轨迹的 `edc_record_v1` 记录及证据。原生报告 `placement_report.json` 保留逐项规则原文、观察、理由、`placement_status`、`passed`、`requirements_complete`、未检查要求和限制。发现违反项时整体为 `incorrect`，即使其他项未完成。全部要求确认满足时为 `correct`，其余为 `undetermined`。`assessment_complete` 表示摆放要求是否评估完整。方法没有数值分数。
+| 参数 | 说明 |
+|---|---|
+| `channel` | 看桌面的相机，如 `rgb/head` |
+| `detector` | Grounding DINO 模型目录（grounding-dino-tiny） |
+| `segmenter` | SAM2 权重（sam2.1_hiera_small.pt）；`segmenter_config` 默认 `configs/sam2.1/sam2.1_hiera_s.yaml` |
+| `model` | Qwen3-VL 模型目录，可选，只翻译新物体名；和人手干预共用，同一次运行只加载一次 |
+| `near_y`、`spread` | 近边参数，见上 |
 
-模型调用前保存来源、首帧及输入映射。正常返回的原始模型 JSON 保存在 `provider-response.json`。模型响应无法解析或引用了输入中不存在的规则时，EDC 记录处理失败并保留已有证据。模型服务提供的模型名和本地方法指纹见 `provenance.json`。权重版本由服务部署方管理。来源和许可状态见 [SOURCE.json](SOURCE.json)。
+结果在 `result.json`：`verdict`、`reason`、`sop_diversity`，以及每个物体的 `sop_cell`、`actual_cell`、`cells_off`、`score`、`box`；首帧存为 `initial_frame.jpg`。
+
+## 江西数据验证（2026-11-26，269 条）
+
+| | 条数 | FAIL |
+|---|---|---|
+| 人工标了 S08 | 22 | 12 |
+| 人工没标 | 247 | 27 |
+
+- 和接入前的脚本逐条比：241 条共同数据中 238 条一致。不同的 3 条都是原脚本报警、现在通过（2 条原来是误报，1 条人工标了 S08 的现在漏了）。原因是输入画面不同：原脚本读存成 JPEG 的首帧，现在直接用解码画面，压在阈值边上的检测会翻转。
+- 原脚本没跑过的 28 条里报了 7 条，未人工核对。
+- 人工标了但没报的主要是干扰物问题（本版不查）和 1 条疑似误标。
+
+## 局限
+
+- 近边参数是在这批数据（同一种桌子和机位）上估的，换场景要重新估 `near_y`、`spread`。
+- 只查 SOP 写了格子的物体；干扰物没放、没换不查。

@@ -1,4 +1,4 @@
-"""Explicit, editable defaults; values are suggestions until the Numeric configuration is confirmed."""
+"""数值检查的默认阈值，明确写出、可以改；机器人配置写上确认人之前，这些值只是建议。"""
 import copy
 import math
 

@@ -1,8 +1,7 @@
-"""Adapt repository Markdown links/anchors for Sphinx without duplicating guides.
+"""让仓库里的 Markdown 链接和锚点在 Sphinx 文档网站里能用，不复制一份指南。
 
-GitHub and Sphinx treat raw HTML anchors differently. Give existing anchors
-document-specific labels in the build and keep links to source/config files on
-the repository's matching branch. No source Markdown is rewritten on disk.
+GitHub 和 Sphinx 对 HTML 原始锚点的处理不同：构建时给已有锚点加上按文档区分的标签，
+指向源码、配置文件的链接仍指向仓库同一分支。磁盘上的 Markdown 原文不改。
 """
 from pathlib import Path
 import re

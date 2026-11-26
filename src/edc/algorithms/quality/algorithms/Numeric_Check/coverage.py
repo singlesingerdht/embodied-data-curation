@@ -1,4 +1,4 @@
-"""Describe executed subchecks without changing or rescoring the detector."""
+"""数值检查的子项清单：写明每个子项查了没有、没查的原因、有没有发现；不改变、不重算原检测的分数。"""
 
 from edc.schemas import NUMERIC_COVERAGE
 import numpy as np

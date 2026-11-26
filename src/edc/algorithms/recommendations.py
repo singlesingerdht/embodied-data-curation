@@ -1,4 +1,4 @@
-"""Metadata/dependency preflight, not execution or a data quality judgment."""
+"""算法推荐：按元数据和依赖预检每条 episode 能跑哪些算法；不运行算法，也不判断数据质量。"""
 
 from edc.schemas import RECOMMENDATIONS, RECOMMENDATION_POOL
 from edc.algorithms.quality.adapters.cpu import preflight

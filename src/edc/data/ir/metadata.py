@@ -1,4 +1,4 @@
-"""IR 核心契约: Message / TopicInfo / DataInfo + 格式探测 + 模态分类 + 时间归一化。
+"""读取层的核心数据结构：Message / TopicInfo / DataInfo，加上格式探测和通道模态分类。
 
 设计原则: 能力位解耦 (value_available / image_available / image_compressed)
 """

@@ -1,3 +1,4 @@
+"""单条 episode 目录的读取类（兼容旧接口，实际由 SingleEpisodeReader 实现），以及找轨迹 JSON 文件的小工具。"""
 from pathlib import Path
 from typing import Optional
 from .single import SingleEpisodeReader

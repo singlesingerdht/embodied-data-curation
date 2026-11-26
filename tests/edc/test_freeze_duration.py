@@ -1,4 +1,4 @@
-"""Per-robot freeze_min_duration_s: a short hold after motion is a normal pause, not a review candidate."""
+"""按机型设的 freeze_min_duration_s：运动后短暂停住是正常停顿，不算复核候选。"""
 from types import SimpleNamespace
 import numpy as np
 from edc.algorithms.quality.algorithms.Numeric_Check.supplements import numeric_freeze

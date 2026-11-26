@@ -1,4 +1,4 @@
-"""Synthetic failures must not conceal successful siblings or become quality passes."""
+"""合成的出错场景：出错不能掩盖其他成功的结果，也不能被当成质量通过。"""
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -217,5 +217,5 @@ def test_normal_report_is_unchanged(tmp_path):
     info = {'robot': 'test', 'inputs': 'synthetic', 'finished': 'test', 'seconds': 0,
             'jobs': 1, 'profile': 'robot.yaml'}
     html = page([summary], info)
-    assert html.count('<h2>') == 4 and html.count('<details') == 10
+    assert html.count('<h2>') == 4 and html.count('<details') == 11
     assert '<pre>' not in html and '没跑完' not in html and '未评估完' not in html

@@ -1,4 +1,4 @@
-"""Algorithm discovery is available in the NumPy/YAML base install, before CPU extras."""
+"""只装了 NumPy/YAML 基础依赖、还没装 CPU 扩展依赖时，也能找到并列出算法。"""
 import subprocess
 import sys
 
@@ -13,6 +13,6 @@ def checked(name, *args, **kwargs):
     return original(name, *args, **kwargs)
 builtins.__import__ = checked
 from edc.algorithms.quality.adapters.cpu import builtins as plugins
-assert len(plugins()) == 9
+assert len(plugins()) == 10
 '''], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

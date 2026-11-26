@@ -1,4 +1,4 @@
-"""Execution-local topic selection shared by recommendation and CPU execution."""
+"""运行时按参数选出本算法要看的通道，推荐和 CPU 执行共用；不改原始元数据和数据。"""
 import copy
 from edc.algorithms.channel_names import resolve_channel_parameters
 

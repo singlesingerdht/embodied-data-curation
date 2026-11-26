@@ -1,4 +1,4 @@
-"""Optional freeze/motion evidence, independent of the image method's decision."""
+"""可选的冻结／运动证据：画面冻结时对照同时段手臂有没有在动，只作证据，不改变画面检测方法本身的结论。"""
 from pathlib import Path
 import numpy as np
 

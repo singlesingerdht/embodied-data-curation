@@ -1,4 +1,4 @@
-"""Explicit robot topology and execution instances; no topology inference."""
+"""明确写出的机器人结构（哪些手臂、哪些通道属于哪条手臂）和每次执行的范围；不推断结构。"""
 import copy
 
 

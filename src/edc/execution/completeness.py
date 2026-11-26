@@ -1,4 +1,4 @@
-"""Effective coverage, separate from historical detector scores and eligibility."""
+"""判断一个算法的报告是否真的查完了（各子项都已评估或不适用）；和历史检测分数、能不能跑分开。"""
 
 
 def report_complete(report, algorithm_id=None):

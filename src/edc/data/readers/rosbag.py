@@ -1,4 +1,4 @@
-"""Public ROS1/ROS2 reader: storage directories, recorded clocks, lazy payloads."""
+"""ROS1／ROS2 录包读取器：支持存储目录、录下的两种时钟，数据用到时才读。"""
 from pathlib import Path
 import numpy as np
 from .base import DataReader, DependencyMissing

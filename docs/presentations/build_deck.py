@@ -1,9 +1,9 @@
-"""Build the editable EDC research deck and bilingual slide previews.
+"""生成可编辑的 EDC 研究汇报 PPT，以及中英文幻灯片预览图。
 
-Documentation tooling only; no EDC runtime dependencies are changed.
-Requires python-pptx, Pillow, PyMuPDF, LibreOffice and WenQuanYi Zen Hei.
-Run: python docs/presentations/build_deck.py --render-dir /path/to/previews
-Paper results are attributed in slide footnotes and speaker notes.
+只是文档工具，不改 EDC 运行时的依赖。
+需要 python-pptx、Pillow、PyMuPDF、LibreOffice 和文泉驿正黑字体。
+运行：python docs/presentations/build_deck.py --render-dir /预览图/目录
+引用的论文结果在幻灯片脚注和演讲者备注里注明出处。
 """
 
 from __future__ import annotations
@@ -257,7 +257,7 @@ def overview(d, english=False):
     d.text("Feedback refines the next round of curation" if english else "以任务表现与训练反馈，驱动下一轮数据整理", 615, 699, 680, 36, 22, TEAL, True, PP_ALIGN.CENTER)
     d.rect(64, 753, 1472, 49, PALE, None)
     d.text("Available today: data ingestion · nine quality checks · evidence · selected-data export" if english else
-           "当前工程基础：多格式与多机器人接入  ·  九项质量检查  ·  证据记录  ·  筛选导出", 88, 764, 1424, 34, 22, BLUE)
+           "当前工程基础：多格式与多机器人接入  ·  十项质量检查  ·  证据记录  ·  筛选导出", 88, 764, 1424, 34, 22, BLUE)
     d.footer("Research: STEAM · MGT-QV · RoboDrop; DemoTempo / FLORA inform further work." if english else
              "研究支撑：STEAM、MGT-QV、RoboDrop；数据改进与自动标注参考 DemoTempo、FLORA 等方向。",
              "Users choose algorithms today. Research integration and autonomous iteration remain future work." if english else
@@ -279,7 +279,7 @@ def quality(d):
         d.text(desc, 286, y, 457, 58, 22, MUTED)
     d.rect(800, 485, 736, 290, TEAL_BG)
     d.text("复用的方法，明确的边界", 826, 508, 680, 42, 28, bold=True)
-    d.text("九项质量检查 → 原始指标与证据 → 筛选导出", 826, 568, 680, 42, 25, TEAL, True)
+    d.text("十项质量检查 → 原始指标与证据 → 筛选导出", 826, 568, 680, 42, 25, TEAL, True)
     d.text("复用检查逻辑；机器人语义、限值与时钟仍需确认。\n通过表示满足已检查条件，策略收益另行验证。", 826, 632, 674, 104, 24, MUTED)
     d.footer("工程依据：仓库机器人配置、docs/how-to/DATA_AND_ROBOT.zh-CN.md、docs/reference/ALGORITHMS.zh-CN.md。",
              "不把能打开文件等同于完整支持；当前配置的适用范围见专题。原始数据只读，输出保留来源。")

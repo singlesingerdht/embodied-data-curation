@@ -1,4 +1,4 @@
-"""Robot profiles are explicit data mappings, never calibration guesses."""
+"""读取机器人配置（profile）：它只是明确写出的数据映射，从不猜标定。"""
 import copy
 import re
 from pathlib import Path

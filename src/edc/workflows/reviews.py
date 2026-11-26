@@ -1,4 +1,4 @@
-"""Append-only review decisions refer to exact immutable algorithm reports."""
+"""人工复核决定：只追加不修改，每条都指向某份确定、不可变的算法报告。"""
 
 from edc.schemas import CATALOG, RECORD, REVIEW, require_schema
 import json

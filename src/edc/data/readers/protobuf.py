@@ -1,4 +1,4 @@
-"""Descriptor-driven MCAP decoding; no generated vendor modules or physical guesses."""
+"""MCAP 里 Protobuf 消息的解码：按文件内嵌的 descriptor 解，不用厂商生成的代码，也不猜物理含义。"""
 import numpy as np
 
 

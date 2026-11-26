@@ -1,4 +1,4 @@
-"""Public-installable structured readers. Unsupported layouts fail explicitly."""
+"""在数据路径里找出各条 episode，并读取结构化格式（HDF5、Parquet、LeRobot、轨迹 JSON）；只用公开可安装的库，不支持的布局直接报错。"""
 import json
 import fnmatch
 import numpy as np

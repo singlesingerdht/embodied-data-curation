@@ -1,4 +1,4 @@
-"""`cameras`, `imu` and `other` of the robot yaml."""
+"""机器人 yaml 的 `cameras`、`imu` 和 `other` 段。"""
 from .arms import side_of
 from .common import OTHER_UNITS, CardError, unknown_keys
 

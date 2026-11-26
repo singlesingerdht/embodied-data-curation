@@ -1,3 +1,4 @@
+"""用正运动学（URDF 链）从关节角派生末端位置通道：时间轴沿用原通道、标定强度跟输入一致、配置有歧义时报错、限位放宽 limit_margin。"""
 import copy
 import json
 import numpy as np

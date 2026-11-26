@@ -1,4 +1,4 @@
-"""CPU image decoding and video materialization with explicit frame provenance."""
+"""CPU 上的图像解码，以及把图像帧写成视频；每帧的来源都记清楚。"""
 from fractions import Fraction
 from pathlib import Path
 import hashlib

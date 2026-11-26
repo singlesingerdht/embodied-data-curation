@@ -1,4 +1,4 @@
-"""Scope, evidence and partial-assessment regressions; fixtures are synthetic."""
+"""检查范围、证据和“只评估了一部分”相关的回归测试；数据都是合成的。"""
 import json
 from types import SimpleNamespace
 

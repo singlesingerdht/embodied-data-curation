@@ -1,7 +1,6 @@
-"""Repository-owned numeric supplements; no duplicate scoring path.
+"""本仓库自己加的数值补充检查（指令限位、关节速度上限、冻结、关节卡住、yaml 声明的范围），不另开一套打分。
 
-Rows are zero-based within one Episode; intervals are [start, stop). Constant
-content is observable, but cannot by itself prove an acquisition failure.
+行号从 0 起、在一条 episode 内计；区间是 [起, 止)。数值一直不变能看出来，但单凭这一点不能证明采集出了故障。
 """
 import copy
 import csv

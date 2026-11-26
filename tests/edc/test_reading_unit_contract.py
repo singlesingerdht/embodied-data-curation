@@ -1,4 +1,4 @@
-"""Cross-format read contracts; synthetic values never stand for real acceptance."""
+"""跨格式的读取约定（时间单位、数值类型、字段语义确认）；合成数据只测约定，不代表真实数据验收。"""
 import copy
 import hashlib
 import json

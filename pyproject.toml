@@ -16,7 +16,6 @@ formats = ["h5py>=3.8", "pyarrow>=14", "rosbags>=0.10", "mcap>=1.1", "protobuf>=
 test = ["pytest>=7", "build>=1", "matplotlib>=3.7", "pydantic>=2", "Pillow>=10", "tqdm>=4", "httpx>=0.28,<1"]
 
 initial-state = ["Pillow>=10"]
-placement = ["Pillow>=10", "pydantic>=2,<3", "httpx>=0.28,<1"]
 value-inputs = ["Pillow>=10", "av>=12", "opencv-python-headless>=4.8", "scipy>=1.10"]
 
 [project.scripts]
@@ -33,7 +32,7 @@ namespaces = true
 "edc.environments" = ["profiles.json"]
 
 "edc.algorithms.value.algorithms.Initial_State_Distribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]
-"edc.algorithms.value.algorithms.Initial_Placement_Assessment" = ["SOURCE.json", "*.md"]
+"edc.algorithms.value.algorithms.Initial_Placement_Assessment" = ["*.json", "*.md"]
+"edc.algorithms.value.algorithms.Hand_Intervention" = ["*.md"]
 "edc.algorithms.value.algorithms.Progress_Stagnation_Attribution" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]
 
-"edc.algorithms.value.algorithms.Collision_Detection_Qwen3vl" = ["SOURCE.json", "*.yaml", "*.json", "*.md", "LICENSE*"]

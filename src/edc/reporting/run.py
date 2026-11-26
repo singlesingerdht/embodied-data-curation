@@ -1,4 +1,4 @@
-"""Render an existing run with the batch report template, without judging results."""
+"""用 batch 报告的模板把已有的一次运行画成 HTML，不重新判断结果。"""
 from datetime import datetime
 import json
 from pathlib import Path

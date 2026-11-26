@@ -1,4 +1,4 @@
-"""Execution uses SI while raw reads, author declarations and source files stay unchanged."""
+"""执行时用国际单位，而原始读取、作者声明和源文件都不变。"""
 import copy
 import hashlib
 import json

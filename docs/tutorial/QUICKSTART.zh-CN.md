@@ -50,7 +50,7 @@ python examples/quickstart/recommend.py /path/to/dataset/episode.mcap \
   --robot configs/robots/x1pro_mcap.yaml
 ```
 
-首次查看完整九项质量集合，生成 HTML：
+首次查看完整十项质量集合，生成 HTML：
 
 ```bash
 edc batch /path/to/dataset/episode.mcap \

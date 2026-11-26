@@ -1,6 +1,6 @@
 """关节跳变（示例）：框架怎么调用这项检查——找手臂、读关节角、把结果写成检查项；计算在 method.py。
 
-装上后随 edc batch 运行，报告多一列“关节跳变”。阈值只作演示，没有实测依据。
+命令前加 `EDC_PLUGINS=这个文件夹` 就随 edc batch 运行，报告多一列“关节跳变”。阈值只作演示，没有实测依据。
 """
 from edc.algorithms.base import QualityAlgorithm, AlgorithmResult, Item, NOT_APPLICABLE
 from edc.algorithms.registry import AlgorithmSpec

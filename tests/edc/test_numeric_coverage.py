@@ -1,4 +1,4 @@
-"""Subcheck evidence distinguishes unconfigured/short/blocked from evaluated."""
+"""数值检查的子项证据能区分“没配置／数据太短／被挡住”和“已评估”。"""
 import json
 from types import SimpleNamespace
 import numpy as np

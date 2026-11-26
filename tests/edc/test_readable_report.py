@@ -1,4 +1,4 @@
-"""Keep the leju-kuavo report concise without discarding recorded evidence."""
+"""乐聚 kuavo 的报告保持简洁，但不丢掉记录下的证据（细节留在 JSON 里，真正的问题和缺输入原因在页面上看得到）。"""
 from copy import deepcopy
 
 from edc.algorithms.base import AlgorithmResult, Item, FAILED, NOT_APPLICABLE, VERDICTS, decide
@@ -46,7 +46,7 @@ def test_shared_evidence_stays_in_json_without_new_html_sections():
     html = render(results)
     assert '记录与采集时间差' not in html and '差值范围' not in html
     assert '+480 ms' not in html and '已检查明细' not in html
-    assert html.count('<details') == 10  # Nine algorithm groups and one episode.
+    assert html.count('<details') == 11  # Ten algorithm groups and one episode.
     assert html.count('<h2>') == 4
     assert '<b>结论怎么读</b>' in html
     assert '未完成评估' not in html and '没跑完' not in html and '未判定' not in html

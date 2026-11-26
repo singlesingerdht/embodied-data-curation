@@ -1,3 +1,4 @@
+"""复位检测 v2 标定：按逻辑通道名找到通道、保留暂缓的项；维度对不上时判需要标定。"""
 import json
 
 import numpy as np

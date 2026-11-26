@@ -1,8 +1,8 @@
-"""Collect one episode's common results (edc.algorithms.base) from a run folder and write quality.json.
+"""从一次运行的文件夹里收集一条 episode 的统一结果（edc.algorithms.base），写成 quality.json。
 
-Every algorithm stores one report per Item with `edc_item` (edc.algorithms.base `package`; built-in ones attach it
-to their own report in quality/shared/verdicts.py `emit`). Keep successful sibling results when a record/channel fails. Unavailable
-inputs get no quality verdict: not applicable for missing data/calibration, failed for processing errors.
+每个算法每个 Item 存一份报告，带 `edc_item`（新算法由 edc.algorithms.base 的 `package` 写入；内置算法在
+quality/shared/verdicts.py 的 `emit` 里挂到自己的报告上）。某条记录或某个通道出错时，其他成功的结果照样保留。
+输入不够的不给质量结论：缺数据或缺标定记为不适用，处理出错记为没跑完。
 """
 import json
 from pathlib import Path

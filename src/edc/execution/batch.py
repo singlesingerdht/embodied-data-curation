@@ -1,8 +1,7 @@
-"""`edc batch`: many episode files in, one HTML report out.
+"""`edc batch`：输入多个数据文件，输出一份 HTML 报告。
 
-Each file gets its own `edc run` process (all selected algorithms), 16 files at a time by default.
-A run writes JSON records and evidence, without per-episode HTML, into a temporary folder; the
-verdicts are summarized as soon as it finishes and the folder is deleted, unless --keep is given.
+每个文件单独起一个 `edc run` 进程（跑所有选中的算法），默认同时跑 16 个。
+每次运行把 JSON 记录和证据写进临时文件夹（不出单条 HTML）；跑完立刻汇总结论并删掉文件夹，除非加了 --keep。
 """
 import json
 import re

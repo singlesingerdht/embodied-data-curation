@@ -1,4 +1,4 @@
-"""Synthetic-only regression for independent command limits and freeze evidence."""
+"""只用合成数据的回归测试：独立的指令限位检查和冻结证据。"""
 import copy
 import csv
 import json

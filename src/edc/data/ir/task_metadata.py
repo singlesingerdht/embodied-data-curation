@@ -1,4 +1,4 @@
-"""Optional task catalogue and explicit episode subtask annotations."""
+"""可选的任务目录和 episode 里显式标注的子任务：校验写法是否正确。"""
 import math
 
 

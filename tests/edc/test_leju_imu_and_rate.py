@@ -1,4 +1,4 @@
-"""Leju additions: IMU block of kuavo sensorsData via select.fields, and the joint velocity limit."""
+"""乐聚新增：用 select.fields 取出 kuavo sensorsData 里的 IMU 部分，以及关节速度上限检查。"""
 from types import SimpleNamespace
 
 import numpy as np

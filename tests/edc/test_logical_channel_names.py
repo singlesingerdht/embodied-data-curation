@@ -1,4 +1,4 @@
-"""Logical names share exact reader inputs and never rewrite physical semantics."""
+"""逻辑通道名和原名读到的是完全相同的输入，且不改写物理含义。"""
 import copy
 import json
 from pathlib import Path

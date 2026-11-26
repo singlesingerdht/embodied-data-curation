@@ -36,7 +36,7 @@ def test_error_keeps_named_causes_without_an_extra_quality_badge_or_losing_resul
     assert '没跑完' in badge_labels(html) and '未评估完' in badge_labels(html)
     assert '/camera' in html and 'DecoderError: bad frame' in html
     assert '左臂通过，右臂通过' in html
-    assert html.count('<h2>') == 4 and html.count('<details') == 10
+    assert html.count('<h2>') == 4 and html.count('<details') == 11
     assert '<table class="detail">' in html
     assert set(badge_labels(html)) <= {'排除', '可救', '复核', '通过', '不适用', '没跑完', '未评估完'}
     legend = html.split('<div class="box">', 1)[1].split('</div>', 1)[0]

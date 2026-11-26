@@ -1,4 +1,4 @@
-"""Reader template: explicit custom manifest reusing existing episode readers."""
+"""读取器插件样板：按自定义清单 custom_manifest.json 列出各条 episode，读取沿用已有的 episode 读取器。"""
 from dataclasses import dataclass
 import json
 from edc.data.ir.dataset import Dataset, Episode

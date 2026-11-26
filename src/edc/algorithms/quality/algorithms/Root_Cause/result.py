@@ -1,4 +1,4 @@
-"""Root_Cause report -> common Item (edc.algorithms.base); shared rules in quality/shared/verdicts.py."""
+"""时间异常归因：把本算法的报告翻成统一检查项 Item（edc.algorithms.base）；各算法共用的规则在 quality/shared/verdicts.py。"""
 
 
 GUIDE = '看所列时刻附近各路数据是否同时缺失：同时缺失说明整机卡顿，只缺一路说明是那一路设备的问题。'  # Shown above this algorithm's problems in the report.

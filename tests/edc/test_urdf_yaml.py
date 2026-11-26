@@ -1,5 +1,5 @@
-"""URDF part of the robot yaml (explicit joint mapping, tip_offset) and `edc robot urdf`;
-declared units, raw ranges and scale of the other entries."""
+"""机器人 yaml 的 URDF 段（显式关节对应、tip_offset）和 `edc robot urdf`；
+其他条目声明的单位、原始范围和 scale 换算。"""
 import json
 from pathlib import Path
 

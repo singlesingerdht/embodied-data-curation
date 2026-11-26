@@ -1,4 +1,4 @@
-"""内置九项算法的共同基类和调用流程（预检、选通道、运行）。各算法自己的输入准备在 algorithms/<名字>/algorithm.py。"""
+"""内置十项算法的共同基类和调用流程（预检、选通道、运行）。各算法自己的输入准备在 algorithms/<名字>/algorithm.py。"""
 import copy
 from functools import lru_cache
 from importlib import import_module, util
@@ -10,7 +10,7 @@ from edc.algorithms.channel_names import resolve_channel_parameters, channel_par
 
 # 内置算法的 id（algorithms/ 下的文件夹名），也是报告里的列顺序。旧的短别名由 CLI 解析。
 ORDER = ('Structure_Check', 'Numeric_Check', 'Action_Smoothness', 'Check_Timestamp', 'Sync_Check',
-         'Root_Cause', 'Dedup_Check', 'Reset_Detection', 'Video_Integrity')
+         'Root_Cause', 'Dedup_Check', 'Reset_Detection', 'Video_Integrity', 'View_Coverage')
 TIMING_MISSING = ('时间条件不足：需要有效且单位明确的时间轴；跨通道检查还需要独立的原始时间轴和共同 clock。'
                 '只有公共行时间、未知单位或合成时间时，不能评估原始采集同步；现有时间仍保留。')
 
@@ -298,5 +298,5 @@ class BuiltinAlgorithm(QualityAlgorithm):
 
 
 def builtins():
-    """内置九项，按报告顺序。"""
+    """内置十项，按报告顺序。"""
     return [type(builtin(ident))() for ident in ORDER]

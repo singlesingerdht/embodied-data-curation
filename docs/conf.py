@@ -1,4 +1,4 @@
-"""Build EDC's existing Markdown guides without importing the runtime package."""
+"""Sphinx 配置：把已有的 Markdown 指南构建成文档网站，不导入 edc 运行代码。"""
 from pathlib import Path
 import sys
 import tomllib

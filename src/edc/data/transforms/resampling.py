@@ -1,4 +1,4 @@
-"""Explicit numeric resampling; never invoked by reading or by default execution."""
+"""显式的数值重采样；读取和默认执行都不会调用它。"""
 import numpy as np
 from .core import TransformResult
 

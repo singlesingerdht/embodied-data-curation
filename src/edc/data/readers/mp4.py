@@ -1,6 +1,4 @@
-"""MP4 格式适配器: 单个 MP4 文件 → 1 个 image 通道。
-
-"""
+"""MP4 格式适配器：单个 MP4 文件，或只有 MP4 的目录 → 每个文件一个 image 通道。"""
 import json
 import subprocess
 from pathlib import Path

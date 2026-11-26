@@ -29,7 +29,7 @@ src/edc/algorithms/
 └── editing/algorithms/<Algorithm_Name>/
 ```
 
-**当前加载边界：** 九项质量算法仍由原适配器按原顺序加载。value/algorithms 各目录的 algorithm.py:plugin 通过轻量发现加载，核验目录名与 ID、value 类别。augmentation/editing 仍需插件，尚无内置目录发现。发现不代表真实方法已验收；见[价值算法](../reference/VALUE_ALGORITHMS.zh-CN.md)。
+**当前加载边界：** 十项质量算法仍由原适配器按原顺序加载。value/algorithms 各目录的 algorithm.py:plugin 通过轻量发现加载，核验目录名与 ID、value 类别。augmentation/editing 仍需插件，尚无内置目录发现。发现不代表真实方法已验收；见[价值算法](../reference/VALUE_ALGORITHMS.zh-CN.md)。
 
 内置实现以 `algorithm.py` 提供轻量声明和执行入口，计算模块按实际需要组织为
 `method.py`、`extractor.py`、`metrics.py` 等文件。附上 `README.md` 和可追溯的 `SOURCE.json`，

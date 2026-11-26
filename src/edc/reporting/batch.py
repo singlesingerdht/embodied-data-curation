@@ -1,4 +1,4 @@
-"""One HTML page across many episodes. Shows the common results (edc.algorithms.base); judges nothing itself."""
+"""多条 episode 汇成一页 HTML 报告。只展示统一结果（edc.algorithms.base），自己不做任何判断。"""
 import json
 from collections import Counter
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Shared by the robot yaml parts: the error type, small value parsers, and the Builder that collects channels."""
+"""机器人 yaml 各段共用：错误类型、几个小的取值解析函数，以及收集通道的 Builder。"""
 import re
 import sys
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Preserve typed hand source arrays without inventing physical joint semantics."""
+"""按消息类型保留灵巧手的原始数组，不编造物理关节含义；缺手部数据时报错，不复制、不补空。"""
 import hashlib
 import json
 from pathlib import Path

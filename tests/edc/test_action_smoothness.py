@@ -1,4 +1,4 @@
-"""Action_Smoothness: shake acceleration in a fixed motion-frequency band, through the real reader/runner."""
+"""动作平滑度：固定运动频段内的抖动加速度，走真实的读取器和执行器；两条手臂分开查、yaml 阈值生效、结果不随采样率变、冻结和断档的判法。"""
 import copy
 import hashlib
 import json

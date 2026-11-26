@@ -22,7 +22,7 @@ EDC turns supported requirements into checks, locating problems and retaining ev
 
 | Level | Question and evidence | Current status |
 |---|---|---|
-| **Data-centric: data quality** | Is the record reliable? Compare fields, values, and temporal relationships with explicit input requirements | Shared ingestion, nine CPU quality checks, evidence recording, and selected-data export are available |
+| **Data-centric: data quality** | Is the record reliable? Compare fields, values, and temporal relationships with explicit input requirements | Shared ingestion, ten CPU quality checks, evidence recording, and selected-data export are available |
 | **Task-aware: task value** | What experience is worth learning? Derive local progress, key-operation, and recovery signals from expert demonstrations and task requirements | Research foundations exist; methods await integration |
 | **Policy-aware: policy value** | Does this experience suit the target model? Use model learning feedback and reliable references | Research foundations exist; methods await integration |
 

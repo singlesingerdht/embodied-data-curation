@@ -1,3 +1,4 @@
+"""基础变换：单位换算、时钟、坐标系组合、正运动学、相机投影，以及绑定到 episode 时保留原始数据和来源记录。"""
 from pathlib import Path
 import copy
 import json

@@ -1,7 +1,6 @@
-"""Timing scores apply to sampled streams, not static metadata or task text.
+"""时间类评分只针对采样数据流，不针对静态元数据或任务文字。
 
-Do not infer that a short numeric/image stream is metadata: insufficient sensor
-samples must remain visible to the timing algorithm.
+不要因为数值／图像流很短就当成元数据：传感器样本不够，也必须让时间类算法看到。
 """
 
 

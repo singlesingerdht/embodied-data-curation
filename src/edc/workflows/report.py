@@ -1,4 +1,4 @@
-"""Offline stage overview; original method reports remain independently available."""
+"""离线生成工作流各阶段的概览页；各算法原报告仍可单独查看。"""
 import html
 import json
 from pathlib import Path

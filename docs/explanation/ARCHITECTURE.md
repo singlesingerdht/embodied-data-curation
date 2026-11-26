@@ -16,7 +16,7 @@ Built-in and external algorithms share input preflight, execution, and evidence 
 src/edc/
 ├── data/          # data interfaces, readers, and transforms
 ├── robots/        # configuration compilation, parts, and channel semantics
-├── algorithms/    # registry, preflight, nine quality methods, output base classes
+├── algorithms/    # registry, preflight, ten quality methods, output base classes
 ├── execution/     # CLI, single and batch execution
 ├── workflows/     # optional stage orchestration and recheck interfaces
 └── reporting/     # reports and evidence

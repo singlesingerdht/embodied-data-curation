@@ -1,4 +1,4 @@
-"""List first-episode recorded channels via the public IR, without guessing semantics."""
+"""列出第一条 episode 录到的通道（名字、模态、行数、字段），走公开的读取接口，不猜含义。"""
 import argparse
 import edc
 

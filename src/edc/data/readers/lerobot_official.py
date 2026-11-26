@@ -1,7 +1,7 @@
-"""Official LeRobot I/O wrapped in the existing detection contract.
+"""用 LeRobot 官方库读数据，包装成本项目的读取接口。
 
-get_raw_item still runs the upstream torch transform. Use an unformatted HF view
-and explicitly reconstruct the feature dtype instead, preserving float64 values.
+官方的 get_raw_item 仍会跑上游的 torch 变换；这里改用未格式化的 HF 数据视图，
+再显式恢复各特征的数据类型，保留 float64 数值。
 """
 import fnmatch
 import json

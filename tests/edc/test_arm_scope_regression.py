@@ -1,4 +1,4 @@
-"""Public recommendation and execution must bind the same selected arm arrays."""
+"""推荐和执行必须绑定同一条被选中手臂的数据列，没选中的手臂的数据（如 NaN）不能漏进来。"""
 import copy
 import hashlib
 import json

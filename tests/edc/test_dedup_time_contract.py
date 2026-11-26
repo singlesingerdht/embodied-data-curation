@@ -1,4 +1,4 @@
-"""Exact timestamp repetition is observable without inventing acquisition clocks."""
+"""时间戳完全重复能被看出来，且不编造采集时钟。"""
 import hashlib
 from types import SimpleNamespace
 import numpy as np

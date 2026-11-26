@@ -8,9 +8,9 @@ from edc.algorithms.value import discovery
 def test_quality_order_and_unique_value_methods():
     expected=[p.spec.id for p in quality_builtins()]
     registry=algorithms()
-    assert list(registry.plugins)[:9]==expected
+    assert list(registry.plugins)[:10]==expected
     owned=[p.spec.id for p in discovery.builtins()]
-    assert owned==sorted(['Collision_Detection_Qwen3vl','Initial_Placement_Assessment','Initial_State_Distribution','Progress_Stagnation_Attribution'])
+    assert owned==sorted(['Hand_Intervention','Initial_Placement_Assessment','Initial_State_Distribution','Progress_Stagnation_Attribution'])
     assert 'edc__Initial_State_Distribution' not in registry.plugins
 
 

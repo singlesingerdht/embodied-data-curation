@@ -1,4 +1,4 @@
-"""Applicability is configuration evidence, never a substitute for algorithm results."""
+"""推荐里的“能不能跑”只是按配置得出的证据，不能代替算法结果。"""
 import copy
 import json
 from pathlib import Path

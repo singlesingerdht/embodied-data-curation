@@ -1,7 +1,6 @@
-"""NumPy-only units, affine clocks, rigid frames, serial FK and camera projection.
+"""只用 NumPy 的基础变换：单位换算、线性时钟、刚体坐标变换、串联正运动学和相机投影。
 
-Rigid matrices map source coordinates into target coordinates, using column
-vectors. FK joint origins map joint coordinates to the preceding link.
+刚体矩阵把源坐标映射到目标坐标，作用在列向量上。正运动学里关节的 origin 把关节坐标映射到上一个连杆。
 """
 from dataclasses import dataclass
 import copy

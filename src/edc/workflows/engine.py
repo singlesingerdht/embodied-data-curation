@@ -1,4 +1,4 @@
-"""Finite stage execution with immutable upstream references and content-checked resume."""
+"""多阶段工作流的执行：有限个阶段依次跑，上游引用不可改，续跑前核对内容没变。"""
 
 from edc.schemas import CATALOG, RECORD, require_schema
 import inspect

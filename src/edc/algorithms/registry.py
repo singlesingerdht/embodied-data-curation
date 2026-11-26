@@ -1,4 +1,4 @@
-"""Public plugin metadata and entry-point discovery (interface version 1)."""
+"""算法登记：算法的公开说明 AlgorithmSpec，以及按 entry point 和 EDC_PLUGINS 文件夹找到插件算法（接口版本 1）。"""
 from dataclasses import dataclass, field
 from importlib.metadata import entry_points
 import os

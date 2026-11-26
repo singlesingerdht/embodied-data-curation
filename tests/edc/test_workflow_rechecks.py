@@ -1,4 +1,4 @@
-"""Optional stages retain explicit quality gates for every derived version."""
+"""工作流的可选阶段（编辑、估值、增强）：每个派生版本都要重新过明确的质量关卡。"""
 import copy
 import importlib.util
 import json

@@ -63,7 +63,7 @@ def compile_card(card, base=None):
     params = copy.deepcopy(card.get('checks') or {})
     skip = params.pop('skip', []) if isinstance(params, dict) else []
     from edc.algorithms.registry import algorithms
-    known = list(algorithms().plugins)  # 内置九项和已安装的新算法
+    known = list(algorithms().plugins)  # 内置十项和已安装的新算法
     if not isinstance(skip, list) or set(skip) - set(known):
         raise CardError(f'checks.skip 写不查的算法名列表，如 [Reset_Detection]（可用：{", ".join(known)}）')
     if not isinstance(params, dict) or any(not isinstance(v, dict) for v in params.values()):

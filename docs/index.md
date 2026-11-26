@@ -27,7 +27,7 @@ html_theme.sidebar_secondary.remove: true
 
 从示教中学习判断，到用模型反馈指导选择，**STEAM** 与 **RoboDrop** 为这条自动化路径提供了研究基础，详见[从质量检查到自主数据整理](explanation/QUALITY_VALIDATION.zh-CN.md)。
 
-当前支持九项质量算法与筛选导出，以及初始状态分布、任务进度归因和四事件安全检测。价值算法需另行准备模型环境、权重与适用配置；详见[价值算法使用指南](reference/VALUE_ALGORITHMS.zh-CN.md)。
+当前支持十项质量算法与筛选导出，以及首帧摆放检查、初始状态分布、任务进度归因和人手干预检测。价值算法需另行准备模型环境、权重与适用配置；详见[价值算法使用指南](reference/VALUE_ALGORITHMS.zh-CN.md)。
 
 ## 从这里开始
 

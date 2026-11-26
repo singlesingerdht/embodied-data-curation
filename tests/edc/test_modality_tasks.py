@@ -1,3 +1,4 @@
+"""模态词表把身体部位和指令分开、深度图不当 RGB；任务目录和子任务标注能写进运行记录，引用错误时报错。"""
 import json
 import numpy as np
 import pytest

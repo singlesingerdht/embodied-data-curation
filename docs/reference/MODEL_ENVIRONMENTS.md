@@ -10,10 +10,10 @@ The OpenPI environment profile supports separately supplied valuation implementa
 
 | Profile | Components | Core versions | Scope |
 |---|---|---|---|
-| `vision` | `progress`, `initial-state`, `safety`, `safety-depth`, individually or together | Python 3.12, Torch 2.8.0, TorchVision 0.23.0, Transformers 4.57.1, NumPy 1.26.4 | GRM adds vLLM 0.11.0; safety uses SAM3 and CoTracker source wheels; optional `safety-depth` prepares DA3 depth |
+| `vision` | `progress`, `initial-state`, `scene`, individually or together | Python 3.12, Torch 2.8.0, TorchVision 0.23.0, Transformers 4.57.1, NumPy 1.26.4 | GRM adds vLLM 0.11.0; `scene` (initial placement, hand intervention) uses a SAM2 source wheel |
 | `openpi` | `shapley` | Python 3.12, Torch 2.7.1, Transformers 4.53.2, JAX 0.5.3, Flax 0.10.2 | Supply OpenPI, openpi-client and LeRobot wheels; apply that OpenPI's bundled Transformers replacements |
 
-`safety-depth` is an optional preparation component, not another algorithm. See the [safety guide](VALUE_ALGORITHMS.md#four-event-safety-detection) for source wheels and model downloads.
+The `scene` component serves both initial placement and hand intervention, which share one local Qwen3-VL. Model paths go under `checks` in the robot yaml; see the [value algorithm guide](VALUE_ALGORITHMS.md#initial-placement-assessment).
 
 These Linux x86_64 recipes do not certify every model combination. Installation success proves neither model accuracy nor complete attribution. Model weights are never downloaded by this installer. Some native SAM3 builders allocate CUDA position-encoding tensors even when CPU is selected; successful imports do not certify GPU-free inference. Verify the supplied source separately.
 
@@ -70,7 +70,7 @@ edc run /path/to/data --robot /path/to/robot.yaml \
   --output /path/to/new-results --no-html
 ```
 
-Initial distribution, progress attribution and safety detection support a separate process selected through `python`. Initial distribution keeps in-process execution when omitted. With a worker, EDC saves lossless RGB frames and original mappings; the worker uses the same detection and statistics code. The caller still needs data-format libraries and Pillow for image preparation. Worker imports do not inherit external Python search paths from environment variables.
+Initial distribution and progress attribution support a separate process selected through `python`. Initial distribution keeps in-process execution when omitted. With a worker, EDC saves lossless RGB frames and original mappings; the worker uses the same detection and statistics code. The caller still needs data-format libraries and Pillow for image preparation. Worker imports do not inherit external Python search paths from environment variables.
 
 ## Evidence and checks
 
@@ -80,4 +80,4 @@ Initial distribution, progress attribution and safety detection support a separa
 
 Execution separately verifies matching caller/worker method sources and saves model/configuration provenance before model initialization. GRM respects checkpoint-declared output-head sharing without patching global Transformers classes. The known incompatible vLLM 0.11 / Transformers 5 combination fails dependency checks. Environment management does not change scoring, clocks, quality thresholds or assessment completion rules.
 
-Safety uses `--with safety` with SAM3 and CoTracker source wheels. RGB-only depth preparation additionally selects `--with safety-depth` and a DA3 wheel. See [safety setup](VALUE_ALGORITHMS.md#four-event-safety-detection) for full instructions.
+Initial placement and hand intervention use `--with scene` with a SAM2 source wheel; download Grounding DINO, SAM2 and Qwen3-VL weights separately.

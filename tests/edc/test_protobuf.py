@@ -1,4 +1,4 @@
-"""Embedded descriptors, payload presence and image layout are reader contracts."""
+"""MCAP 里内嵌的 Protobuf descriptor、消息缺失时的处理和图像布局，都是读取器要守的约定。"""
 from types import SimpleNamespace
 import numpy as np
 import pytest

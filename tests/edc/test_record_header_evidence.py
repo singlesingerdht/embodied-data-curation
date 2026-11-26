@@ -1,4 +1,4 @@
-"""Raw paired-clock evidence, deliberately independent of scores or causal interpretation."""
+"""原始的成对时钟证据（录包时间 − 采集时间），刻意和分数、原因判断分开。"""
 from types import SimpleNamespace
 import pytest
 from edc.data.ir.dataset import Channel

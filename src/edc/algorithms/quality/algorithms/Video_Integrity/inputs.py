@@ -1,4 +1,4 @@
-"""Explicit image/video inputs over unchanged quality methods and thresholds."""
+"""视频完整性的输入：按读取器声明的存储方式（逐张图片或视频文件）选入口，原检测方法和阈值不变。"""
 import time
 
 # 相机消息是 H.264 视频流（一条消息一帧压缩数据）时的说明，报告格子也用这句

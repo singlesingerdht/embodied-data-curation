@@ -1,4 +1,4 @@
-"""Versioned JSON records written by a run."""
+"""一次运行写出的 JSON 记录（带版本）：清理不能写进 JSON 的值、写文件、追加记录。"""
 import json
 import math
 import os

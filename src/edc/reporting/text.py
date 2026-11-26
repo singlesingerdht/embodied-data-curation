@@ -1,10 +1,10 @@
-"""Text helpers shared by the result translation and the batch report: readable algorithm names, HTML escaping,
-an algorithm's reports and the findings it wrote. Judges nothing."""
+"""结果翻译和 batch 报告共用的文字小工具：算法的可读名字、HTML 转义、
+取出一个算法的报告和它写下的发现。不做任何判断。"""
 import html
 import re
 
 def algorithm_names():
-    """算法 id → 报告里显示的名字：各算法 spec 里写的 name（内置九项是中文名，新算法用它自己写的）。"""
+    """算法 id → 报告里显示的名字：各算法 spec 里写的 name（内置十项是中文名，新算法用它自己写的）。"""
     from edc.algorithms.registry import algorithms
     return {ident: plugin.spec.name or ident for ident, plugin in algorithms().plugins.items()}
 

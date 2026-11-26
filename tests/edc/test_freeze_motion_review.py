@@ -1,4 +1,4 @@
-"""Association is evidence only: static/occluded/out-of-view motion has no automatic verdict."""
+"""画面冻结和手臂运动的关联只作证据：静止、遮挡、出画面时的运动都不自动下结论。"""
 from types import SimpleNamespace
 import copy
 import numpy as np

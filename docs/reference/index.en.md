@@ -12,7 +12,7 @@ Supported formats, configuration fields, algorithms, public interfaces, and comm
 | Topic | Page | Main content |
 |---|---|---|
 | Which formats are supported? Which robot configurations exist? How are YAML fields and units/time declared? | [Data formats and robot configuration reference](DATA_AND_ROBOTS.md) | Format table, existing configurations, field table, run scope, units and time sources |
-| What inputs does a check need? Which parameters does it take? How are results decided? What are the limits? | [Built-in quality algorithm reference](ALGORITHMS.md) | Inputs, parameters, outputs, and limits of the nine methods |
+| What inputs does a check need? Which parameters does it take? How are results decided? What are the limits? | [Built-in quality algorithm reference](ALGORITHMS.md) | Inputs, parameters, outputs, and limits of the ten methods |
 | What members do `Item`, `AlgorithmResult`, and `episode` expose? How do plugins register? | [Output objects and interface reference](OUTPUTS.md) | Interface types, data view, output objects, run records, reader contract |
 | Which `edc` commands and options exist? What do exit codes mean? | [Command-line reference](CLI.en.md) | Commands, common options, environment variables, exit codes |
 | How are arm scope, record-header evidence, and joint freeze evidence configured? | [Scope and evidence reference](EVIDENCE_AND_SCOPE.en.md) | `arms` selection, `record_header_deviation_threshold_ms`, `freeze_motion_review`, and evidence fields |

@@ -1,4 +1,4 @@
-"""`arms.<arm>.urdf` of the robot yaml: the URDF chain of one arm, its joint and velocity limits."""
+"""机器人 yaml 的 `arms.<手臂>.urdf` 段：一条手臂的 URDF 链，以及它的关节限位和速度限位。"""
 from pathlib import Path
 
 from .common import NO_LIMIT, CardError, edc_command, number

@@ -1,4 +1,4 @@
-"""CPU correctness regressions prompted by the real development dataset audit."""
+"""真实开发数据审查时发现的 CPU 算法正确性问题的回归测试。"""
 import json
 from types import SimpleNamespace
 import numpy as np

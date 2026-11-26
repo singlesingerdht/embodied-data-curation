@@ -1,4 +1,4 @@
-"""SI-only algorithm inputs over an unchanged, read-only source Episode."""
+"""给算法用的国际单位视图：在只读、不改动的原始 episode 上，把读出的数值换成国际单位，姿态统一为 XYZW 四元数。"""
 
 from edc.schemas import UNITS
 import copy

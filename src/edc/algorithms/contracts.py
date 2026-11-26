@@ -1,7 +1,6 @@
-"""Declarative algorithm inputs and a small dependency-free parameter schema.
+"""算法输入的声明式说明，以及一个不依赖第三方库的小型参数格式校验。
 
-This is metadata preflight, never a payload-quality test. Older plugins with
-no schema keep their existing parameter handling.
+这只是按元数据做的预检，不检查数据内容质量。没写参数格式的旧插件仍按原来的方式处理参数。
 """
 import copy
 import math

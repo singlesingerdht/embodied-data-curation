@@ -1,4 +1,4 @@
-"""Dataset-granularity contract example; not a data valuation method."""
+"""数据集级算法的接口示例：一次看多条 episode、出一个结果（只盘点条数），不是数据估值方法。"""
 from edc.algorithms.registry import AlgorithmSpec
 
 

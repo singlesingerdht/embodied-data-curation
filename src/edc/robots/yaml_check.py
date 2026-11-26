@@ -1,4 +1,4 @@
-"""`edc channels` and `edc robot check`: what is in the data, and whether a robot yaml matches it."""
+"""`edc channels` 和 `edc robot check`：数据里有什么，以及机器人 yaml 和数据对不对得上。"""
 from pathlib import Path
 
 import numpy as np

@@ -31,7 +31,7 @@ src/edc/algorithms/
 └── editing/algorithms/<Algorithm_Name>/
 ```
 
-**Current loading support:** The nine quality algorithms retain their adapter/order. Lightweight discovery loads algorithm.py:plugin under value/algorithms, validating directory/ID equality and category. Augmentation/editing still use plugins, without built-in directory discovery. Discovery does not establish real-method validation; see [value algorithms](../reference/VALUE_ALGORITHMS.md).
+**Current loading support:** The ten quality algorithms retain their adapter/order. Lightweight discovery loads algorithm.py:plugin under value/algorithms, validating directory/ID equality and category. Augmentation/editing still use plugins, without built-in directory discovery. Discovery does not establish real-method validation; see [value algorithms](../reference/VALUE_ALGORITHMS.md).
 
 Use `algorithm.py` for lightweight declarations and execution entry points. Organize computation
 in files such as `method.py`, `extractor.py` and `metrics.py` as needed. Include `README.md` and

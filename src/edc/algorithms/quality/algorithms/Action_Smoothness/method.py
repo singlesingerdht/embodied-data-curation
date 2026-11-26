@@ -1,19 +1,18 @@
-"""Action smoothness: end-effector shake, measured as acceleration in a fixed band of motion frequency.
+"""动作平滑度：末端抖动，用固定运动频段内的加速度来衡量。
 
-1. Deliberate motion is the part slower than band_hz[0] (2 Hz). Shake is the part between band_hz[0] and
-   top = min(band_hz[1], band_rate_ratio x sampling rate): 2-10 Hz at 25 Hz sampling and above, 2-6 Hz at 15 Hz.
-   The band is fixed in Hz (motion frequency), so the result does not grow with the sampling rate.
-   Below min_rate_hz the band is too narrow: not applicable.
-2. Shake acceleration (m/s^2): the position's band part differentiated twice, exactly, in the frequency domain.
-3. Still = deliberate speed below still_speed_m_s for at least still_min_s; everything else is motion.
-4. Verdict from the still frames only: RMS shake acceleration above still_review_m_s2 -> review. Motion frames
-   get the same number for reference, not judged: a fast deliberate reach or stop also reaches the band
-   (a 20 cm reach in 0.5 s alone gives 4-5 m/s^2), so there it measures briskness as much as shake.
-5. Freeze: position exactly unchanged for freeze_min_s while it was moving just before (reading stopped) -> review.
-No still stretch and no freeze: not applicable. The method never excludes on its own.
+1. 比 band_hz[0]（2 Hz）慢的部分算有意的动作。抖动是 band_hz[0] 到
+   上限 = min(band_hz[1], band_rate_ratio × 采样率) 之间的部分：采样率 25 Hz 及以上是 2-10 Hz，15 Hz 时是 2-6 Hz。
+   频段按运动频率（Hz）固定，所以结果不会随采样率变大。
+   采样率低于 min_rate_hz 时频段太窄，判不适用。
+2. 抖动加速度（m/s^2）：位置在频段内的部分，在频域里精确求两次导。
+3. 静止 = 有意动作的速度低于 still_speed_m_s 并持续至少 still_min_s；其余都算运动。
+4. 只按静止帧下结论：抖动加速度的均方根超过 still_review_m_s2 判复核。运动帧也算出同样的数字供参考，但不判：
+   快速的有意伸手或停下也会落进这个频段（0.5 秒伸出 20 cm 本身就有 4-5 m/s^2），在那里它量的更多是动作快慢而不是抖动。
+5. 冻结：刚才还在动，位置却连续 freeze_min_s 完全不变（读数停了），判复核。
+没有静止段也没有冻结：不适用。这个方法自己从不判排除。
 
-Rows are split at time gaps (> gap_factor x median interval and > half the shortest shake period); each piece is put on an even grid at its own
-median interval (no upsampling) and edge_s is dropped at both ends, where filters are unreliable.
+按时间断档切段（间隔 > gap_factor × 中位间隔，且 > 最短抖动周期的一半）；每段按自己的中位间隔放到均匀网格上
+（不升采样），两端各去掉 edge_s，那里滤波不可靠。
 """
 import numpy as np
 

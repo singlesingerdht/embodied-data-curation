@@ -1,4 +1,4 @@
-"""Run-local materialization shared by adapters, without altering model inputs."""
+"""同一次运行内共用的视频／图像落盘缓存，供各算法使用；不改变算法看到的输入。"""
 
 from edc.schemas import MEDIA_CACHE
 from dataclasses import asdict

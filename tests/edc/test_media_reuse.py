@@ -1,4 +1,4 @@
-"""Run-local reuse preserves bytes, sidecars and evidence classification."""
+"""同一次运行内复用落盘的视频：字节、附带文件和证据分类都保持不变；配置变了或换一次运行就不复用。"""
 import json
 from pathlib import Path
 from types import SimpleNamespace

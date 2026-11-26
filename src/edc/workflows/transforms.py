@@ -1,4 +1,4 @@
-"""Validate identity-row derived datasets before publishing them to downstream stages."""
+"""编辑／增强阶段产出的派生数据集（行号一一对应原数据）在交给下游前先校验。"""
 from pathlib import Path
 import numpy as np
 from edc.data.ir.dataset import Dataset, open_dataset

@@ -1,4 +1,4 @@
-"""Synthetic HDF5 wiring examples, not validated robot repair/augmentation methods."""
+"""工作流里“编辑／增强”环节的接线示例：只对合成 HDF5 数据调亮度，不是验证过的机器人数据修复或增强方法。"""
 import copy
 from pathlib import Path
 import shutil

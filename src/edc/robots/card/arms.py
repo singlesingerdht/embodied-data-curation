@@ -1,4 +1,4 @@
-"""`arms` of the robot yaml: joints, end effector, gripper / hand, URDF and Home pose of each arm."""
+"""机器人 yaml 的 `arms` 段：每条手臂的关节、末端、夹爪／灵巧手、URDF 和 Home 位姿。"""
 from .common import NO_LIMIT, OTHER_UNITS, CardError, scaled, unknown_keys
 from .urdf import urdf_chain
 

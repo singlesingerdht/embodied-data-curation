@@ -1,4 +1,4 @@
-"""The advertised plugin inputs must be the exact SI/clock inputs executed."""
+"""插件声明的输入，必须正是执行时实际拿到的国际单位和时钟映射后的输入。"""
 import copy
 import importlib
 import importlib.util

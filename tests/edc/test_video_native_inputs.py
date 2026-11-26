@@ -1,4 +1,4 @@
-"""Native-storage dispatch and exact-pixel copy elimination."""
+"""视频完整性按数据原本的存储方式（图片帧或视频）分派入口，像素完全一致，省掉多余的拷贝。"""
 from types import SimpleNamespace
 import numpy as np
 import pytest

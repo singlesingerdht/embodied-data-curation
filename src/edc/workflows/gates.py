@@ -1,4 +1,4 @@
-"""Workflow eligibility is separate from original scores and legacy selection."""
+"""工作流里数据能不能进下一阶段（质量关卡），和算法原来的分数、旧的筛选方式分开。"""
 from .reviews import subject_id
 from edc.execution.completeness import report_complete
 

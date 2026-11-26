@@ -1,4 +1,4 @@
-"""Legacy single-source API backed by the canonical episode readers."""
+"""旧的“一个数据源一条 episode”接口，内部转给新的 episode 读取器。"""
 from pathlib import Path
 from .base import DataReader
 

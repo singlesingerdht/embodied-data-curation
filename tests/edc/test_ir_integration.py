@@ -1,4 +1,4 @@
-"""Behavioral checks across canonical IR, old adapters and public format libraries."""
+"""跨统一读取层（IR）、旧适配器和公开格式库的行为测试：HDF5、ROS、LeRobot、Parquet、MCAP 都能读对，CPU 算法都能跑。"""
 import json
 import sys
 from types import SimpleNamespace

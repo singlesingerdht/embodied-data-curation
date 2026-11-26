@@ -1,8 +1,7 @@
-"""Explicit orientation conversions; NumPy only, with unchanged source rows.
+"""显式的姿态表示转换，只用 NumPy，原始行不变。
 
-RPY uses right-handed, fixed XYZ axes: R = Rz(yaw) Ry(pitch) Rx(roll).
-Matrices act on column vectors. These are representation conversions within
-the same frames, not coordinate-frame transformations or calibration.
+RPY 按右手、固定 XYZ 轴：R = Rz(yaw) Ry(pitch) Rx(roll)。
+矩阵作用在列向量上。这些只是同一坐标系里的表示转换，不是坐标系变换，也不是标定。
 """
 import copy
 import numpy as np

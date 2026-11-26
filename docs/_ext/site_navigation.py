@@ -1,10 +1,8 @@
-"""Intent-based navigation for the paired Markdown guides.
+"""按读者目的组织的中英文指南导航。
 
-The site organizes guides by what the reader wants to do (tutorial, how-to,
-reference, explanation). Pages that exist in both languages are listed in
-PAIRS; pages with one shared body are listed in SHARED. Adding a page means
-adding it to one of those sets, to the matching NAVIGATION menu, and to a
-toctree; the build fails if a menu target does not exist.
+网站按读者想做的事（教程、操作指南、参考、原理说明）组织指南。两种语言都有的页面列在
+PAIRS 里，只有一份共用正文的页面列在 SHARED 里。新增页面要加进其中一个集合、对应的
+NAVIGATION 菜单和某个 toctree；菜单指向不存在的页面时构建直接失败。
 """
 from pathlib import Path
 

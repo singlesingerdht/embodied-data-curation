@@ -1,4 +1,4 @@
-"""Generate an explicitly synthetic native-HDF5 workflow demonstration."""
+"""生成一套明确标为合成的 HDF5 数据和工作流配置，用来演示工作流。"""
 import argparse
 from pathlib import Path
 import numpy as np

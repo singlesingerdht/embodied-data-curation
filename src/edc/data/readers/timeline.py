@@ -1,4 +1,4 @@
-"""Recorded ROS clocks with identity row mapping; no guessing or alignment."""
+"""ROS 录下的时钟（录包时间、消息头时间），行号一一对应；不猜、不对齐。"""
 
 
 def declared_timestamp_unit(value):

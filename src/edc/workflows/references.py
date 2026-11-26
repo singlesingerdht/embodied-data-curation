@@ -1,4 +1,4 @@
-"""Dataset references are metadata over existing storage, not a data format."""
+"""数据集引用：在现有存储上加一层元数据（路径、指纹），不是一种新的数据格式。"""
 
 from edc.schemas import DATASET_REFERENCE
 import copy

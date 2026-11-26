@@ -1,4 +1,4 @@
-"""ROS pose schemas expose separate XYZ/XYZW fields, including standalone MCAP."""
+"""ROS 位姿消息分别给出 XYZ 位置和 XYZW 姿态字段（单独的 MCAP 文件也一样），不再走按列猜布局。"""
 import hashlib
 import numpy as np
 import pytest

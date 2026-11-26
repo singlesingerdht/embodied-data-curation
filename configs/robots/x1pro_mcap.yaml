@@ -54,3 +54,14 @@ other:
   - {source: /right_arm/joint_states, field: effort, label: 右臂关节力矩, unit: unknown}
   - {source: /head/joint_states, field: position, label: 头部关节, unit: unknown}
   - {source: /lift/joint_states, field: position, label: 升降机构, unit: unknown}
+
+# 价值算法的参数（用 --algorithm 指定时才跑）；模型路径是 dev 服务器上的
+checks:
+  Initial_Placement_Assessment:
+    channel: rgb/head
+    detector: /mnt/public/rxs/code/model/grounding-dino-tiny
+    segmenter: /mnt/public/rxs/code/model/sam2/checkpoints/sam2.1_hiera_small.pt
+    model: /mnt/public/rxs/code/model/Qwen3-VL-4B-Instruct
+  Hand_Intervention:
+    views: {head: rgb/head, chest: rgb/chest, left_wrist: rgb/wrist/left, right_wrist: rgb/wrist/right}
+    model: /mnt/public/rxs/code/model/Qwen3-VL-4B-Instruct

@@ -1,4 +1,4 @@
-"""Robot yaml, common result format and URDF check (2026-10-31 refactor)."""
+"""机器人 yaml、统一结果格式和 URDF 检查（2026-10-31 重构）。"""
 from pathlib import Path
 
 import numpy as np

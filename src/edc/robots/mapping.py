@@ -1,4 +1,4 @@
-"""User-declared joint dimensions and explicit array selection; no side inference."""
+"""机器人 yaml 里用户声明的关节维度和数组选取（select：正运动学、字段改名、取部分列、scale 换算）；不推断左右。"""
 import copy
 import fnmatch
 import numpy as np

@@ -50,7 +50,7 @@ python examples/quickstart/recommend.py /path/to/dataset/episode.mcap \
   --robot configs/robots/x1pro_mcap.yaml
 ```
 
-Run the nine-method quality collection and generate HTML:
+Run the ten-method quality collection and generate HTML:
 
 ```bash
 edc batch /path/to/dataset/episode.mcap \

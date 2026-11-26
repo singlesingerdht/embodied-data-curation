@@ -1,4 +1,4 @@
-"""Run reports share batch presentation without rerunning or changing checks."""
+"""单次运行的报告和 batch 报告用同一套展示，不重跑、不改检查结果。"""
 import hashlib
 import json
 from pathlib import Path

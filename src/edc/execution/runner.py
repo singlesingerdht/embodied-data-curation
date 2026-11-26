@@ -1,4 +1,4 @@
-"""Shared Python/CLI executor with isolated episode and algorithm failures."""
+"""Python 接口和命令行共用的执行器：按 episode 逐个跑算法，某条 episode 或某个算法出错互不影响。"""
 
 from edc.schemas import CATALOG, RECOMMENDATIONS, RECOMMENDATION_POOL, RECORD, RUN
 from dataclasses import asdict, dataclass

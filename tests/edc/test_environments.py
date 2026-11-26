@@ -126,10 +126,10 @@ def test_openpi_patches_only_worker_and_preserves_before_after_hashes(tmp_path, 
     assert (source/'modeling_siglip.py').read_text() == 'replacement'
 
 
-def test_safety_uses_optional_source_wheels_without_vllm():
-    safety=manager.plan('vision',['safety','safety-depth'])
-    assert safety['algorithms']==['Collision_Detection_Qwen3vl']
-    assert set(safety['sources_required'])=={'sam3','cotracker','depth-anything-3'}
-    assert 'transformers==4.57.1' in safety['requirements']
-    assert not any(requirement.startswith('vllm') for requirement in safety['requirements'])
-    assert {'av', 'depth_anything_3.api'} <= set(safety['imports'])
+def test_scene_uses_sam2_source_wheel_without_vllm():
+    scene=manager.plan('vision',['scene'])
+    assert scene['algorithms']==['Hand_Intervention','Initial_Placement_Assessment']
+    assert set(scene['sources_required'])=={'sam2'}
+    assert 'transformers==4.57.1' in scene['requirements']
+    assert not any(requirement.startswith('vllm') for requirement in scene['requirements'])
+    assert {'sam2.build_sam', 'transformers.models.qwen3_vl'} <= set(scene['imports'])

@@ -1,4 +1,4 @@
-"""Declared inputs and selected parameters must gate recommendation and execution identically."""
+"""算法声明的输入和选定的参数，对推荐和执行的放行规则必须完全一致。"""
 import copy
 import json
 from types import SimpleNamespace

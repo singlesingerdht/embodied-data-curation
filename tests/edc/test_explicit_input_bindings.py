@@ -1,4 +1,4 @@
-"""Exact topic contracts, camera semantics and source-frame/video separation."""
+"""精确的通道约定、相机语义，以及“逐张图片”和“视频文件”两种入口分开处理。"""
 import copy
 import json
 from pathlib import Path

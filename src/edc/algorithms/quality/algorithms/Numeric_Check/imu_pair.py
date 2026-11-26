@@ -1,4 +1,4 @@
-"""Joint IMU evidence from explicitly co-recorded fields, without resampling."""
+"""IMU 联合检查：同一 IMU 通道里逐行对应的角速度和加速度一起看静止段偏置；不跨通道配对，不重采样。"""
 import numpy as np
 from edc.algorithms.quality.algorithms.Numeric_Check.review import numeric_field_status
 

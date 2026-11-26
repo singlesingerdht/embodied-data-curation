@@ -1,12 +1,14 @@
-"""edc command line.
+"""edc 命令行。
 
-User side:      edc channels <data>                          what is in the data (names for the robot yaml)
-                edc robot check --robot R --data D           does the robot yaml match the data
-                edc robot urdf --urdf U [--base B --tip T]   names in a URDF (to write the yaml's urdf part)
-                edc robot urdf --robot R --data D [D2]       verify the yaml's urdf part with two recorded episodes
-                edc batch <data>... --robot R                run every quality algorithm, one HTML report
-Developer side: edc algorithms                               registered algorithms (built-in and installed)
-                edc run <data> --robot R --output O          one source, full output folder (used by edc batch)
+用户用：  edc channels <数据>                          数据里有什么（机器人 yaml 里要写的名字）
+          edc robot check --robot R --data D           机器人 yaml 和数据对不对得上
+          edc robot urdf --urdf U [--base B --tip T]   列出 URDF 里的名字（用来写 yaml 的 urdf 段）
+          edc robot urdf --robot R --data D [D2]       用两条录好的数据核对 yaml 的 urdf 段
+          edc batch <数据>... --robot R                跑全部质检算法，出一份 HTML 报告
+          edc regenerate <报告> --output O             按质检报告筛选数据，重新生成数据集
+开发用：  edc algorithms                               已登记的算法（内置和插件）
+          edc run <数据> --robot R --output O          一个数据源，完整输出文件夹（edc batch 内部用它）
+          edc workflow check / run                     多阶段工作流（质检、编辑、估值、增强）：校验、运行
 """
 import argparse
 import json

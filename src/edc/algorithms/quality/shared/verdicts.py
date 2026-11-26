@@ -1,9 +1,8 @@
-"""Shared rules turning a built-in algorithm's own report into the common Item (edc.algorithms.base).
+"""把内置算法自己的报告翻成统一检查项 Item（edc.algorithms.base）的共用规则。
 
-Each built-in algorithm folder has a result.py with `explain(report, labels)` (one readable sentence) and
-`note(reports, labels)` (short text for the report cell). The rules here are the same for every algorithm:
-which recorded verdict means PASS / REVIEW / SALVAGE / EXCLUDE, when an item is not applicable, and how a
-salvageable item is repaired. No new scores are computed.
+每个内置算法文件夹里有 result.py，写 `explain(report, labels)`（一句可读的话）和
+`note(reports, items, labels, common)`（报告格子里的短文字）。这里的规则所有算法一样：
+记录下的哪种结论算 PASS / REVIEW / SALVAGE / EXCLUDE，什么时候算不适用，可救的项怎么修。不计算新分数。
 
 一个算法自己的特殊说法也写在它的 result.py 里，用不到的不写：target（检查对象怎么叫）、complete（自己确认已查完）、
 not_applicable（不适用的原因）、NA_REASON（算法判不适用但没写原因时的说法）、unshiftable（时钟差没法挪齐时怎么说）、
@@ -117,7 +116,7 @@ def to_item(algo, report, module, labels):
                     + (f"（{short['seconds']:.1f} 秒，要求至少 {short['min_duration_s']:g} 秒）" if short else ''))
     if report.get('too_short'):
         short = report['too_short']
-        reason = f"数据太短：只有 {short['seconds']:.1f} 秒，本机型要求至少 {short['min_duration_s']:g} 秒；其它 8 项不再检查"
+        reason = f"数据太短：只有 {short['seconds']:.1f} 秒，本机型要求至少 {short['min_duration_s']:g} 秒；其它 9 项不再检查"
     elif report.get('precondition') == 'clock_fixed_offset':
         reason = '时钟有固定偏差（见采集同步），要先平移时间才能评价对齐；本项暂不判定'
     else:

@@ -1,4 +1,4 @@
-"""Execution-only affine clock mapping; never resamples or changes source evidence."""
+"""只在运行时按线性关系（偏移、缩放）把各通道时间换到共同时钟；不重采样，不改原始数据和证据。"""
 import copy
 from edc.data.transforms import RobotTransforms
 

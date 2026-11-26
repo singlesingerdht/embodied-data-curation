@@ -1,4 +1,4 @@
-"""Synthetic boundary fixtures for config checks and native clock diagnostics."""
+"""用合成的边界数据测：相机配置检查，以及按原始时钟的诊断（零时间、缺消息头、录包顺序）。"""
 from pathlib import Path
 from types import SimpleNamespace
 import copy

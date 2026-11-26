@@ -1,4 +1,4 @@
-"""Print actual per-episode recommendations; does not execute algorithms."""
+"""打印每条 episode 实际推荐跑哪些算法；只推荐，不运行算法。"""
 import argparse
 import json
 from pathlib import Path

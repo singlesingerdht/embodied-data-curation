@@ -1,4 +1,4 @@
-"""Action_Smoothness input: one arm's end-effector position (m) on that channel's own time axis (s)."""
+"""动作平滑度的输入：一条手臂的末端位置（m），用该通道自己的时间轴（s）。"""
 import numpy as np
 
 

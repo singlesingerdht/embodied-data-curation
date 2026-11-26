@@ -1,4 +1,4 @@
-"""Per-channel timing observations; no cross-clock claims or new score."""
+"""时间戳对齐的附带观察：每个通道自己的时间节奏（间隔、零间隔、倒退），不做跨时钟判断，也不打新分。"""
 import numpy as np
 from edc.algorithms.quality.shared.timing_scope import timing_exclusion_reason
 

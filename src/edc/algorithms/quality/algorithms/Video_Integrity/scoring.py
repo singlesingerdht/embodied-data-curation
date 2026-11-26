@@ -1,6 +1,7 @@
 """模块 A: 视频完整性 — 从 health_checker + frame_quality 结果组装评分模块。
 
-4 个连续指标 (forward/inverse), 任一原子 score=0 → 模块熔断 (total=0, passed=False)。
+9 个子指标（黑屏、帧完整性、帧率稳定、冻结、遮挡、模糊、过曝、欠曝、偏色），各按阈值换算成连续分；
+任一子指标 score=0 → 模块熔断 (total=0, passed=False)。
 """
 from edc.algorithms.quality.shared.quality_reporter import normalize_weights, compute_quality, to_grade
 

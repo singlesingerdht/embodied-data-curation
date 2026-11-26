@@ -1,4 +1,4 @@
-"""Data modality vocabulary, independent of anatomy, device and command/feedback."""
+"""数据模态（关节、位姿、图像等）的词表，和身体部位、设备、指令／反馈无关。"""
 import re
 
 MODALITIES = {

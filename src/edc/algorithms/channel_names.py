@@ -1,4 +1,4 @@
-"""Logical channel names are references, never destructive source renames."""
+"""逻辑通道名：校验 yaml 里声明的逻辑名，按原名或逻辑名找到通道；逻辑名只是引用，不改数据里的原始通道名。"""
 
 from edc.schemas import CHANNEL_CATALOG
 import copy

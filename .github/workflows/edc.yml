@@ -18,14 +18,14 @@ jobs:
       - run: python -m build
       - name: Check framework release contents
         run: python scripts/check_release_contents.py --dist dist
-      - name: Base wheel lists the nine built-in algorithms
+      - name: Base wheel lists the ten built-in algorithms
         run: |
           python -m venv /tmp/edc-base
           /tmp/edc-base/bin/pip install dist/*.whl
-          cd /tmp && test "$(/tmp/edc-base/bin/edc algorithms | grep -c ir-adapter)" = 9
+          cd /tmp && test "$(/tmp/edc-base/bin/edc algorithms | grep -c ir-adapter)" = 10
       - name: Base wheel discovers quality and four value algorithms without model imports
         run: |
           python -m venv /tmp/edc-base
           /tmp/edc-base/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/edc-base/bin/python -c "import sys; from edc.algorithms.registry import algorithms; r=algorithms(); assert not r.discovery_errors; assert sum(p.spec.category=='quality' for p in r.plugins.values())==9; assert [p.spec.id for p in r.plugins.values() if p.spec.category=='value']==['Collision_Detection_Qwen3vl','Initial_Placement_Assessment','Initial_State_Distribution','Progress_Stagnation_Attribution']; assert not ({'torch','transformers','sam3','cotracker','PIL','dqs'} & set(sys.modules))"
+          /tmp/edc-base/bin/python -c "import sys; from edc.algorithms.registry import algorithms; r=algorithms(); assert not r.discovery_errors; assert sum(p.spec.category=='quality' for p in r.plugins.values())==10; assert [p.spec.id for p in r.plugins.values() if p.spec.category=='value']==['Hand_Intervention','Initial_Placement_Assessment','Initial_State_Distribution','Progress_Stagnation_Attribution']; assert not ({'torch','transformers','sam2','sam3','cv2','PIL','dqs'} & set(sys.modules))"

@@ -1,4 +1,4 @@
-"""Versioned logical vocabulary; declaring a name never installs a decoder."""
+"""逻辑通道名词表（带版本）：从 yaml/json 读出可用的逻辑名和它们的含义；声明一个名字不会因此装上解码器。"""
 import copy
 from functools import lru_cache
 from importlib.resources import files

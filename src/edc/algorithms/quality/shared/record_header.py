@@ -1,4 +1,4 @@
-"""Informational paired-clock evidence; never a score, gate, or causal diagnosis."""
+"""成对时钟证据：每路“录包时间 − 采集时间”的偏差，只作参考，不打分、不拦截，也不下原因结论。"""
 import math
 
 

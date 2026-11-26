@@ -1,4 +1,4 @@
-"""Dataset -> Episode -> Channel contract, with explicit episode boundaries."""
+"""数据集 → episode → 通道 的读取接口（Dataset / Episode / Channel），每条 episode 的边界都显式写明。"""
 
 from edc.schemas import SOURCE_MAPPING
 from contextlib import contextmanager

@@ -57,55 +57,27 @@
             "sam3"
           ]
         },
-        "safety": {
+        "scene": {
           "algorithms": [
-            "Collision_Detection_Qwen3vl"
+            "Hand_Intervention",
+            "Initial_Placement_Assessment"
           ],
-          "requirements": [
-            "timm>=1.0.17,<2",
-            "ftfy==6.1.1",
-            "einops>=0.8,<1",
-            "pycocotools>=2,<3",
-            "psutil>=5",
-            "setuptools>=70,<81",
-            "imageio>=2.34,<3"
-          ],
-          "imports": [
-            "sam3.model_builder",
-            "cotracker.predictor",
-            "transformers.models.qwen3_vl"
-          ],
-          "sources": [
-            "sam3",
-            "cotracker"
-          ],
-          "limitation": "Native four-event v62; CoTracker3 offline weights and applicable robot geometry are explicit run inputs."
-        },
-        "safety-depth": {
-          "algorithms": [],
           "requirements": [
             "av>=14,<17",
-            "xformers==0.0.32.post1",
-            "opencv-python==4.11.0.86",
-            "numpy==1.26.4",
-            "pandas==2.2.3",
-            "plyfile==1.1",
-            "evo==1.30.0",
-            "pycolmap==3.13.0",
-            "omegaconf==2.3.0",
-            "addict==2.4.0",
-            "e3nn>=0.5,<1",
-            "trimesh>=4,<5",
-            "pillow-heif>=0.20,<1"
+            "mcap>=1.1",
+            "rosbags>=0.10"
           ],
           "imports": [
-            "av",
-            "depth_anything_3.api"
+            "sam2.build_sam",
+            "transformers.models.qwen3_vl",
+            "transformers.models.grounding_dino",
+            "mcap",
+            "rosbags"
           ],
           "sources": [
-            "depth-anything-3"
+            "sam2"
           ],
-          "limitation": "Optional DA3 preparation for RGB-only safety input; estimates remain distinct from sensor depth and calibrated geometry."
+          "limitation": "Local Qwen3-VL, Grounding DINO and SAM2 weights are explicit run inputs; the two algorithms share one Qwen3-VL load per process."
         }
       }
     },
