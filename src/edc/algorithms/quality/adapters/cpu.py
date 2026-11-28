@@ -586,6 +586,15 @@ class ShiftedReader:
         return {n: [t + self._shift[n] for t in v] if n in self._shift else v
                 for n, v in ts.items() if n not in self._drop}
 
+    def shifted_timestamps(self, info):
+        """平移后的全通道时间轴（含被评分排除的派生副本）。
+
+        停顿边界跳变检查用：派生 pose 通道（如 FK）虽不参与评分，但其时间轴与源通道
+        一样被平移过；拿 info.topics 里的原始时间戳会与平移后的停顿窗口错位。"""
+        ts = self._reader.require_timestamps(info, min_channels=1)
+        return {n: [t + self._shift[n] for t in v] if n in self._shift else v
+                for n, v in ts.items()}
+
 
 def derived_copies(episode, info):
     """Channels that only repeat another channel's timeline: split from one message (selection) or
@@ -712,7 +721,7 @@ class LegacyAlgorithm:
     def __init__(self, ident, inputs, dependencies):
         version = {'Numeric_Check': 'ir-adapter-21', 'Action_Smoothness': 'ir-adapter-24',
                    'Reset_Detection': 'ir-adapter-18', 'Sync_Check': 'ir-adapter-18',
-                   'Root_Cause': 'ir-adapter-19', 'Check_Timestamp': 'ir-adapter-20',
+                   'Root_Cause': 'ir-adapter-19', 'Check_Timestamp': 'ir-adapter-24',
                    'Video_Integrity': 'ir-adapter-17'}.get(ident, 'ir-adapter-16')
         descriptions, schema = cpu_parameters(ident)
         evidence_version = '-evidence-scope3' if ident in {'Check_Timestamp', 'Sync_Check', 'Root_Cause'} else '-evidence-scope2'

@@ -26,6 +26,14 @@ class EpisodeAccess(DataReader):
     def iter_values(self, name):
         return iter(self.channel_values(name))
 
+    def frames_at(self, name, indices):
+        ep = self.episode
+        # 解开 CanonicalEpisode 等包装，拿到底层真实 Episode 的 reader
+        while hasattr(ep, '_source'):
+            ep = ep._source
+        ep.open()
+        return ep._reader.frames_at(name, indices)
+
     def channel_timestamps(self, name):
         return self.episode.channels[name].timestamps
 

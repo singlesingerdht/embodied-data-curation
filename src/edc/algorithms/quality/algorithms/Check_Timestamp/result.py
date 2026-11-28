@@ -8,6 +8,16 @@ GUIDE = '每一路单独打分，整条结论看所有路的平均分：高于 9
 
 
 def explain(report, labels):
+    jumps = (report.get('pause_boundary_jumps') or {}).get('jumps') or []
+    if jumps:
+        listed = '；'.join(
+            f"{clock_time(j['start_time'])}处相机空档（{j['gap_ms']:.0f} 毫秒）前后画面显著变化"
+            f"（{labels.get(j.get('camera'), j.get('camera', ''))}，变化像素占比 {j.get('frac', 0):.2f}）"
+            for j in jumps[:3])
+        more = f'，共 {len(jumps)} 处' if len(jumps) > 3 else ''
+        thr = report['pause_boundary_jumps'].get('threshold_frac') or 0.26
+        return (f'子任务切换跳帧：{listed}{more}。超过 {thr:.2f} 判定阈值，'
+                '空档期间画面没录上、前后画面突然跳一下，判不合格')
     if report.get('shared_row_intervals'):
         rows = report['shared_row_intervals']
         gaps = [e for e in rows['events'] if e['type'] == 'gap']
@@ -95,4 +105,8 @@ def note(reports, items, labels, common):
     rows = next((r['shared_row_intervals'] for r in reports if r.get('shared_row_intervals')), None)
     if rows:
         return f"共用一条时间，{rows['event_count']} 处跳帧" if rows['event_count'] else '共用一条时间，没有跳帧'
+    jumps = next((r['pause_boundary_jumps']['jumps'] for r in reports
+                  if (r.get('pause_boundary_jumps') or {}).get('jumps')), None)
+    if jumps:
+        return '；'.join(filter(None, [f'子任务切换跳帧 {len(jumps)} 处', common]))
     return common

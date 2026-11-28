@@ -204,3 +204,77 @@ class McapReader(DataReader):
         return encode_frames(self.iter_frames(name), output_path or cache_path(self._path, name),
                              expected_count=info.topics[name].count)
 
+    @staticmethod
+    def _is_h264_keyframe(data: bytes) -> bool:
+        """annexb 起始码后 NAL type==5 (IDR) 即关键帧。"""
+        for sc in (b'\x00\x00\x00\x01', b'\x00\x00\x01'):
+            i = data.find(sc)
+            while i >= 0:
+                if i + len(sc) < len(data) and (data[i + len(sc)] & 0x1f) == 5:
+                    return True
+                i = data.find(sc, i + 1)
+        return False
+
+    def frames_at(self, name, indices):
+        """只解码指定索引的帧（关键帧 seek），避免从帧0顺序解码整路视频。
+
+        CompressedVideo(H.264/H.265)：收集 packet，对每个目标从≤它的最近 IDR 关键帧
+        起解码到目标；CompressedImage/Protobuf：只解码目标索引。返回 {index: rgb ndarray}。
+        """
+        want = sorted({int(i) for i in indices})
+        if not want:
+            return {}
+        want_set, mx = set(want), want[-1]
+        out = {}
+        if name in self._protobuf_classes:
+            from .protobuf import image
+            cls = self._protobuf_classes[name]
+            with open(self._path, 'rb') as stream:
+                for idx, (_, _, msg) in enumerate(make_reader(stream).iter_messages(topics=[name], log_time_order=False)):
+                    if idx in want_set:
+                        out[idx] = image(cls.FromString(msg.data))
+                    if idx >= mx:
+                        break
+            return out
+        if not self._topics_cache[name].image_available:
+            raise ValueError(f"Image decoder unavailable: {name}")
+        from .rosbag import decode_ros_image
+        packets = []
+        for idx, (ct, msg, typename) in enumerate(self._iter_ros_messages(name)):
+            packets.append((idx, typename, msg))
+            if idx >= mx:
+                break
+        if not packets:
+            return out
+        if packets[0][1].endswith('/CompressedVideo'):
+            import av
+            keys = [idx for idx, tn, m in packets if self._is_h264_keyframe(bytes(m.data))]
+            fmt = packets[0][2].format
+            for tgt in want:
+                if tgt in out:
+                    continue  # 同一 GOP 里前序目标解码时已顺带产出
+                kf = max([k for k in keys if k <= tgt], default=0)
+                dec = av.CodecContext.create(fmt, 'r')
+                # 包索引写进 pts：B 帧重排/解码器延迟下，输出帧顺序与喂包顺序不同，
+                # 解码器会把 pts 跟随对应输入包重排，输出帧必须按 pts 归属而不是喂包序号。
+                for idx, tn, m in packets:
+                    if idx < kf:
+                        continue
+                    if idx > tgt:
+                        break
+                    pkt = av.Packet(bytes(m.data))
+                    pkt.pts = pkt.dts = idx
+                    for fr in dec.decode(pkt):
+                        if fr.pts in want_set:
+                            out[fr.pts] = fr.to_ndarray(format='rgb24')
+                # 延迟输出的帧（重排缓冲）在 flush 时才出来，同样按 pts 归属。
+                for fr in dec.decode(None):
+                    if fr.pts in want_set:
+                        out[fr.pts] = fr.to_ndarray(format='rgb24')
+        else:
+            decoders = {}
+            for idx, tn, m in packets:
+                if idx in want_set:
+                    out[idx] = decode_ros_image(m, tn, decoders)
+        return out
+

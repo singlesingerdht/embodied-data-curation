@@ -136,6 +136,22 @@ class DataReader(ABC):
             raise ValueError("Reader must be opened before reading frames")
         yield from video_frames(self.materialize_image_channel(info, name))
 
+    def frames_at(self, name, indices):
+        """只取指定索引的帧 {index: rgb ndarray}。默认顺序解码收集（慢）；
+        容器 reader（如 mcap）覆盖为关键帧 seek 快解码。"""
+        want = {int(i) for i in indices}
+        if not want:
+            return {}
+        mx = max(want)
+        out = {}
+        for fr in self.iter_frames(name):
+            idx = fr['index']
+            if idx in want:
+                out[idx] = fr['image']
+            if idx >= mx:
+                break
+        return out
+
     # ── require 层: 算法声明式取数 ──
 
     def require_image_channels(self, info: DataInfo) -> List[Tuple[str, str]]:

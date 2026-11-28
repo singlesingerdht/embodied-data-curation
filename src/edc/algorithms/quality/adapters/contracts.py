@@ -73,6 +73,10 @@ def cpu_parameters(ident):
     if ident == 'Check_Timestamp':
         properties['shared_row_max_gap_s'] = {'type': 'number', 'exclusiveMinimum': 0,
             'description': '所有通道共用一条行时间（导出时已逐帧对齐）时，相邻两行最多相隔多少秒；超过算空档、进复核。不填按中位行间隔的 3 倍'}
+        properties['pause_jump_threshold_m'] = {'type': 'number', 'exclusiveMinimum': 0, 'default': 0.03,
+            'description': '（已弃用，保留兼容）旧数值法末端位移阈值；现用图像法 pause_jump_image_frac'}
+        properties['pause_jump_image_frac'] = {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1, 'default': 0.26,
+            'description': '画面跳帧阈值：相机空档前后两帧灰度差>25 的像素占比（160×120 降采样）超过即判子任务切换跳帧、整条不合格。不填 0.26'}
     if ident == 'Root_Cause':
         properties['families'] = {'type': ['object', 'null'], 'description': '原始话题的消息源分组（拆出的通道跟源话题走，不用写），用于关联异常；未填沿用原方法分组'}
     if ident == 'Sync_Check':

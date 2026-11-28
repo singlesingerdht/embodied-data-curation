@@ -56,7 +56,7 @@ def _benign_pause_events(correlated: List[dict],
 
     判断标准：
     1. 关联事件中至少有一次涉及 ≥8 路通道同时停顿
-    2. 停顿时长在合理范围内（300ms - 3000ms）
+    2. 停顿时长在合理范围内（300ms - 2500ms）
     3. 或者 >50% 的通道都有长间隔 + 多次关联事件（暗示全局性行为）
 
     A direct pause affects most channels at one time; a broad global pattern is
@@ -70,7 +70,7 @@ def _benign_pause_events(correlated: List[dict],
     # 阈值配置
     BENIGN_MIN_CHANNELS = 8      # 至少 8 路通道同时停顿
     BENIGN_MIN_GAP_MS = 300      # 最小 300ms
-    BENIGN_MAX_GAP_MS = 3000     # 最大 3s（超过 3s 可能是其他问题）
+    BENIGN_MAX_GAP_MS = 2500     # 最大 2.5s（超过 2.5s 可能是其他问题）
 
     # 检查是否有大规模同步停顿
     for event in correlated:

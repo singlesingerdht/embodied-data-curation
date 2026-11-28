@@ -262,7 +262,9 @@ JSON 输出中的数值字段与 `run_check.py` 的 `dt_cv`、`long_gap_ratio`�
 
 `check_dt.py` 没有内置的合格/不合格阈值；它只输出统计量供分析。存在回退或重复时间戳时，CV 和采样率会输出为 `n/a`。
 
-正式评分使用 `run_check.py` 中的阈值：`dt CV` 在 `1.50`（150%）以内不扣分，达到 `3.00`（300%）时该项归零；`long_gap_ratio` 在 `0.5%` 以内不扣分，达到 `5%` 时该项归零。完整落在多通道同步停顿窗口内的间隔不计入 `dt CV` 和长间隔比例。
+正式评分使用 `run_check.py` 中的阈值：`dt CV` 在 `1.50`（150%）以内不扣分，达到 `3.00`（300%）时该项归零；`long_gap_ratio` 在 `0.5%` 以内不扣分，达到 `5%` 时该项归零。多通道同步停顿窗口指至少 4 路（或过半活跃通道）同时出现 300ms～2500ms 的同步空档（系统级暂停，如子任务切换）；完整落在窗口内的间隔不计入 `dt CV` 和长间隔比例。
+
+子任务切换跳帧检查采用**纯图像法**（`_pause_boundary_image_jumps`）。判据是**相机自己有空档（画面停录了），且空档前后两帧画面显著变化**，而不是看机械臂动没动：腕部旋转跳帧时臂尖位移可以极小（人工确认样本臂尖仅移 0.8cm，但腕相机视野大幅旋转、画面明显跳变），任何基于末端位置的数值法对旋转都是盲区；反过来，相机一直在录时臂怎么动画面都连续，不算跳帧。具体：逐相机通道直接找自身空档——相邻帧间隔超过 `max(2×中位帧间隔, 0.2s)` 即候选，不依赖多通道停顿窗口，因此空档超过 2500ms 停顿上限也能检到；用 `reader.frames_at` 关键帧 seek 只解码空档边界前后两帧（H.264 从 ≤ 目标索引的最近 IDR 关键帧解码到目标，避免从帧 0 顺序解码整路视频，约 8 倍提速；包索引写入 pts、输出帧按 pts 归属并收集 flush 帧，B 帧重排或解码器延迟输出下不会错位或丢帧）；深度通道（名字含 depth）不参与——8bit 灰度差阈值对深度值无意义；两帧降采样到 160×120 灰度后计算平均绝对差 `MAD` 与 `|差|>25` 的像素占比 `frac`（支持 RGB 与单通道灰度如 mono8，非 8bit 帧记 unchecked）。`frac` 超过阈值（默认 `0.26`，`DEFAULT_PAUSE_JUMP_IMAGE_FRAC`，可用参数 `pause_jump_image_frac` 配置，取值 (0,1]；真实数据人工质检对照：确认跳帧 frac=0.275／0.298／0.495，人工通过样本最高 0.254，分离清晰）即判不合格（`score=0`、`DO_NOT_USE`），`reasons` 首条写明"子任务切换跳帧"及具体空档时刻、相机、空档时长与变化像素占比。检查结果与证据写入 `threshold_profile.pause_boundary_jumps` 和报告级 `pause_boundary_jumps`（含 `status`、`threshold_frac`、`cameras`、`jumps`、`unchecked_channels`）；无相机通道、帧不可解码、空档边界帧缺失或帧不可比较（非 8bit／形状异常）时，相应空档记入 `unchecked_channels` 注明原因，不静默跳过；一路相机一个空档都没比成不算已检查，全部不可用时整体记 `unchecked`，不影响原判定（不熔断）。检查自身若在意料之外的位置出错（不支持的输入格式等），`assess_from_ir` 整体兜底记 `unchecked` 跳过——本检查任何失败都不阻断时间戳评估和其余算法。该检查仅在 IR 路径（`assess_from_ir`）执行；旧导出目录路径只有时间戳，不做此检查。旧数值法（相机空档期间末端位移超过 3cm，`_pause_boundary_pose_jumps`，参数 `pause_jump_threshold_m`）已弃用：函数与参数保留兼容，但不再参与评分。
 
 ## `run_check.py`
 ### 输入
@@ -284,9 +286,9 @@ python run_check.py <导出包目录> --reference /cam_h/color/image_raw/compres
 | `reasons` | 包级自然语言归因（参考流 topic、平均分、低分 topic 明细） |
 | `attribution` | **标准扣分账单**：每个 topic 每个未满分子项一条，含 `sub_indicator/atom/score/gap/weighted_gap`，按 `weighted_gap` 降序，由 `format_report` 从 `sub_indicators` 自动生成 |
 | `sub_indicators` | **每个非参考 topic 一项**，含 `score/grade/passed/weight` + `details`（7 子项：匹配覆盖率/P50/P99/系统偏移/残余抖动/漂移/采样稳定性） |
-| `threshold_profile` | 参考流、聚合方式、IoU 阈值、`pass_threshold=85`、`review_threshold=75` 以及良性暂停窗口 `benign_pause_windows` 等审计信息 |
+| `threshold_profile` | 参考流、聚合方式、IoU 阈值、`pass_threshold=85`、`review_threshold=75`、良性暂停窗口 `benign_pause_windows` 及画面跳帧证据 `pause_boundary_jumps` 等审计信息 |
 
-**熔断**（`verdict=DO_NOT_USE`，`score=0`）：存在非法时间戳 / 无可用参考 topic / 参考流 cadence 未过硬门控（`dt_cv≥20%` 或 `long_gap≥5%` 或有回退/重复）。
+**熔断**（`verdict=DO_NOT_USE`，`score=0`）：存在非法时间戳 / 无可用参考 topic / 参考流 cadence 未过硬门控（`dt_cv≥20%` 或 `long_gap≥5%` 或有回退/重复）/ 检出子任务切换跳帧（相机空档前后画面变化像素占比超过 `pause_jump_image_frac`，仅 IR 路径）。
 
 输出示例（2 个 target，/joint_cmd 有 +5ms 系统偏移）：
 

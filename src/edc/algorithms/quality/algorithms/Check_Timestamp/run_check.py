@@ -40,6 +40,13 @@ DEFAULT_DRIFT_MIN_POINTS = 20
 DEFAULT_DRIFT_MIN_DURATION_S = 2.0
 DEFAULT_PASS_THRESHOLD = 85.0
 DEFAULT_REVIEW_THRESHOLD = 75.0
+# 停顿边界末端位置跳变阈值：相机停录期间末端移动超过该值，画面在空档两端出现
+# 肉眼可辨的跳变（子任务切换跳帧）。3cm 约相当于快速运动 2–3 帧的位移；
+# 1–2.6cm 的停顿慢漂经人工质检确认不构成可见跳帧（2026-11-27 真实数据对照）。
+DEFAULT_PAUSE_JUMP_THRESHOLD_M = 0.03
+# 图像法跳帧阈值：相机空档前后两帧灰度差>25 的像素占比（160×120 降采样）。
+# 3 个人工确认跳帧 frac=0.275/0.298/0.495，人工 pass 最高 0.254 → 0.26 分离清晰。
+DEFAULT_PAUSE_JUMP_IMAGE_FRAC = 0.26
 
 
 @dataclass
@@ -210,7 +217,7 @@ def increment(counts: dict[str, int], reason: str) -> None:
 def _detect_pause_windows(ts_map: dict[str, list[float]],
                           min_channels: int = 4,
                           min_gap_ms: float = 300.0,
-                          max_gap_ms: float = 3000.0,
+                          max_gap_ms: float = 2500.0,
                           correlation_window_ms: float = 100.0,
                           min_channel_ratio: float = 0.5) -> list[dict[str, Any]]:
     """检测多通道同步停顿窗口（系统级暂停，如子任务切换）
@@ -320,6 +327,295 @@ def _timestamp_in_pause_interior(timestamp: float,
         <= window["end_time"] - boundary_tolerance_s
         for window in pause_windows
     )
+
+
+def _pause_boundary_pose_jumps(info, reader,
+                               ts_map: dict[str, list[float]],
+                               pause_windows: list[dict[str, Any]],
+                               threshold_m: float | None = None) -> dict[str, Any]:
+    """停顿边界末端位置跳变检查（子任务切换跳帧）。
+
+    画面跳帧的判据是【相机自己停录了，且机械臂在相机停录期间移动了】，而不是
+    "机械臂在停顿窗口两端动了"——后者会把相机一直在录、画面连续的运动误判成跳帧。
+
+    对每个良性停顿窗口，先找各相机通道在窗口内自己的空档（画面真的停录的区间）；
+    再对每个末端 pose 通道（feedback 优先，command 不参与），量机械臂在【相机空档期间】
+    的 XYZ 位移，超过 threshold_m 才判跳帧。仅当机械臂停录区间与相机空档大致重合
+    （边界样本落在相机空档两端 align_tol_s 内）才采信位移：若相机空档比臂空档窄得多，
+    臂的大部分运动其实被相机录下来了，画面连续，不算跳帧。
+
+    不做关节兜底：没有可用的末端位置通道时返回 unchecked，注明原因。
+    时间戳只用评分时间轴（ts_map）或 reader 提供的平移后全通道时间轴；
+    不回退到 info.topics 的原始时间戳——固定时钟偏差场景下它与平移后的停顿窗口错位。
+    单位未声明的通道不假设米，进 unchecked_channels。
+    """
+    import numpy as np
+    from edc.data.ir.metadata import MODALITY_POSE
+
+    if threshold_m is None:
+        threshold_m = DEFAULT_PAUSE_JUMP_THRESHOLD_M
+    result: dict[str, Any] = {"status": "checked", "threshold_m": threshold_m,
+                              "channels": [], "jumps": [], "unchecked_channels": []}
+    if not pause_windows:
+        return result
+
+    unit_scale = {"m": 1.0, "meter": 1.0, "meters": 1.0, "mm": 0.001, "cm": 0.01}
+    episode = getattr(reader, "episode", None)  # EpisodeAccess（含 ShiftedReader 透传）带完整通道声明
+    candidates = []
+    for name, ti in info.topics.items():
+        if ti.modality != MODALITY_POSE or not ti.value_available:
+            continue
+        if ti.fields is not None and "position" not in ti.fields:
+            continue
+        meta = (getattr(ti, "field_metadata", None) or {}).get("position", {}) or {}
+        kind = meta.get("source_kind") or getattr(ti, "source_kind", None) or "unknown"
+        if episode is not None and name in getattr(episode, "channels", {}):
+            try:
+                kind = episode.channels[name].field_spec("position").get("source_kind") or kind
+            except Exception:
+                pass
+        if kind == "command":
+            # 指令在停顿期间可能仍在发目标值，不代表实际运动，不参与本检查。
+            continue
+        candidates.append((name, ti, kind, meta))
+    feedback = [c for c in candidates if c[2] == "feedback"]
+    chosen = feedback or candidates  # 无显式 feedback 时接受 unknown；command 已被排除
+    if not chosen:
+        return {"status": "unchecked", "threshold_m": threshold_m, "channels": [], "jumps": [],
+                "unchecked_channels": [],
+                "reason": "无末端位置（pose feedback）通道，未检查停顿边界跳帧"}
+
+    shifted_all = None  # 平移后的全通道时间轴（含派生副本），按需取一次
+
+    def resolve_ts(name, ti):
+        ts = ts_map.get(name)
+        if ts is not None:
+            return ts
+        if getattr(ti, "timestamps_synthetic", False):
+            return None
+        nonlocal shifted_all
+        if shifted_all is None:
+            provider = getattr(reader, "shifted_timestamps", None)
+            try:
+                shifted_all = provider(info) if provider else {}
+            except Exception:
+                shifted_all = {}
+        return shifted_all.get(name)
+
+    # 相机通道：画面跳不跳取决于相机自己有没有停录，而不是机械臂动没动。
+    from edc.data.ir.metadata import MODALITY_IMAGE
+    cameras = []
+    for name, ti in info.topics.items():
+        if ti.modality not in {MODALITY_IMAGE, "rgb"}:
+            continue
+        ts = resolve_ts(name, ti)
+        if ts is None or len(ts) < 2:
+            continue
+        arr = np.asarray(ts, dtype=float)
+        dts = np.diff(arr)
+        positive = dts[dts > 0]
+        if not len(positive):
+            continue
+        cameras.append((name, arr, float(np.median(positive))))
+
+    pose_data = []
+    for name, ti, kind, meta in chosen:
+        ts = resolve_ts(name, ti)
+        if ts is None or len(ts) < 2:
+            reason = ("合成时间戳，不参与停顿边界检查" if getattr(ti, "timestamps_synthetic", False)
+                      else "无与停顿窗口同轴的评分时间戳（派生副本且 reader 未提供平移时间轴）")
+            result["unchecked_channels"].append({"channel": name, "reason": reason})
+            continue
+        try:
+            positions = reader.read_field(info, name, "position")
+        except Exception as exc:
+            result["unchecked_channels"].append({"channel": name, "reason": f"末端位置不可读：{exc}"})
+            continue
+        if positions is None:
+            result["unchecked_channels"].append({"channel": name, "reason": "末端位置不可读"})
+            continue
+        positions = np.asarray(positions, dtype=float)
+        if positions.ndim != 2 or positions.shape[1] != 3 or len(positions) != len(ts):
+            result["unchecked_channels"].append(
+                {"channel": name, "reason": f"末端位置形状异常：{positions.shape}，样本数 {len(ts)}"})
+            continue
+        unit = meta.get("unit") or getattr(ti, "unit", None)
+        scale = unit_scale.get(str(unit).lower()) if unit else None
+        if scale is None:
+            # 未知单位保持未知：按毫米录的数据若被当成米会放大 1000 倍直接熔断。
+            result["unchecked_channels"].append(
+                {"channel": name,
+                 "reason": "末端位置未声明单位，无法确认量纲" if not unit else f"末端位置单位无法换算：{unit}"})
+            continue
+        result["channels"].append(name)
+        pose_data.append((name, getattr(ti, "side", "unknown"), np.asarray(ts, dtype=float), positions, scale))
+
+    # 画面跳帧判据：相机自己有空档（画面真的停录了），且机械臂在【相机空档期间】位移超阈值。
+    # 仅当机械臂的停录区间与相机空档大致重合时才采信位移——若相机空档比臂空档窄得多，
+    # 臂的大部分运动其实被相机录下来了，画面连续，不算跳帧（避免高估）。
+    align_tol_s = 0.15
+    for window in pause_windows:
+        a, b = window["start_time"], window["end_time"]
+        cam_gaps = []
+        for cname, carr, med in cameras:
+            dts = np.diff(carr)
+            thr = max(2.0 * med, 0.1)
+            idx = np.where((carr[:-1] >= a - 0.15) & (carr[:-1] <= b + 0.05) & (dts > thr))[0]
+            for i in idx:
+                cam_gaps.append((cname, float(carr[i]), float(carr[i + 1])))
+        if not cam_gaps:
+            continue  # 相机一直在录，画面连续，无论臂怎么动都不跳帧
+        for name, side, ts_arr, positions, scale in pose_data:
+            best = None
+            for cname, ca, cb in cam_gaps:
+                i = int(np.searchsorted(ts_arr, ca, side="right")) - 1
+                j = int(np.searchsorted(ts_arr, cb, side="left"))
+                if i < 0 or j >= len(ts_arr) or j <= i:
+                    continue
+                if abs(ts_arr[i] - ca) > align_tol_s or abs(ts_arr[j] - cb) > align_tol_s:
+                    continue  # 臂停录区间与相机空档不重合，位移大部分被相机录下，不可信
+                p, q = positions[i], positions[j]
+                if not (np.isfinite(p).all() and np.isfinite(q).all()):
+                    continue
+                delta_m = float(np.linalg.norm(p - q)) * scale
+                if delta_m > threshold_m and (best is None or delta_m > best[0]):
+                    best = (delta_m, cname, ca, cb)
+            if best is not None:
+                delta_m, cname, ca, cb = best
+                result["jumps"].append({
+                    "channel": name, "side": side, "camera": cname,
+                    "start_time": ca, "end_time": cb,
+                    "gap_ms": (cb - ca) * 1000.0,
+                    "window_start": a, "window_end": b,
+                    "delta_m": round(delta_m, 4), "delta_cm": round(delta_m * 100, 2),
+                })
+    if not result["channels"] and result["unchecked_channels"]:
+        result["status"] = "unchecked"
+        result["reason"] = "末端位置通道均不可用，未检查停顿边界跳帧"
+    return result
+
+
+def _pause_jump_reasons(boundary: dict[str, Any]) -> list[str]:
+    """子任务切换跳帧的不合格原因（末端位置在停顿两端移动超过阈值）。"""
+    jumps = boundary.get("jumps") or []
+    if not jumps:
+        return []
+    threshold_cm = boundary.get("threshold_m", DEFAULT_PAUSE_JUMP_THRESHOLD_M) * 100
+    side_label = {"left": "左臂", "right": "右臂"}
+    parts = []
+    for j in jumps:
+        label = side_label.get(j.get("side"), "")
+        parts.append(f"{j['start_time']:.3f}s 处停顿 {j['gap_ms']:.0f} 毫秒期间"
+                     f"{label}末端位置移动 {j['delta_cm']:.1f} 厘米（{j['channel']}）")
+    return [f"子任务切换跳帧：{'；'.join(parts)}。超过 {threshold_cm:g} 厘米判定阈值，"
+            "停顿期间机械臂运动未被记录，停顿前后画面跳变，判不合格"]
+
+
+def _frame_diff_metrics(a, b) -> tuple[float, float]:
+    """两帧灰度降采样(160×120)后的平均绝对差 MAD 与 |差|>25 的像素占比 frac。
+
+    支持 3 通道 RGB 与二维单通道灰度（如 ROS mono8）；非 8bit（如 16UC1 深度）
+    抛 ValueError，由调用方记 unchecked——灰度差>25 的阈值只对 8bit 可见光有意义。"""
+    import cv2
+    import numpy as np
+
+    def gray(x):
+        x = np.asarray(x)
+        if x.dtype != np.uint8:
+            raise ValueError(f"非 8bit 图像（{x.dtype}），不参与画面跳帧比较")
+        if x.ndim == 2:
+            return cv2.resize(x, (160, 120)).astype(np.float32)
+        if x.ndim == 3 and x.shape[2] == 3:
+            return cv2.cvtColor(cv2.resize(x, (160, 120)), cv2.COLOR_RGB2GRAY).astype(np.float32)
+        raise ValueError(f"不支持的图像形状：{x.shape}")
+
+    d = np.abs(gray(a) - gray(b))
+    return float(d.mean()), float((d > 25).mean())
+
+
+def _pause_boundary_image_jumps(info, reader,
+                                ts_map: dict[str, list[float]],
+                                threshold_frac: float | None = None) -> dict[str, Any]:
+    """画面跳帧检测（纯图像）：相机自己有空档（画面停录），且空档前后两帧画面显著变化。
+
+    直接检测各相机通道的空档（>max(2×中位帧隔, 0.2s)），不依赖多通道停顿窗口——
+    腕部旋转跳帧臂尖位移极小，数值法盲区，只有画面差能抓住。用 reader.frames_at
+    关键帧 seek 只解码空档边界两帧，避免整路顺序解码。frac 超阈值判跳帧。
+    """
+    import numpy as np
+    from edc.data.ir.metadata import MODALITY_IMAGE
+
+    if threshold_frac is None:
+        threshold_frac = DEFAULT_PAUSE_JUMP_IMAGE_FRAC
+    result: dict[str, Any] = {"status": "checked", "threshold_frac": threshold_frac,
+                              "cameras": [], "jumps": [], "unchecked_channels": []}
+    cams = []
+    for name, ti in info.topics.items():
+        if ti.modality not in {MODALITY_IMAGE, "rgb"}:
+            continue
+        if "depth" in name.lower():
+            # 深度图不是可见光画面（classify_channel 按名字把 depth 归为 image），
+            # 8bit 灰度差阈值对它无意义，不参与画面跳帧检查。
+            continue
+        ts = ts_map.get(name) or getattr(ti, "timestamps", None)
+        if ts is None or len(ts) < 2:
+            continue
+        cams.append((name, np.asarray(ts, dtype=float)))
+    if not cams:
+        return {**result, "status": "unchecked", "reason": "无相机通道，未检查画面跳帧"}
+    for name, ts in cams:
+        dts = np.diff(ts)
+        positive = dts[dts > 0]
+        if not len(positive):
+            continue
+        med = float(np.median(positive))
+        gidx = [int(i) for i in np.where(dts > max(2.0 * med, 0.2))[0]]
+        if not gidx:
+            continue
+        try:
+            frames = reader.frames_at(name, gidx + [i + 1 for i in gidx])
+        except Exception as exc:
+            result["unchecked_channels"].append({"channel": name, "reason": f"帧解码不可用：{exc}"})
+            continue
+        result["cameras"].append(name)
+        compared = 0
+        for i in gidx:
+            if i not in frames or i + 1 not in frames:
+                # 边界帧缺失不能静默跳过：该空档没比较过，如实记 unchecked。
+                result["unchecked_channels"].append(
+                    {"channel": name,
+                     "reason": f"{float(ts[i]):.3f}s 处空档边界帧缺失（索引 {i}/{i + 1}），该空档未比较"})
+                continue
+            try:
+                mad, frac = _frame_diff_metrics(frames[i], frames[i + 1])
+            except Exception as exc:
+                result["unchecked_channels"].append(
+                    {"channel": name, "reason": f"{float(ts[i]):.3f}s 处空档边界帧不可比较：{exc}"})
+                continue
+            compared += 1
+            if frac > threshold_frac:
+                result["jumps"].append({
+                    "camera": name, "start_time": float(ts[i]), "end_time": float(ts[i + 1]),
+                    "gap_ms": float(dts[i] * 1000.0), "frac": round(frac, 3), "mad": round(mad, 1),
+                })
+        if not compared:
+            # 一路相机有空档但一个都没比成，不能算已检查。
+            result["cameras"].pop()
+    if not result["cameras"] and result["unchecked_channels"]:
+        result["status"] = "unchecked"
+        result["reason"] = "相机空档边界帧均不可用，未检查画面跳帧"
+    return result
+
+
+def _pause_image_jump_reasons(boundary: dict[str, Any]) -> list[str]:
+    jumps = boundary.get("jumps") or []
+    if not jumps:
+        return []
+    thr = boundary.get("threshold_frac", DEFAULT_PAUSE_JUMP_IMAGE_FRAC)
+    parts = [f"{j['start_time']:.3f}s 处相机空档 {j['gap_ms']:.0f} 毫秒前后画面显著变化"
+             f"（{j['camera']}，变化像素占比 {j['frac']:.2f}）" for j in jumps]
+    return [f"子任务切换跳帧：{'；'.join(parts)}。超过 {thr:.2f} 判定阈值，"
+            "空档期间画面未被记录、前后画面跳变，判不合格"]
 
 
 def record_invalid(
@@ -1360,8 +1656,15 @@ def build_report(root: Path, args: argparse.Namespace) -> dict[str, Any]:
         threshold=DEFAULT_PASS_THRESHOLD,
     )
 
-def assess_from_ir(info, reader, weights: dict = None) -> dict:
-    """从 IR DataInfo 评估时间戳对齐 (使用 IR 提取的时间戳)。"""
+def assess_from_ir(info, reader, weights: dict = None, pause_jump_image_frac: float = None,
+                   pause_jump_threshold_m: float = None) -> dict:
+    """从 IR DataInfo 评估时间戳对齐 (使用 IR 提取的时间戳)。
+
+    pause_jump_image_frac：画面跳帧阈值（相机空档前后帧变化像素占比），不填用
+    DEFAULT_PAUSE_JUMP_IMAGE_FRAC。pause_jump_threshold_m 为旧数值法参数，已弃用（保留兼容）。"""
+    if pause_jump_image_frac is not None:
+        if not math.isfinite(pause_jump_image_frac) or not 0 < pause_jump_image_frac <= 1:
+            raise ValueError('pause_jump_image_frac must be in (0, 1]')
     try:
         ts_map = reader.require_timestamps(info, min_channels=2)
     except Exception as exc:
@@ -1425,7 +1728,21 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
 
     # 检测停顿窗口
     pause_windows = _detect_pause_windows(ts_map) if len(ts_map) >= 2 else []
-    pause_profile = {"benign_pause_windows": pause_windows}
+    # 画面跳帧（纯图像）：相机空档前后两帧画面显著变化 → 子任务切换跳帧，判不合格。
+    # 腕部旋转跳帧臂尖位移极小，数值法盲区，故用画面差；关键帧 seek 只解码边界两帧。
+    # 整体兜底：不支持图像比较的输入格式直接跳过（unchecked），本检查绝不阻断时间戳评估。
+    try:
+        boundary_jumps = _pause_boundary_image_jumps(info, reader, ts_map,
+                                                     threshold_frac=pause_jump_image_frac)
+    except Exception as exc:
+        boundary_jumps = {
+            "status": "unchecked",
+            "threshold_frac": pause_jump_image_frac if pause_jump_image_frac is not None
+            else DEFAULT_PAUSE_JUMP_IMAGE_FRAC,
+            "cameras": [], "jumps": [], "unchecked_channels": [],
+            "reason": f"画面跳帧检查不可用，已跳过：{exc}"}
+    pause_profile = {"benign_pause_windows": pause_windows,
+                     "pause_boundary_jumps": boundary_jumps}
 
     if len(streams) < 2:
         from edc.data.readers.base import make_ir_report
@@ -1468,8 +1785,13 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         if float(r.get("score", 0.0) or 0.0) <= DEFAULT_PASS_THRESHOLD:
             attr = "；".join(r.get("attribution", [])) or "未归因"
             reasons.append(f"topic {r['topic']}：score={float(r.get('score', 0.0) or 0.0):.3f}，{attr}")
-    return scoped(_emit_module(
-        score=bag_score, passed=passed, sub_indicators=topic_subs, reasons=reasons,
+    jump_reasons = _pause_image_jump_reasons(boundary_jumps)
+    if jump_reasons:
+        # 熔断语义与仓库其它模块一致：不合格 → score=0、DO_NOT_USE；各 topic 分数保留在子指标里供诊断。
+        bag_score, passed = 0.0, False
+    report = scoped(_emit_module(
+        score=bag_score, passed=passed, sub_indicators=topic_subs,
+        reasons=jump_reasons + reasons,
         threshold_profile={
             "reference_topic": reference.topic,
             "aggregate": "mean(topic_scores)",
@@ -1479,6 +1801,8 @@ def assess_from_ir(info, reader, weights: dict = None) -> dict:
         },
         threshold=DEFAULT_PASS_THRESHOLD,
     ))
+    report["pause_boundary_jumps"] = boundary_jumps
+    return report
 
 
 def main() -> int:

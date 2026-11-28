@@ -46,8 +46,13 @@ def test_pause_window_needs_a_majority_of_channels():
     assert _detect_pause_windows(alone) == []
 
 
-def test_pause_window_ignores_outages_longer_than_three_seconds():
+def test_pause_window_ignores_outages_longer_than_the_limit():
     channels = {f'/cam{i}/rgb': timeline(pause_index=60, pause_s=5.0) for i in range(6)}
+    assert _detect_pause_windows(channels) == []
+
+
+def test_pause_window_rejects_outages_over_2500_ms():
+    channels = {f'/cam{i}/rgb': timeline(pause_index=60, pause_s=3.0) for i in range(6)}
     assert _detect_pause_windows(channels) == []
 
 
@@ -113,3 +118,8 @@ def test_root_cause_downgrades_a_benign_pause_but_keeps_a_long_outage():
     outage = root_assess(root_axes(4.0))
     assert not outage['root_cause']['has_benign_pauses']
     assert outage['sub_indicators'][0]['score'] == 60
+
+
+def test_root_cause_benign_limit_matches_the_2500_ms_window_limit():
+    assert root_assess(root_axes(2.4))['root_cause']['has_benign_pauses']
+    assert not root_assess(root_axes(2.8))['root_cause']['has_benign_pauses']

@@ -3,6 +3,19 @@
 基线：`leju-kuavo` 提交 `81dff8e2f086382806fe4c1c6f4680f63d1b7cc4`。
 日期：2026-11-03。本目录为该提交的独立源码副本，保留此前工作树的未提交内容；没有提交或推送 GitHub。
 
+## 子任务切换跳帧：图像法落地与停顿上限统一（2026-11-28）
+
+- 基线：`data-platform` 提交 `b690018`，改动在工作树未提交。`Check_Timestamp` 适配器版本升到 `ir-adapter-24`。
+- 停顿上限统一为 2500ms：`run_check._detect_pause_windows` 的 `max_gap_ms` 与 `Root_Cause._benign_pause_events` 的 `BENIGN_MAX_GAP_MS` 由 3000 改为 2500，双语 ALGORITHMS 文档同步；测试断言 2.4s 仍良性、2.8s／3.0s 不再良性。
+- 新增子任务切换跳帧检查（仅 IR/MCAP 路径，`assess_from_ir`）：**纯图像法**。逐相机通道找自身空档（相邻帧间隔 > max(2×中位帧间隔, 0.2s)，不依赖多通道停顿窗口，超过 2500ms 上限的空档也能检到），只解码空档边界前后两帧，160×120 灰度降采样后算平均绝对差与 |差|>25 的像素占比 `frac`；`frac` 超过 `pause_jump_image_frac`（默认 0.26，contracts 正式参数，(0,1]）即熔断 `score=0`／`DO_NOT_USE`，`reasons` 首条写明"子任务切换跳帧"及空档时刻、相机与变化占比，证据写入 `threshold_profile.pause_boundary_jumps` 与报告级同名字段；无相机或帧不可解码记 `unchecked`，不影响原判定。`result.py` 的 explain/note 输出对应通俗原因。
+- 方法迭代依据（真实数据人工质检对照）：最初"停顿窗口两端末端位移>1cm"误报大量相机持续录制场景；改为"相机空档期间臂位移"并把阈值放到 3cm 后误报清零，但唯一人工确认跳帧是**腕部旋转**（臂尖仅 0.8cm、腕相机视野大幅旋转），数值法对旋转天然盲区，最终改为直接比对画面。阈值 0.26 由人工标签分离确定：确认跳帧 frac=0.275／0.298／0.495，人工通过样本最高 0.254。旧数值法 `_pause_boundary_pose_jumps`（3cm，参数 `pause_jump_threshold_m`）弃用保留兼容，不再参与评分。
+- 性能：reader 新增 `frames_at(name, indices)` 关键帧 seek——MCAP H.264（CompressedVideo，GOP=30）从 ≤ 目标索引的最近 IDR 关键帧（annexb NAL type 5）起解码到目标，CompressedImage/Protobuf 只解目标帧；`base.DataReader` 提供顺序解码 fallback，`ir/bridge.EpisodeAccess` 解开 CanonicalEpisode 包装透传。较整路顺序解码约 8 倍提速，单条 Check_Timestamp 约 7–24s。
+- 配套修复：`ShiftedReader.shifted_timestamps(info)` 提供平移后全通道时间轴（派生 FK pose 副本与停顿窗口同轴，供弃用数值法使用）；末端位置单位未声明记 `unchecked` 不默认米。
+- 二轮 review 修复（2026-11-28，三条均核实）：①`frames_at` 原按"喂包时吐帧"记索引，B 帧重排/解码延迟下错位（假解码器复现：目标 5/15/19 取到 4/14/18）且 flush 帧被丢弃——改为包索引写入 pts、输出按 `fr.pts` 归属并收集 flush 帧；②ROS mono8 二维灰度图会让固定 `RGB2GRAY` 崩溃并中断整条检查——`_frame_diff_metrics` 支持二维 8bit，非 8bit（16UC1 深度）记 unchecked，depth 通道按名字排除（灰度阈值对深度值无意义），逐空档 try 兜底；③缺边界帧不再静默跳过标 checked——缺失/不可比较的空档记入 `unchecked_channels`，一路零比较不算已检查。新增假 av 延迟解码器 pts 归属测试与真 libx264+B 帧回环测试（后者需 av，无 av 环境跳过）；X1 Pro 实测流无 B 帧，修复不改变已验证的 53 条结果。另按用户要求加整体兜底：`assess_from_ir` 对图像检查全程 try，任何不支持的输入格式或意外异常整体记 `unchecked` 跳过，绝不阻断时间戳评估与其余算法。
+- 验证：53 条真实 X1 Pro MCAP 全量复跑，3/3 人工确认跳帧全部命中、0 误报（另 2 条 DO_NOT_USE 为对齐问题，非本检查）。针对性测试 `tests/edc/test_pause_boundary_jump.py` **30 passed**（新增，含图像法熔断/阈值可配/unchecked/弃用数值法边界/pts 归属/整体兜底；其中真 libx264+B 帧回环 1 项需 av，无 av 环境跳过），`tests/edc/test_timestamp_benign_pause.py` **17 passed**（含 2500ms 上限断言）。全量回归存在 32 个先前已有的 video/freeze/workflow 环境性失败，与本轮改动无关。
+- 文档同步：双语 [ALGORITHMS.md](ALGORITHMS.md)／[ALGORITHMS.zh-CN.md](ALGORITHMS.zh-CN.md) 的 Check_Timestamp 参数与输出规则、[Check_Timestamp README](../src/edc/algorithms/quality/algorithms/Check_Timestamp/README.md) 的跳帧检查段落、输出字段表与熔断条件均已按图像法改写。共享行时间轴路径与旧导出目录路径不做此检查；Root_Cause 的独立良性归因未随图像法改动。
+- 本节记录本地验证，未提交或推送 GitHub；原始数据与报告不随代码提交。
+
 ## 良性暂停识别与 85／75 通过线（2026-11-18）
 
 - 基线：`data-platform` 提交 `6c254f4`（与 GitHub `data-platform` 同一提交）。本轮在 `Check_Timestamp` 与 `Root_Cause` 识别 300ms～3000ms 的多通道同步停顿：前者把完整落在窗口内的间隔排除出采样节奏指标和配对覆盖率，后者对可解释停顿只降权，并只在仍有通道存在无法解释的周期性间隔时才按熔断处理。
