@@ -22,7 +22,7 @@ class CanonicalEpisode:
 
     def __getattr__(self, name):
         if name in {'id', 'path', 'format', 'profile', 'selector', 'metadata', 'backend',
-                    'iter_frames', 'image_storage', 'video_source', 'materialize_video', 'video_evidence'}:
+                    'iter_frames', 'frames_at', 'image_storage', 'video_source', 'materialize_video', 'video_evidence'}:
             return getattr(self._source, name)
         raise AttributeError(name)
 

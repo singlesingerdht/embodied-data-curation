@@ -96,7 +96,7 @@ with edc.open_dataset('/path/to/dataset/episode.mcap', profile=profile) as datas
 
 - **输入：** 有效且单位明确的时间；跨通道配对另需可比较时间和参考输入。
 - **参数：** `shared_row_max_gap_s` 默认按中位行间隔的3倍；`pause_jump_image_frac` 默认 0.26，为画面跳帧阈值（相机空档前后两帧灰度差>25 的像素占比，160×120 降采样）；评分标准所有机型统一：误差下限取彩色／深度相机帧间隔最慢一路的 0.495 倍，帧间隔波动系数 1.5 起扣分、3.0 扣到 0，配对覆盖率 0.85 扣到 0；包级 ≥85 通过、75~85 复核、<75 不通过。
-- **输出／判断：** 时间间隔、断档和可用配对指标；300ms～2500ms 的多通道同步停顿（至少 4 路，或覆盖过半活跃通道）记为可解释窗口，不参与节奏指标和覆盖率惩罚，并写入报告 `benign_pause_windows`。另做子任务切换跳帧检查（仅 IR/MCAP 路径）：逐相机找自身空档（>max(2×中位帧间隔, 0.2s)，不依赖停顿窗口），关键帧 seek 只解码空档边界两帧比对画面（按 pts 归属，B 帧重排下不错位；深度通道不参与），变化像素占比超过 `pause_jump_image_frac` 即判不合格（score=0、DO_NOT_USE），原因写明"子任务切换跳帧"及空档时刻与相机，证据写入 `pause_boundary_jumps`，边界帧缺失或不可比较的空档如实记 unchecked；旧末端位移数值法（`pause_jump_threshold_m`）已弃用保留兼容。可只检查单路／共享行时间，不把该范围报告为跨设备同步通过。
+- **输出／判断：** 时间间隔、断档和可用配对指标；300ms～2500ms 的多通道同步停顿（至少 4 路，或覆盖过半活跃通道）记为可解释窗口，不参与节奏指标和覆盖率惩罚，并写入报告 `benign_pause_windows`。另做子任务切换跳帧检查（仅 IR/MCAP 路径）：逐相机找自身空档（>max(2×中位帧间隔, 0.2s)，不依赖停顿窗口），关键帧 seek 只解码空档边界两帧比对画面（按 pts 归属，B 帧重排下不错位；深度通道不参与），变化像素占比超过 `pause_jump_image_frac` 即判不合格（score=0、DO_NOT_USE），原因写明"子任务切换跳帧"及空档时刻与相机，证据写入 `pause_boundary_jumps`，边界帧缺失或不可比较的空档如实记 unchecked；抽帧同时覆盖原始容器与 episode 目录／ROS2 bag 来源：`RosBagReader.frames_at` 按 `metadata.yaml` 的 `relative_file_paths` 解析内层 MCAP（含嵌套相对路径）并委托关键帧 seek；走公开的 `Episode.frames_at`（经 `CanonicalEpisode` 白名单放行），不伸手拿包装层私有属性。旧末端位移数值法（`pause_jump_threshold_m`）已弃用保留兼容。可只检查单路／共享行时间，不把该范围报告为跨设备同步通过。
 - **边界：** 缺独立采集时间、单位或 clock 时，推荐列明部分可检查范围。
 - [实现](../src/edc/algorithms/quality/algorithms/Check_Timestamp/)
 

@@ -27,12 +27,24 @@ class EpisodeAccess(DataReader):
         return iter(self.channel_values(name))
 
     def frames_at(self, name, indices):
-        ep = self.episode
-        # 解开 CanonicalEpisode 等包装，拿到底层真实 Episode 的 reader
-        while hasattr(ep, '_source'):
-            ep = ep._source
-        ep.open()
-        return ep._reader.frames_at(name, indices)
+        # 走公开接口（Episode.frames_at / CanonicalEpisode 白名单），不伸手拿包装层私有属性。
+        try:
+            return self.episode.frames_at(name, indices)
+        except AttributeError:
+            pass
+        # 兜底：包装层未提供公开 frames_at 时，按公开 path 定位原始容器文件（.mcap）。
+        from pathlib import Path
+        src = Path(self.episode.path)
+        cands = [src] if src.is_file() else sorted(src.rglob('*.mcap'))
+        for c in cands:
+            try:
+                from edc.data.readers.mcap import McapReader
+                r = McapReader()
+                r.open(str(c))
+                return r.frames_at(name, indices)
+            except Exception:
+                continue
+        raise ValueError(f'{name}: image decoding unavailable')
 
     def channel_timestamps(self, name):
         return self.episode.channels[name].timestamps

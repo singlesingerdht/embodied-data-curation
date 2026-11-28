@@ -172,3 +172,27 @@ class RosBagReader(DataReader):
         from edc.data.readers.video import encode_frames, cache_path
         output = output_path or cache_path(self._path, name)
         return encode_frames(self.iter_frames(name), output, expected_count=info.topics[name].count)
+
+    def frames_at(self, name, indices):
+        """按索引取帧：ROS2 bag（metadata.yaml + mcap）委托给 mcap reader 的关键帧 seek。
+
+        存储文件以 metadata.yaml 的 relative_file_paths 为准（支持嵌套相对路径），
+        不靠猜路径；单 mcap 走快路径，多存储文件回退顺序解码。"""
+        from pathlib import Path
+        p = Path(self._path)
+        meta = (p / 'metadata.yaml') if p.is_dir() else (p.parent / 'metadata.yaml')
+        files = []
+        if meta.exists():
+            import yaml
+            info = yaml.safe_load(meta.read_text(encoding='utf-8')) or {}
+            rel = (info.get('rosbag2_bagfile_information') or {}).get('relative_file_paths') or []
+            files = [meta.parent / r for r in rel]
+        if not files:
+            files = [p] if p.is_file() else sorted(p.rglob('*.mcap'))
+        mcaps = [f for f in files if f.suffix == '.mcap' and f.exists()]
+        if len(mcaps) == 1:
+            from .mcap import McapReader
+            r = McapReader()
+            r.open(str(mcaps[0]))
+            return r.frames_at(name, indices)
+        return super().frames_at(name, indices)

@@ -360,6 +360,12 @@ class Episode:
             raise ValueError(f'Image decoding not available: {channel}')
         return self._reader.image_storage(channel)
 
+    def frames_at(self, channel, indices):
+        """按索引取帧的公开入口：委托容器 reader 的关键帧 seek，不做 image_available 门控
+        （包装 reader 的该标志可能失真，容器 reader 自己会解码或报错）。"""
+        self.open()
+        return self._reader.frames_at(channel, indices)
+
     def iter_frames(self, channel):
         self.open()
         c = self.channels[channel]
