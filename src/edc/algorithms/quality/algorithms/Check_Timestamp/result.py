@@ -2,9 +2,14 @@
 import re
 
 from edc.algorithms.quality.shared.verdicts import clock_time, texts
+from edc.algorithms.quality.algorithms.Check_Timestamp.run_check import (
+    DEFAULT_PASS_THRESHOLD as _PASS, DEFAULT_REVIEW_THRESHOLD as _REVIEW)
 
 
-GUIDE = '每一路单独打分，整条结论看所有路的平均分：高于 90 通过，80–90 复核，80 及以下排除。对每帧画面找时间上最近的那条动作消息，两者的时间差叫拼接误差；P99 是最差 1% 的拼接误差，小于相机半帧时配对影响很小。所有数据和画面共用一条时间的格式，只查有没有跳帧：跳到所列时刻看画面是否突然跳一下、是否正好落在关键动作上。'  # Shown above this algorithm's problems in the report.
+GUIDE = (f'每一路单独打分，整条结论看所有路的平均分：{_PASS:g} 分及以上通过，{_REVIEW:g}–{_PASS:g} 复核，'
+         f'{_REVIEW:g} 以下排除。对每帧画面找时间上最近的那条动作消息，两者的时间差叫拼接误差；'
+         'P99 是最差 1% 的拼接误差，小于相机半帧时配对影响很小。所有数据和画面共用一条时间的格式，'
+         '只查有没有跳帧：跳到所列时刻看画面是否突然跳一下、是否正好落在关键动作上。')  # Shown above this algorithm's problems in the report.
 
 
 def explain(report, labels):
@@ -40,7 +45,8 @@ def explain(report, labels):
     # The verdict comes from the mean over all topics, not from the worst one.
     reference = next((m.group(1) for t in lines if (m := re.search(r'reference topic 为 ([^\s。，]+)', t))), None)
     ref = labels.get(reference, reference) if reference else '对照相机'
-    head = (f'每一路都拿来和{ref}对比打分，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分（高于 90 通过，80–90 复核，80 及以下排除）。'
+    head = (f'每一路都拿来和{ref}对比打分，{mean.group(1)} 路平均 {float(mean.group(2)):.1f} 分'
+            f'（{_PASS:g} 分及以上通过，{_REVIEW:g}–{_PASS:g} 复核，{_REVIEW:g} 以下排除）。'
             if mean else '')
     if topics:
         return head + '分数最低的：' + ''.join(sentence(report, name, score, reference or '对照相机', why, labels)
